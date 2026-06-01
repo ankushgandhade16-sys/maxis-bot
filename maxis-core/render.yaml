@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: maxis-cloud
+    env: docker
+    plan: free
+    dockerCommand: python -m maxis.main
+    envVars:
+      - key: MAXIS_ENV
+        value: cloud
+      - key: GEMINI_API_KEY
+        sync: false
+

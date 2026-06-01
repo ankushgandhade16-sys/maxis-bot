@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environment
+.venv/
+venv/
+
+# Data (persistent, not in version control)
+maxis-core/data/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Logs
+*.log
+
+# Secrets
+.env
+.env.local
+maxis_config.yaml
+
+# Model weights
+*.pt
+*.pth
+*.onnx
+*.gguf
+*.bin

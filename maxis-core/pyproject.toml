@@ -1,0 +1,86 @@
+[project]
+name = "maxis-core"
+version = "0.1.0"
+description = "MAXIS — Modular Autonomous eXperiential Intelligence System"
+requires-python = ">=3.11"
+dependencies = [
+    # === Core Framework ===
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "websockets>=13.0",
+    "pydantic>=2.9.0",
+    "pydantic-settings>=2.5.0",
+
+    # === LLM & Embeddings ===
+    "ollama>=0.4.0",
+    "groq>=0.11.0",
+    "sentence-transformers>=3.3.0",
+
+    # === Memory & Storage ===
+    "chromadb>=0.5.0",
+    "sqlalchemy>=2.0.0",
+    "aiosqlite>=0.20.0",
+    "networkx>=3.4.0",
+
+    # === Voice (Phase 2 — installed now for dependency resolution) ===
+    # "faster-whisper>=1.1.0",
+    # "kokoro>=0.3.0",
+    # "silero-vad>=5.1",
+
+    # === Vision (Phase 3+) ===
+    # "insightface>=0.7.3",
+    # "opencv-python>=4.10.0",
+    # "ultralytics>=8.3.0",
+
+    # === System Monitoring ===
+    "psutil>=6.1.0",
+
+    # === Utilities ===
+    "httpx>=0.27.0",
+    "pyyaml>=6.0.0",
+    "loguru>=0.7.0",
+    "python-multipart>=0.0.12",
+    "numpy>=1.26.0",
+]
+
+[project.optional-dependencies]
+voice = [
+    "faster-whisper>=1.1.0",
+    "kokoro>=0.3.0",
+    "torch>=2.4.0",
+    "torchaudio>=2.4.0",
+]
+vision = [
+    "insightface>=0.7.3",
+    "opencv-python>=4.10.0",
+    "ultralytics>=8.3.0",
+    "onnxruntime-gpu>=1.19.0",
+]
+security = [
+    "watchdog>=5.0.0",
+    "wmi>=1.5.1",
+]
+mobile = [
+    # Mobile dependencies are in maxis-mobile/package.json
+]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov>=6.0.0",
+    "ruff>=0.7.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["maxis"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
