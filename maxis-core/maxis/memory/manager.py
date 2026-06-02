@@ -79,20 +79,40 @@ class MemoryManager:
 
         # ── Episodic recall ──────────────────────────────────────────────
         try:
-            episodes = await self.episodic.retrieve(
+            # Private memories — only this person's interactions
+            if person_id:
+                user_episodes = await self.episodic.retrieve(
+                    query=query,
+                    person_id=person_id,
+                    top_k=4,
+                )
+                if user_episodes:
+                    ep_lines = []
+                    for ep in user_episodes:
+                        ts = time.strftime(
+                            "%b %d at %I:%M %p",
+                            time.localtime(ep["metadata"].get("timestamp", 0)),
+                        )
+                        ep_lines.append(f"[{ts}] {ep['content'][:200]}")
+                    sections.append("### Your Past Interactions (private)\n" + "\n".join(ep_lines))
+
+            # Common memories — recent interactions across ALL users
+            # This gives Maxis shared context so she doesn't hallucinate
+            common_episodes = await self.episodic.retrieve(
                 query=query,
-                person_id=person_id,
-                top_k=5,
+                person_id=None,  # no filter = all users
+                top_k=3,
             )
-            if episodes:
+            if common_episodes:
                 ep_lines = []
-                for ep in episodes:
+                for ep in common_episodes:
                     ts = time.strftime(
                         "%b %d at %I:%M %p",
                         time.localtime(ep["metadata"].get("timestamp", 0)),
                     )
-                    ep_lines.append(f"[{ts}] {ep['content'][:200]}")
-                sections.append("### Past Interactions\n" + "\n".join(ep_lines))
+                    who = ep["metadata"].get("person_id", "unknown")[:8]
+                    ep_lines.append(f"[{ts} | user:{who}] {ep['content'][:200]}")
+                sections.append("### General Knowledge (shared context)\n" + "\n".join(ep_lines))
         except Exception as e:
             logger.warning(f"Episodic recall failed: {e}")
 

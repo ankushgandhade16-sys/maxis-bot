@@ -26,126 +26,51 @@
             --radius: 28px;
             --radius-sm: 16px;
         }
-
         * { margin: 0; padding: 0; box-sizing: border-box; }
-
         body {
             font-family: 'Outfit', sans-serif;
             color: var(--text-primary);
-            height: 100vh;
-            display: flex;
-            overflow: hidden;
+            height: 100vh; display: flex; overflow: hidden;
             -webkit-font-smoothing: antialiased;
         }
 
-        /* ── Anime Village Background ──────────────────────────── */
-        .world-bg {
-            position: fixed;
-            inset: 0;
-            z-index: 0;
-            background: url('/static/bg.png') center center / cover no-repeat;
-            animation: bg-drift 60s infinite ease-in-out alternate;
+        /* ── Video Background ─────────────────────────────────── */
+        .video-bg {
+            position: fixed; inset: 0; z-index: 0;
+            overflow: hidden; background: #000;
         }
-        @keyframes bg-drift {
-            0%   { transform: scale(1.0) translate(0, 0); }
-            50%  { transform: scale(1.05) translate(-10px, -5px); }
-            100% { transform: scale(1.0) translate(5px, 3px); }
+        .video-bg iframe, .video-bg video {
+            position: absolute;
+            top: 50%; left: 50%;
+            min-width: 100vw; min-height: 100vh;
+            width: 177.78vh; /* 16:9 */
+            height: 56.25vw;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+        .video-bg-fallback {
+            position: absolute; inset: 0;
+            background: url('/static/bg.png') center center / cover no-repeat;
         }
         .world-overlay {
-            position: fixed;
-            inset: 0;
-            z-index: 1;
-            background: linear-gradient(
-                135deg,
-                rgba(5, 5, 15, 0.55) 0%,
-                rgba(10, 10, 25, 0.40) 50%,
-                rgba(5, 5, 20, 0.60) 100%
-            );
+            position: fixed; inset: 0; z-index: 1;
+            background: linear-gradient(135deg, rgba(5,5,15,0.55) 0%, rgba(10,10,25,0.35) 50%, rgba(5,5,20,0.55) 100%);
             pointer-events: none;
-        }
-
-        /* ── Interactive Cat ───────────────────────────────────── */
-        .cat-container {
-            position: fixed;
-            bottom: 20px;
-            right: 30px;
-            z-index: 50;
-            cursor: pointer;
-            transition: transform 0.3s ease;
-        }
-        .cat-container:hover { transform: scale(1.08); }
-        .cat-container img {
-            width: 100px;
-            height: auto;
-            animation: cat-idle 3s infinite ease-in-out;
-            filter: drop-shadow(0 4px 12px rgba(0,0,0,0.5));
-        }
-        .cat-container.jump img {
-            animation: cat-jump 0.5s ease;
-        }
-        @keyframes cat-idle {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-6px); }
-        }
-        @keyframes cat-jump {
-            0% { transform: translateY(0) rotate(0deg); }
-            30% { transform: translateY(-30px) rotate(-8deg); }
-            60% { transform: translateY(-10px) rotate(5deg); }
-            100% { transform: translateY(0) rotate(0deg); }
-        }
-        .cat-speech {
-            position: absolute;
-            bottom: 110px;
-            right: 0;
-            background: rgba(255,255,255,0.95);
-            color: #333;
-            padding: 8px 14px;
-            border-radius: 12px;
-            font-size: 13px;
-            font-weight: 500;
-            white-space: nowrap;
-            opacity: 0;
-            transform: translateY(10px);
-            transition: all 0.3s;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
-            pointer-events: none;
-        }
-        .cat-speech.show {
-            opacity: 1;
-            transform: translateY(0);
-        }
-        .cat-speech::after {
-            content: '';
-            position: absolute;
-            bottom: -8px;
-            right: 30px;
-            width: 0; height: 0;
-            border-left: 8px solid transparent;
-            border-right: 8px solid transparent;
-            border-top: 8px solid rgba(255,255,255,0.95);
         }
 
         /* ── Sidebar ──────────────────────────────────────────── */
         .sidebar {
-            width: 64px;
-            background: var(--bg-primary);
-            backdrop-filter: blur(24px);
-            border-right: 1px solid var(--border);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 20px 0;
-            gap: 8px;
-            z-index: 10;
+            width: 64px; background: var(--bg-primary);
+            backdrop-filter: blur(24px); border-right: 1px solid var(--border);
+            display: flex; flex-direction: column; align-items: center;
+            padding: 20px 0; gap: 8px; z-index: 10;
         }
         .sidebar-logo {
-            width: 40px; height: 40px;
-            border-radius: 12px;
+            width: 40px; height: 40px; border-radius: 12px;
             background: linear-gradient(135deg, var(--accent), var(--accent-secondary));
             display: flex; align-items: center; justify-content: center;
             font-weight: 600; font-size: 16px; color: white;
-            margin-bottom: 24px;
-            box-shadow: 0 0 24px var(--accent-glow);
+            margin-bottom: 24px; box-shadow: 0 0 24px var(--accent-glow);
         }
         .sidebar-btn {
             width: 44px; height: 44px; border-radius: 12px;
@@ -174,11 +99,20 @@
         }
         .topbar {
             display: flex; align-items: center; justify-content: flex-end;
-            padding: 16px 32px; z-index: 2;
+            padding: 16px 32px; z-index: 2; gap: 12px;
         }
+        .model-selector {
+            padding: 6px 14px; border-radius: 20px; font-size: 12px;
+            background: rgba(0,0,0,0.3); border: 1px solid var(--border-light);
+            backdrop-filter: blur(10px); color: var(--text-secondary);
+            cursor: pointer; font-family: inherit; outline: none;
+            transition: all 0.3s; -webkit-appearance: none;
+        }
+        .model-selector:hover { border-color: var(--accent); color: var(--text-primary); }
+        .model-selector option { background: #1a1a2e; color: #f0f0f5; }
         .emotional-pill {
             padding: 6px 16px; border-radius: 20px; font-size: 12px; font-weight: 500;
-            background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-light);
+            background: rgba(255,255,255,0.03); border: 1px solid var(--border-light);
             backdrop-filter: blur(10px); color: var(--accent-secondary);
             letter-spacing: 0.5px; text-transform: uppercase;
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
@@ -201,14 +135,8 @@
             pointer-events: none; position: absolute; inset: 0;
         }
         .greeting { font-size: 42px; font-weight: 300; text-align: center; line-height: 1.2; }
-        .greeting span {
-            background: linear-gradient(135deg, var(--text-primary), var(--text-secondary));
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-        }
-        .greeting .name {
-            background: linear-gradient(135deg, var(--accent), var(--accent-secondary));
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 500;
-        }
+        .greeting span { background: linear-gradient(135deg, var(--text-primary), var(--text-secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .greeting .name { background: linear-gradient(135deg, var(--accent), var(--accent-secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 500; }
 
         /* ── Chat View ────────────────────────────────────────── */
         .chat-view { flex: 1; display: none; flex-direction: column; overflow: hidden; }
@@ -233,34 +161,23 @@
             border-radius: var(--radius-sm); word-wrap: break-word; white-space: pre-wrap;
             box-shadow: 0 4px 20px rgba(0,0,0,0.15); backdrop-filter: blur(10px);
         }
-        .message.maxis .msg-bubble {
-            background: var(--bg-surface); border: 1px solid var(--border-light);
-            border-top-left-radius: 4px;
-        }
-        .message.user .msg-bubble {
-            background: rgba(139, 92, 246, 0.15); border: 1px solid rgba(139, 92, 246, 0.3);
-            border-top-right-radius: 4px;
-        }
+        .message.maxis .msg-bubble { background: var(--bg-surface); border: 1px solid var(--border-light); border-top-left-radius: 4px; }
+        .message.user .msg-bubble { background: rgba(139,92,246,0.15); border: 1px solid rgba(139,92,246,0.3); border-top-right-radius: 4px; }
         .msg-time { font-size: 11px; color: var(--text-muted); margin-top: 6px; padding: 0 4px; }
 
         /* ── Input Area ───────────────────────────────────────── */
         .input-area {
             padding: 0 32px 32px; display: flex; justify-content: center;
-            background: linear-gradient(to top, rgba(5,5,12,0.8) 60%, transparent);
-            z-index: 10;
+            background: linear-gradient(to top, rgba(5,5,12,0.8) 60%, transparent); z-index: 10;
         }
         .input-pill {
             display: flex; align-items: flex-end; gap: 12px;
-            background: rgba(16, 16, 28, 0.85); backdrop-filter: blur(24px);
+            background: rgba(16,16,28,0.85); backdrop-filter: blur(24px);
             border: 1px solid var(--border-light); border-radius: var(--radius);
             padding: 10px 10px 10px 24px; max-width: 760px; width: 100%;
             transition: all 0.3s; box-shadow: 0 10px 40px rgba(0,0,0,0.3);
         }
-        .input-pill:focus-within {
-            border-color: var(--accent);
-            box-shadow: 0 10px 40px var(--accent-glow);
-            background: rgba(20, 20, 35, 0.92);
-        }
+        .input-pill:focus-within { border-color: var(--accent); box-shadow: 0 10px 40px var(--accent-glow); background: rgba(20,20,35,0.92); }
         .input-pill textarea {
             flex: 1; background: none; border: none; color: var(--text-primary);
             font-family: inherit; font-size: 15px; resize: none;
@@ -275,10 +192,7 @@
             display: flex; align-items: center; justify-content: center;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); flex-shrink: 0;
         }
-        .send-btn.active {
-            background: var(--accent); border-color: var(--accent); color: white;
-            box-shadow: 0 0 15px var(--accent-glow);
-        }
+        .send-btn.active { background: var(--accent); border-color: var(--accent); color: white; box-shadow: 0 0 15px var(--accent-glow); }
         .send-btn.active:hover { transform: scale(1.05); }
         .send-btn svg { width: 20px; height: 20px; }
         .mic-btn {
@@ -289,24 +203,18 @@
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); flex-shrink: 0;
         }
         .mic-btn:hover { color: var(--text-primary); }
-        .mic-btn.recording {
-            color: #ef4444; background: rgba(239, 68, 68, 0.1);
-            border-color: rgba(239, 68, 68, 0.3); animation: pulse-red 1.5s infinite;
-        }
+        .mic-btn.recording { color: #ef4444; background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.3); animation: pulse-red 1.5s infinite; }
         @keyframes pulse-red {
-            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
-            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+            0% { box-shadow: 0 0 0 0 rgba(239,68,68,0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(239,68,68,0); }
+            100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
         }
 
         /* ── Login Modal ──────────────────────────────────────── */
         .modal-overlay {
-            position: fixed; inset: 0;
-            background: rgba(0, 0, 0, 0.7);
-            backdrop-filter: blur(20px);
-            display: flex; align-items: center; justify-content: center;
-            z-index: 100; opacity: 0; pointer-events: none;
-            transition: opacity 0.3s;
+            position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(20px); display: flex; align-items: center; justify-content: center;
+            z-index: 100; opacity: 0; pointer-events: none; transition: opacity 0.3s;
         }
         .modal-overlay.show { opacity: 1; pointer-events: auto; }
         .modal {
@@ -334,10 +242,7 @@
             cursor: pointer; transition: opacity 0.2s;
         }
         .modal button:hover { opacity: 0.9; }
-        .login-error {
-            color: var(--error); font-size: 13px; text-align: center;
-            margin-bottom: 14px; min-height: 20px;
-        }
+        .login-error { color: var(--error); font-size: 13px; text-align: center; margin-bottom: 14px; min-height: 20px; }
 
         /* ── Thinking dots ────────────────────────────────────── */
         .thinking-dots { display: flex; gap: 6px; padding: 18px 24px; }
@@ -351,18 +256,28 @@
         .msg-bubble pre { background: rgba(0,0,0,0.4); padding: 16px; border-radius: 12px; overflow-x: auto; margin: 12px 0; border: 1px solid var(--border-light); }
         .msg-bubble p { margin-bottom: 8px; }
         .msg-bubble p:last-child { margin-bottom: 0; }
+
+        /* ── Model toast ──────────────────────────────────────── */
+        .toast {
+            position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%) translateY(20px);
+            background: var(--bg-elevated); border: 1px solid var(--accent);
+            padding: 10px 24px; border-radius: 12px; font-size: 13px;
+            color: var(--accent); z-index: 200; opacity: 0;
+            transition: all 0.3s; pointer-events: none;
+            box-shadow: 0 8px 30px rgba(139,92,246,0.2);
+        }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
     </style>
 </head>
 <body>
-    <!-- Anime Village Background -->
-    <div class="world-bg"></div>
+    <!-- Video Background -->
+    <div class="video-bg" id="videoBg">
+        <div class="video-bg-fallback" id="bgFallback"></div>
+    </div>
     <div class="world-overlay"></div>
 
-    <!-- Interactive Cat -->
-    <div class="cat-container" id="catContainer">
-        <div class="cat-speech" id="catSpeech">Nyaa~! 🐱</div>
-        <img src="/static/cat.png" alt="Cat" id="catImg">
-    </div>
+    <!-- Toast notification -->
+    <div class="toast" id="toast"></div>
 
     <!-- Sidebar -->
     <nav class="sidebar">
@@ -379,13 +294,15 @@
     <!-- Main -->
     <div class="main">
         <div class="topbar">
+            <select class="model-selector" id="modelSelector" title="Switch AI Model">
+                <option value="gemini-2.5-flash">⚡ Gemini 2.5 Flash</option>
+                <option value="gemini-3.5-flash">🧠 Gemini 3.5 Flash</option>
+            </select>
             <div class="emotional-pill" id="emotionalBadge">System Online</div>
         </div>
 
         <div class="welcome-screen" id="welcomeScreen">
-            <div class="greeting" id="greetingText">
-                Hello, <span class="name">Traveler</span><br><span>What's the plan?</span>
-            </div>
+            <div class="greeting" id="greetingText">Hello, <span class="name">Traveler</span><br><span>What's the plan?</span></div>
         </div>
 
         <div class="chat-view" id="chatView">
@@ -418,14 +335,35 @@
     </div>
 
     <script>
-        let ws = null;
-        let isConnected = false;
-        let isThinking = false;
-        let personName = '';
-        let hasMessages = false;
-        let isLoggedIn = false;
+        // ── Video Background Setup ────────────────────────────
+        // Uses a chill lofi/anime YouTube video as a silent wallpaper.
+        // To change the background video, replace the VIDEO_ID below.
+        const VIDEO_ID = 'nkn1MROKkJo'; // Chill anime lofi — change this to any YouTube video ID!
+        
+        function setupVideoBackground() {
+            const container = document.getElementById('videoBg');
+            const fallback = document.getElementById('bgFallback');
+            
+            // Create YouTube iframe embed (muted, autoplay, loop, no controls)
+            const iframe = document.createElement('iframe');
+            iframe.src = `https://www.youtube.com/embed/${VIDEO_ID}?autoplay=1&mute=1&loop=1&playlist=${VIDEO_ID}&controls=0&showinfo=0&rel=0&modestbranding=1&playsinline=1&disablekb=1&fs=0&iv_load_policy=3`;
+            iframe.allow = 'autoplay; encrypted-media';
+            iframe.setAttribute('frameborder', '0');
+            iframe.style.border = 'none';
+            
+            iframe.onload = () => { fallback.style.display = 'none'; };
+            iframe.onerror = () => { /* keep the fallback image */ };
+            
+            container.appendChild(iframe);
+        }
+        
+        setupVideoBackground();
 
-        const elements = {
+        // ── App State ─────────────────────────────────────────
+        let ws = null, isConnected = false, isThinking = false;
+        let personName = '', hasMessages = false, isLoggedIn = false;
+
+        const el = {
             chatMsg: document.getElementById('chatMessages'),
             input: document.getElementById('messageInput'),
             send: document.getElementById('sendBtn'),
@@ -443,22 +381,28 @@
             voiceToggleBtn: document.getElementById('voiceToggleBtn'),
             voiceIconOn: document.getElementById('voiceIconOn'),
             voiceIconOff: document.getElementById('voiceIconOff'),
-            catContainer: document.getElementById('catContainer'),
-            catSpeech: document.getElementById('catSpeech'),
+            modelSelector: document.getElementById('modelSelector'),
+            toast: document.getElementById('toast'),
         };
 
-        // ── Cat Interaction ───────────────────────────────────
-        const catPhrases = [
-            "Nyaa~! 🐱", "Meow! ✨", "Purrrr... 😺", "*stretches*",
-            "Feed me! 🐟", "*head bonk* 💕", "Mrow~!", "Zzz... 💤",
-        ];
-        elements.catContainer.addEventListener('click', () => {
-            elements.catContainer.classList.add('jump');
-            const phrase = catPhrases[Math.floor(Math.random() * catPhrases.length)];
-            elements.catSpeech.textContent = phrase;
-            elements.catSpeech.classList.add('show');
-            setTimeout(() => elements.catContainer.classList.remove('jump'), 500);
-            setTimeout(() => elements.catSpeech.classList.remove('show'), 2000);
+        // ── Toast ─────────────────────────────────────────────
+        function showToast(msg) {
+            el.toast.textContent = msg;
+            el.toast.classList.add('show');
+            setTimeout(() => el.toast.classList.remove('show'), 2500);
+        }
+
+        // ── Model Switcher ────────────────────────────────────
+        // Load saved model preference
+        const savedModel = localStorage.getItem('maxis_model');
+        if (savedModel) el.modelSelector.value = savedModel;
+
+        el.modelSelector.addEventListener('change', () => {
+            const model = el.modelSelector.value;
+            localStorage.setItem('maxis_model', model);
+            if (ws && isConnected) {
+                ws.send(JSON.stringify({ type: 'switch_model', model }));
+            }
         });
 
         // ── WebSocket Connection ──────────────────────────────
@@ -467,14 +411,16 @@
             ws = new WebSocket(url);
 
             ws.onopen = () => {
-                isConnected = true;
-                updateInputState();
+                isConnected = true; updateInputState();
 
-                // Check if we have saved credentials
+                // Send model preference on connect
+                const model = el.modelSelector.value;
+                ws.send(JSON.stringify({ type: 'switch_model', model }));
+
+                // Auto-login if saved
                 const savedUser = localStorage.getItem('maxis_username');
                 const savedPass = localStorage.getItem('maxis_session_token');
                 if (savedUser && savedPass) {
-                    // Auto-login
                     ws.send(JSON.stringify({ type: 'login', username: savedUser, password: savedPass }));
                 } else {
                     showLogin();
@@ -485,29 +431,27 @@
                 const data = JSON.parse(e.data);
 
                 if (data.type === 'status') {
-                    if (data.data && data.data.emotional_state) elements.badge.textContent = data.data.emotional_state;
+                    if (data.data?.emotional_state) el.badge.textContent = data.data.emotional_state;
 
                 } else if (data.type === 'login_success') {
                     isLoggedIn = true;
                     personName = data.name;
-                    elements.loginError.textContent = '';
+                    el.loginError.textContent = '';
                     hideLogin();
-                    // Save session (password stored for auto-reconnect only)
-                    localStorage.setItem('maxis_username', elements.loginUser.value || localStorage.getItem('maxis_username'));
-                    // Keep the password for auto-reconnect
-                    if (elements.loginPass.value) {
-                        localStorage.setItem('maxis_session_token', elements.loginPass.value);
-                    }
-                    elements.switchBtn.textContent = personName.charAt(0).toUpperCase();
+                    localStorage.setItem('maxis_username', el.loginUser.value || localStorage.getItem('maxis_username'));
+                    if (el.loginPass.value) localStorage.setItem('maxis_session_token', el.loginPass.value);
+                    el.switchBtn.textContent = personName.charAt(0).toUpperCase();
                     updateGreeting();
-                    // Reset chat for this user
                     hasMessages = false;
-                    elements.chatMsg.innerHTML = '';
-                    elements.welcome.classList.remove('hidden');
-                    elements.chatView.classList.remove('active');
+                    el.chatMsg.innerHTML = '';
+                    el.welcome.classList.remove('hidden');
+                    el.chatView.classList.remove('active');
 
                 } else if (data.type === 'login_failed') {
-                    elements.loginError.textContent = data.reason || 'Login failed.';
+                    el.loginError.textContent = data.reason || 'Login failed.';
+
+                } else if (data.type === 'model_switched') {
+                    showToast(`Model switched to ${data.model}`);
 
                 } else if (data.type === 'thinking') {
                     showThinking();
@@ -515,7 +459,7 @@
                 } else if (data.type === 'response') {
                     removeThinking();
                     appendMessage('maxis', data.content);
-                    if (data.emotional_state) elements.badge.textContent = data.emotional_state;
+                    if (data.emotional_state) el.badge.textContent = data.emotional_state;
                     speakResponse(data.content);
                 }
             };
@@ -523,46 +467,34 @@
             ws.onclose = () => { isConnected = false; isLoggedIn = false; updateInputState(); setTimeout(connect, 2000); };
         }
 
-        // ── Login Modal ───────────────────────────────────────
+        // ── Login ─────────────────────────────────────────────
         function showLogin() {
-            elements.modal.classList.add('show');
-            elements.loginUser.value = '';
-            elements.loginPass.value = '';
-            elements.loginError.textContent = '';
-            setTimeout(() => elements.loginUser.focus(), 100);
+            el.modal.classList.add('show');
+            el.loginUser.value = ''; el.loginPass.value = '';
+            el.loginError.textContent = '';
+            setTimeout(() => el.loginUser.focus(), 100);
         }
+        function hideLogin() { el.modal.classList.remove('show'); }
 
-        function hideLogin() { elements.modal.classList.remove('show'); }
-
-        elements.loginBtn.addEventListener('click', () => {
-            const username = elements.loginUser.value.trim();
-            const password = elements.loginPass.value;
-            if (!username || !password) {
-                elements.loginError.textContent = 'Both fields are required.';
-                return;
-            }
-            elements.loginError.textContent = '';
+        el.loginBtn.addEventListener('click', () => {
+            const username = el.loginUser.value.trim();
+            const password = el.loginPass.value;
+            if (!username || !password) { el.loginError.textContent = 'Both fields are required.'; return; }
+            el.loginError.textContent = '';
             ws.send(JSON.stringify({ type: 'login', username, password }));
         });
-
-        elements.loginPass.addEventListener('keydown', e => {
-            if (e.key === 'Enter') elements.loginBtn.click();
-        });
-        elements.loginUser.addEventListener('keydown', e => {
-            if (e.key === 'Enter') elements.loginPass.focus();
-        });
+        el.loginPass.addEventListener('keydown', e => { if (e.key === 'Enter') el.loginBtn.click(); });
+        el.loginUser.addEventListener('keydown', e => { if (e.key === 'Enter') el.loginPass.focus(); });
 
         // Switch User
-        elements.switchBtn.addEventListener('click', () => {
+        el.switchBtn.addEventListener('click', () => {
             localStorage.removeItem('maxis_username');
             localStorage.removeItem('maxis_session_token');
-            isLoggedIn = false;
-            personName = '';
-            hasMessages = false;
-            elements.chatMsg.innerHTML = '';
-            elements.welcome.classList.remove('hidden');
-            elements.chatView.classList.remove('active');
-            elements.switchBtn.textContent = '?';
+            isLoggedIn = false; personName = ''; hasMessages = false;
+            el.chatMsg.innerHTML = '';
+            el.welcome.classList.remove('hidden');
+            el.chatView.classList.remove('active');
+            el.switchBtn.textContent = '?';
             document.getElementById('modalTitle').textContent = 'Switch User';
             document.getElementById('modalDesc').textContent = 'Log in as a different user.';
             showLogin();
@@ -572,140 +504,99 @@
             if (!personName) return;
             const hr = new Date().getHours();
             const time = hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening';
-            elements.greeting.innerHTML = `${time}, <span class="name">${personName}</span><br><span>What's the plan?</span>`;
+            el.greeting.innerHTML = `${time}, <span class="name">${personName}</span><br><span>What's the plan?</span>`;
         }
 
         function updateInputState() {
-            const val = elements.input.value.trim();
-            elements.send.classList.toggle('active', val.length > 0 && isConnected && isLoggedIn);
+            const val = el.input.value.trim();
+            el.send.classList.toggle('active', val.length > 0 && isConnected && isLoggedIn);
         }
 
         function sendMsg(isVoice = false) {
-            const val = elements.input.value.trim();
+            const val = el.input.value.trim();
             if (!val || !isConnected || !isLoggedIn) return;
             appendMessage('user', val);
             ws.send(JSON.stringify({ type: 'message', content: val, is_voice: isVoice }));
-            elements.input.value = '';
-            elements.input.style.height = 'auto';
-            updateInputState();
+            el.input.value = ''; el.input.style.height = 'auto'; updateInputState();
         }
 
-        elements.send.addEventListener('click', () => sendMsg());
-        elements.input.addEventListener('keydown', e => {
-            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(); }
-        });
-        elements.input.addEventListener('input', () => {
-            elements.input.style.height = 'auto';
-            elements.input.style.height = Math.min(elements.input.scrollHeight, 150) + 'px';
+        el.send.addEventListener('click', () => sendMsg());
+        el.input.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(); } });
+        el.input.addEventListener('input', () => {
+            el.input.style.height = 'auto';
+            el.input.style.height = Math.min(el.input.scrollHeight, 150) + 'px';
             updateInputState();
         });
 
         function appendMessage(sender, text) {
-            if (!hasMessages) {
-                hasMessages = true;
-                elements.welcome.classList.add('hidden');
-                elements.chatView.classList.add('active');
-            }
+            if (!hasMessages) { hasMessages = true; el.welcome.classList.add('hidden'); el.chatView.classList.add('active'); }
             const div = document.createElement('div');
             div.className = `message ${sender}`;
-            const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const t = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             let fmt = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
             fmt = fmt.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
             fmt = fmt.replace(/`([^`]+)`/g, '<code>$1</code>');
             fmt = fmt.replace(/\*\*([^\*]+)\*\*/g, '<strong>$1</strong>');
             fmt = fmt.split('\n\n').map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('');
-            div.innerHTML = `<div class="msg-bubble">${fmt}</div><div class="msg-time">${time}</div>`;
-            elements.chatMsg.appendChild(div);
-            scrollToBottom();
+            div.innerHTML = `<div class="msg-bubble">${fmt}</div><div class="msg-time">${t}</div>`;
+            el.chatMsg.appendChild(div); scrollToBottom();
         }
 
         function showThinking() {
-            if (isThinking) return;
-            isThinking = true;
+            if (isThinking) return; isThinking = true;
             const div = document.createElement('div');
             div.className = 'message maxis'; div.id = 'thinking';
             div.innerHTML = `<div class="msg-bubble thinking-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>`;
-            elements.chatMsg.appendChild(div); scrollToBottom();
+            el.chatMsg.appendChild(div); scrollToBottom();
         }
+        function removeThinking() { isThinking = false; const e = document.getElementById('thinking'); if (e) e.remove(); }
+        function scrollToBottom() { setTimeout(() => { el.chatMsg.scrollTop = el.chatMsg.scrollHeight; }, 50); }
 
-        function removeThinking() {
-            isThinking = false;
-            const el = document.getElementById('thinking'); if (el) el.remove();
-        }
-
-        function scrollToBottom() {
-            setTimeout(() => { elements.chatMsg.scrollTop = elements.chatMsg.scrollHeight; }, 50);
-        }
-
-        // ── Voice Logic ───────────────────────────────────────
+        // ── Voice ─────────────────────────────────────────────
         let voiceEnabled = true;
-
-        elements.voiceToggleBtn.addEventListener('click', () => {
+        el.voiceToggleBtn.addEventListener('click', () => {
             voiceEnabled = !voiceEnabled;
-            elements.voiceIconOn.style.display = voiceEnabled ? 'block' : 'none';
-            elements.voiceIconOff.style.display = voiceEnabled ? 'none' : 'block';
-            elements.voiceToggleBtn.title = voiceEnabled ? "Voice Output: ON" : "Voice Output: OFF";
+            el.voiceIconOn.style.display = voiceEnabled ? 'block' : 'none';
+            el.voiceIconOff.style.display = voiceEnabled ? 'none' : 'block';
+            el.voiceToggleBtn.title = voiceEnabled ? "Voice Output: ON" : "Voice Output: OFF";
             if (!voiceEnabled) window.speechSynthesis.cancel();
         });
 
         function stripMarkdownForSpeech(text) {
-            return text
-                .replace(/\*([^\*]+)\*/g, '$1')
-                .replace(/_([^_]+)_/g, '$1')
-                .replace(/\*\*/g, '')
-                .replace(/```[\s\S]*?```/g, ' [Code Block] ')
-                .replace(/`[^`]+`/g, ' [Code Snippet] ')
-                .replace(/#/g, '')
-                .trim();
+            return text.replace(/\*([^\*]+)\*/g, '$1').replace(/_([^_]+)_/g, '$1')
+                .replace(/\*\*/g, '').replace(/```[\s\S]*?```/g, ' ').replace(/`[^`]+`/g, ' ').replace(/#/g, '').trim();
         }
-
         function speakResponse(text) {
             if (!voiceEnabled || !window.speechSynthesis) return;
             window.speechSynthesis.cancel();
-            const cleanText = stripMarkdownForSpeech(text);
-            if (!cleanText) return;
-            const utterance = new SpeechSynthesisUtterance(cleanText);
-            utterance.rate = 1.05; utterance.pitch = 1.0;
+            const clean = stripMarkdownForSpeech(text); if (!clean) return;
+            const u = new SpeechSynthesisUtterance(clean);
+            u.rate = 1.05; u.pitch = 1.0;
             const voices = window.speechSynthesis.getVoices();
-            let selectedVoice = voices.find(v => v.name.includes('Google UK English Female')) ||
-                                voices.find(v => v.name.includes('Microsoft Hazel')) ||
-                                voices.find(v => v.name.includes('Samantha') && v.lang.includes('en')) ||
-                                voices.find(v => v.lang === 'en-GB' || v.lang === 'en-US');
-            if (selectedVoice) utterance.voice = selectedVoice;
-            window.speechSynthesis.speak(utterance);
+            let v = voices.find(v => v.name.includes('Google UK English Female')) ||
+                    voices.find(v => v.name.includes('Microsoft Hazel')) ||
+                    voices.find(v => v.name.includes('Samantha') && v.lang.includes('en')) ||
+                    voices.find(v => v.lang === 'en-GB' || v.lang === 'en-US');
+            if (v) u.voice = v;
+            window.speechSynthesis.speak(u);
         }
         window.speechSynthesis.onvoiceschanged = () => { window.speechSynthesis.getVoices(); };
 
         // ── Speech Recognition ────────────────────────────────
-        let recognition = null;
-        let isRecording = false;
-
+        let recognition = null, isRecording = false;
         if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-            const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-            recognition = new SpeechRec();
+            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SR();
             recognition.continuous = false; recognition.interimResults = false; recognition.lang = 'en-US';
-            recognition.onstart = () => {
-                isRecording = true; elements.micBtn.classList.add('recording');
-                elements.input.placeholder = "Listening...";
-                window.speechSynthesis.cancel();
-            };
-            recognition.onresult = (event) => {
-                const transcript = event.results[0][0].transcript;
-                elements.input.value = transcript; updateInputState(); sendMsg(true);
-            };
-            recognition.onerror = () => { stopRecording(); };
-            recognition.onend = () => { stopRecording(); };
-        } else { elements.micBtn.style.display = 'none'; }
+            recognition.onstart = () => { isRecording = true; el.micBtn.classList.add('recording'); el.input.placeholder = "Listening..."; window.speechSynthesis.cancel(); };
+            recognition.onresult = (e) => { el.input.value = e.results[0][0].transcript; updateInputState(); sendMsg(true); };
+            recognition.onerror = () => stopRecording();
+            recognition.onend = () => stopRecording();
+        } else { el.micBtn.style.display = 'none'; }
 
-        function toggleRecording() {
-            if (!recognition) return;
-            if (isRecording) recognition.stop(); else recognition.start();
-        }
-        function stopRecording() {
-            isRecording = false; elements.micBtn.classList.remove('recording');
-            elements.input.placeholder = "Talk to Maxis...";
-        }
-        elements.micBtn.addEventListener('click', toggleRecording);
+        function toggleRecording() { if (!recognition) return; isRecording ? recognition.stop() : recognition.start(); }
+        function stopRecording() { isRecording = false; el.micBtn.classList.remove('recording'); el.input.placeholder = "Talk to Maxis..."; }
+        el.micBtn.addEventListener('click', toggleRecording);
 
         connect();
     </script>

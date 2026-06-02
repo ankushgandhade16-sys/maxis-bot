@@ -43,6 +43,7 @@ class LLMRouter:
         self._gemini_client: Optional[genai.Client] = None
         self._ollama_available = False
         self._cloud_available = False
+        self._active_cloud_model: str = self._config.gemini.model
 
     async def initialize(self):
         """Set up HTTP clients and check availability."""
@@ -217,12 +218,13 @@ class LLMRouter:
             elif m["role"] == "assistant":
                 gemini_messages.append(types.Content(role="model", parts=[types.Part.from_text(text=m["content"])]))
 
-        logger.debug(f"Generating via Gemini ({config.model})...")
+        logger.debug(f"Generating via Gemini ({self._active_cloud_model})...")
         
         # Call API asynchronously using asyncio.to_thread since the genai client might be sync
+        active_model = self._active_cloud_model
         def call_gemini():
             return self._gemini_client.models.generate_content(
-                model=config.model,
+                model=active_model,
                 contents=gemini_messages,
                 config=types.GenerateContentConfig(
                     temperature=temperature or config.temperature,
@@ -251,6 +253,15 @@ class LLMRouter:
 
         return resp.text
 
+    def set_model(self, model_name: str):
+        """Switch the active cloud model at runtime."""
+        self._active_cloud_model = model_name
+        logger.info(f"Cloud model switched to: {model_name}")
+
+    @property
+    def active_cloud_model(self) -> str:
+        return self._active_cloud_model
+
     def get_status(self) -> dict:
         """Get router status info."""
         return {
@@ -258,7 +269,7 @@ class LLMRouter:
             "cloud_available": self._cloud_available,
             "daily_remaining": self._token_budget.remaining_daily,
             "local_model": self._config.ollama.model,
-            "cloud_model": self._config.gemini.model,
+            "cloud_model": self._active_cloud_model,
         }
 
     async def shutdown(self):

@@ -169,6 +169,15 @@ async def websocket_chat_handler(websocket: WebSocket, orchestrator):
                     "timestamp": time.time(),
                 })
 
+            elif msg_type == "switch_model":
+                model = data.get("model", "")
+                if model:
+                    orchestrator.llm.set_model(model)
+                    await manager.send_json(websocket, {
+                        "type": "model_switched",
+                        "model": model,
+                    })
+
             elif msg_type == "ping":
                 await manager.send_json(websocket, {"type": "pong"})
 
