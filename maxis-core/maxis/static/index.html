@@ -9,9 +9,8 @@
     <style>
         :root {
             --bg-deep: #0a0a12;
-            --bg-primary: rgba(10, 10, 18, 0.75);
+            --bg-primary: rgba(10, 10, 18, 0.80);
             --bg-surface: rgba(16, 16, 28, 0.65);
-            --bg-surface-hover: rgba(30, 30, 50, 0.8);
             --bg-elevated: rgba(20, 20, 35, 0.85);
             --text-primary: #f0f0f5;
             --text-secondary: #a0a0b8;
@@ -32,31 +31,62 @@
             color: var(--text-primary);
             height: 100vh; display: flex; overflow: hidden;
             -webkit-font-smoothing: antialiased;
+            background: var(--bg-deep);
         }
 
-        /* ── Video Background ─────────────────────────────────── */
-        .video-bg {
-            position: fixed; inset: 0; z-index: 0;
-            overflow: hidden; background: #000;
+        /* ── Animated Aurora Background ───────────────────────── */
+        .aurora-bg {
+            position: fixed; inset: 0; z-index: 0; overflow: hidden;
+            background: linear-gradient(180deg, #070714 0%, #0c0c1d 40%, #0d1117 100%);
         }
-        .video-bg iframe, .video-bg video {
-            position: absolute;
-            top: 50%; left: 50%;
-            min-width: 100vw; min-height: 100vh;
-            width: 177.78vh; /* 16:9 */
-            height: 56.25vw;
-            transform: translate(-50%, -50%);
-            pointer-events: none;
+        .aurora-bg .orb {
+            position: absolute; border-radius: 50%;
+            filter: blur(120px); opacity: 0.4;
+            animation: aurora-drift 20s infinite ease-in-out alternate;
         }
-        .video-bg-fallback {
+        .aurora-bg .orb:nth-child(1) {
+            width: 600px; height: 600px; top: -200px; left: -100px;
+            background: radial-gradient(circle, #6e3adb 0%, transparent 70%);
+            animation-duration: 25s;
+        }
+        .aurora-bg .orb:nth-child(2) {
+            width: 500px; height: 500px; top: 30%; right: -150px;
+            background: radial-gradient(circle, #0ea5e9 0%, transparent 70%);
+            animation-duration: 30s; animation-delay: -5s;
+        }
+        .aurora-bg .orb:nth-child(3) {
+            width: 700px; height: 700px; bottom: -250px; left: 30%;
+            background: radial-gradient(circle, #7c3aed 0%, #0f766e 60%, transparent 70%);
+            animation-duration: 35s; animation-delay: -10s;
+        }
+        .aurora-bg .orb:nth-child(4) {
+            width: 400px; height: 400px; top: 60%; left: 10%;
+            background: radial-gradient(circle, #06b6d4 0%, transparent 70%);
+            animation-duration: 22s; animation-delay: -15s; opacity: 0.25;
+        }
+        @keyframes aurora-drift {
+            0%   { transform: translate(0, 0) scale(1); }
+            33%  { transform: translate(40px, -30px) scale(1.1); }
+            66%  { transform: translate(-20px, 20px) scale(0.95); }
+            100% { transform: translate(30px, -10px) scale(1.05); }
+        }
+        /* Stars */
+        .stars {
             position: absolute; inset: 0;
-            background: url('/static/bg.png') center center / cover no-repeat;
+            background-image:
+                radial-gradient(1px 1px at 10% 20%, rgba(255,255,255,0.6) 0%, transparent 100%),
+                radial-gradient(1px 1px at 30% 70%, rgba(255,255,255,0.5) 0%, transparent 100%),
+                radial-gradient(1px 1px at 50% 10%, rgba(255,255,255,0.4) 0%, transparent 100%),
+                radial-gradient(1px 1px at 70% 50%, rgba(255,255,255,0.6) 0%, transparent 100%),
+                radial-gradient(1px 1px at 90% 30%, rgba(255,255,255,0.3) 0%, transparent 100%),
+                radial-gradient(1px 1px at 15% 85%, rgba(255,255,255,0.5) 0%, transparent 100%),
+                radial-gradient(1.5px 1.5px at 80% 80%, rgba(255,255,255,0.7) 0%, transparent 100%),
+                radial-gradient(1px 1px at 40% 40%, rgba(255,255,255,0.4) 0%, transparent 100%),
+                radial-gradient(1px 1px at 60% 90%, rgba(255,255,255,0.3) 0%, transparent 100%),
+                radial-gradient(1.5px 1.5px at 25% 55%, rgba(255,255,255,0.5) 0%, transparent 100%);
+            animation: twinkle 8s infinite ease-in-out alternate;
         }
-        .world-overlay {
-            position: fixed; inset: 0; z-index: 1;
-            background: linear-gradient(135deg, rgba(5,5,15,0.55) 0%, rgba(10,10,25,0.35) 50%, rgba(5,5,20,0.55) 100%);
-            pointer-events: none;
-        }
+        @keyframes twinkle { 0% { opacity: 0.7; } 100% { opacity: 1; } }
 
         /* ── Sidebar ──────────────────────────────────────────── */
         .sidebar {
@@ -78,6 +108,7 @@
             color: var(--text-muted); cursor: pointer;
             display: flex; align-items: center; justify-content: center;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
         }
         .sidebar-btn:hover { color: var(--text-primary); background: var(--bg-surface); transform: scale(1.05); }
         .sidebar-btn.active { color: var(--accent); background: rgba(139, 92, 246, 0.1); }
@@ -115,12 +146,16 @@
             background: rgba(255,255,255,0.03); border: 1px solid var(--border-light);
             backdrop-filter: blur(10px); color: var(--accent-secondary);
             letter-spacing: 0.5px; text-transform: uppercase;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
             display: flex; align-items: center; gap: 6px;
         }
         .emotional-pill::before {
             content: ''; width: 6px; height: 6px; border-radius: 50%;
             background: var(--accent-secondary); box-shadow: 0 0 8px var(--accent-secondary);
+        }
+        .user-label {
+            padding: 6px 14px; border-radius: 20px; font-size: 12px;
+            background: rgba(139,92,246,0.1); border: 1px solid rgba(139,92,246,0.2);
+            color: var(--accent); font-weight: 500; letter-spacing: 0.3px;
         }
 
         /* ── Welcome Screen ───────────────────────────────────── */
@@ -148,11 +183,7 @@
         }
         .chat-messages::-webkit-scrollbar { width: 4px; }
         .chat-messages::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
-        .message {
-            display: flex; flex-direction: column;
-            animation: msg-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-            opacity: 0; transform: translateY(10px);
-        }
+        .message { display: flex; flex-direction: column; animation: msg-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; transform: translateY(10px); }
         @keyframes msg-in { to { opacity: 1; transform: translateY(0); } }
         .message.user { align-items: flex-end; }
         .message.maxis { align-items: flex-start; }
@@ -168,7 +199,7 @@
         /* ── Input Area ───────────────────────────────────────── */
         .input-area {
             padding: 0 32px 32px; display: flex; justify-content: center;
-            background: linear-gradient(to top, rgba(5,5,12,0.8) 60%, transparent); z-index: 10;
+            background: linear-gradient(to top, rgba(5,5,12,0.85) 60%, transparent); z-index: 10;
         }
         .input-pill {
             display: flex; align-items: flex-end; gap: 12px;
@@ -190,7 +221,7 @@
             background: var(--bg-surface); border: 1px solid var(--border-light);
             color: var(--text-muted); cursor: pointer;
             display: flex; align-items: center; justify-content: center;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); flex-shrink: 0;
+            transition: all 0.3s; flex-shrink: 0;
         }
         .send-btn.active { background: var(--accent); border-color: var(--accent); color: white; box-shadow: 0 0 15px var(--accent-glow); }
         .send-btn.active:hover { transform: scale(1.05); }
@@ -200,7 +231,7 @@
             background: transparent; border: 1px solid transparent;
             color: var(--text-muted); cursor: pointer;
             display: flex; align-items: center; justify-content: center;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); flex-shrink: 0;
+            transition: all 0.3s; flex-shrink: 0;
         }
         .mic-btn:hover { color: var(--text-primary); }
         .mic-btn.recording { color: #ef4444; background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.3); animation: pulse-red 1.5s infinite; }
@@ -212,19 +243,30 @@
 
         /* ── Login Modal ──────────────────────────────────────── */
         .modal-overlay {
-            position: fixed; inset: 0; background: rgba(0,0,0,0.7);
-            backdrop-filter: blur(20px); display: flex; align-items: center; justify-content: center;
+            position: fixed; inset: 0; background: rgba(0,0,0,0.75);
+            backdrop-filter: blur(24px); display: flex; align-items: center; justify-content: center;
             z-index: 100; opacity: 0; pointer-events: none; transition: opacity 0.3s;
         }
         .modal-overlay.show { opacity: 1; pointer-events: auto; }
         .modal {
-            background: var(--bg-primary); border: 1px solid var(--border-light);
-            border-radius: 24px; padding: 40px; max-width: 400px; width: 90%;
+            background: rgba(14,14,26,0.95); border: 1px solid var(--border-light);
+            border-radius: 24px; padding: 40px; max-width: 420px; width: 90%;
             transform: translateY(20px) scale(0.95);
             transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+            box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+            position: relative;
         }
         .modal-overlay.show .modal { transform: translateY(0) scale(1); }
+        .modal-close {
+            position: absolute; top: 16px; right: 16px;
+            width: 32px; height: 32px; border-radius: 50%;
+            background: rgba(255,255,255,0.05); border: 1px solid var(--border-light);
+            color: var(--text-muted); cursor: pointer;
+            display: none; align-items: center; justify-content: center;
+            font-size: 18px; transition: all 0.2s;
+        }
+        .modal-close:hover { background: rgba(255,255,255,0.1); color: var(--text-primary); }
+        .modal-close.visible { display: flex; }
         .modal h2 { font-size: 24px; font-weight: 500; margin-bottom: 8px; }
         .modal p { color: var(--text-secondary); font-size: 14px; line-height: 1.6; margin-bottom: 24px; }
         .modal input {
@@ -234,14 +276,23 @@
             outline: none; margin-bottom: 14px; transition: all 0.3s;
         }
         .modal input:focus { border-color: var(--accent); background: rgba(0,0,0,0.5); }
-        .modal button {
+        .modal-actions { display: flex; flex-direction: column; gap: 10px; }
+        .btn-primary {
             width: 100%; padding: 16px;
             background: linear-gradient(135deg, var(--accent), var(--accent-secondary));
             border: none; border-radius: 16px; color: white;
             font-family: inherit; font-size: 16px; font-weight: 600;
-            cursor: pointer; transition: opacity 0.2s;
+            cursor: pointer; transition: all 0.2s;
         }
-        .modal button:hover { opacity: 0.9; }
+        .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+        .btn-secondary {
+            width: 100%; padding: 14px;
+            background: transparent; border: 1px solid var(--border-light);
+            border-radius: 16px; color: var(--text-secondary);
+            font-family: inherit; font-size: 14px; cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-secondary:hover { border-color: var(--accent); color: var(--text-primary); }
         .login-error { color: var(--error); font-size: 13px; text-align: center; margin-bottom: 14px; min-height: 20px; }
 
         /* ── Thinking dots ────────────────────────────────────── */
@@ -257,7 +308,7 @@
         .msg-bubble p { margin-bottom: 8px; }
         .msg-bubble p:last-child { margin-bottom: 0; }
 
-        /* ── Model toast ──────────────────────────────────────── */
+        /* ── Toast ─────────────────────────────────────────────── */
         .toast {
             position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%) translateY(20px);
             background: var(--bg-elevated); border: 1px solid var(--accent);
@@ -267,16 +318,22 @@
             box-shadow: 0 8px 30px rgba(139,92,246,0.2);
         }
         .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+        /* ── Locked state (not logged in) ─────────────────────── */
+        .input-area.locked { opacity: 0.4; pointer-events: none; }
     </style>
 </head>
 <body>
-    <!-- Video Background -->
-    <div class="video-bg" id="videoBg">
-        <div class="video-bg-fallback" id="bgFallback"></div>
+    <!-- Animated Aurora Background -->
+    <div class="aurora-bg">
+        <div class="orb"></div>
+        <div class="orb"></div>
+        <div class="orb"></div>
+        <div class="orb"></div>
+        <div class="stars"></div>
     </div>
-    <div class="world-overlay"></div>
 
-    <!-- Toast notification -->
+    <!-- Toast -->
     <div class="toast" id="toast"></div>
 
     <!-- Sidebar -->
@@ -288,17 +345,18 @@
             <svg id="voiceIconOff" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>
         </button>
         <div class="sidebar-spacer"></div>
-        <div class="user-avatar" id="switchUserBtn" title="Switch User">?</div>
+        <div class="user-avatar" id="switchUserBtn" title="Log out / Switch User">?</div>
     </nav>
 
     <!-- Main -->
     <div class="main">
         <div class="topbar">
             <select class="model-selector" id="modelSelector" title="Switch AI Model">
-                <option value="gemini-2.5-flash">⚡ Gemini 2.5 Flash</option>
-                <option value="gemini-3.5-flash">🧠 Gemini 3.5 Flash</option>
+                <option value="gemini-2.5-flash">⚡ 2.5 Flash</option>
+                <option value="gemini-3.5-flash">🧠 3.5 Flash</option>
             </select>
-            <div class="emotional-pill" id="emotionalBadge">System Online</div>
+            <span class="user-label" id="userLabel" style="display:none;"></span>
+            <div class="emotional-pill" id="emotionalBadge">OFFLINE</div>
         </div>
 
         <div class="welcome-screen" id="welcomeScreen">
@@ -309,12 +367,12 @@
             <div class="chat-messages" id="chatMessages"></div>
         </div>
 
-        <div class="input-area">
+        <div class="input-area locked" id="inputArea">
             <div class="input-pill">
                 <button class="mic-btn" id="micBtn" title="Click to speak">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line></svg>
                 </button>
-                <textarea id="messageInput" placeholder="Talk to Maxis..." rows="1" autofocus></textarea>
+                <textarea id="messageInput" placeholder="Log in to talk to Maxis..." rows="1" disabled></textarea>
                 <button class="send-btn" id="sendBtn">
                     <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z"/></svg>
                 </button>
@@ -325,105 +383,71 @@
     <!-- Login Modal -->
     <div class="modal-overlay" id="loginModal">
         <div class="modal">
+            <button class="modal-close" id="modalClose">&times;</button>
             <h2 id="modalTitle">Welcome to MAXIS</h2>
-            <p id="modalDesc">Enter your credentials to begin. New username? You'll be registered automatically.</p>
+            <p id="modalDesc">Log in or register a new account.</p>
             <input type="text" id="loginUsername" placeholder="Username" autocomplete="off">
             <input type="password" id="loginPassword" placeholder="Password" autocomplete="off">
             <div class="login-error" id="loginError"></div>
-            <button id="loginBtn">Enter</button>
+            <div class="modal-actions">
+                <button class="btn-primary" id="loginBtn">Log In / Register</button>
+                <button class="btn-secondary" id="guestCloseBtn" style="display:none;">Cancel</button>
+            </div>
         </div>
     </div>
 
     <script>
-        // ── Video Background Setup ────────────────────────────
-        // Uses a chill lofi/anime YouTube video as a silent wallpaper.
-        // To change the background video, replace the VIDEO_ID below.
-        const VIDEO_ID = 'nkn1MROKkJo'; // Chill anime lofi — change this to any YouTube video ID!
-        
-        function setupVideoBackground() {
-            const container = document.getElementById('videoBg');
-            const fallback = document.getElementById('bgFallback');
-            
-            // Create YouTube iframe embed (muted, autoplay, loop, no controls)
-            const iframe = document.createElement('iframe');
-            iframe.src = `https://www.youtube.com/embed/${VIDEO_ID}?autoplay=1&mute=1&loop=1&playlist=${VIDEO_ID}&controls=0&showinfo=0&rel=0&modestbranding=1&playsinline=1&disablekb=1&fs=0&iv_load_policy=3`;
-            iframe.allow = 'autoplay; encrypted-media';
-            iframe.setAttribute('frameborder', '0');
-            iframe.style.border = 'none';
-            
-            iframe.onload = () => { fallback.style.display = 'none'; };
-            iframe.onerror = () => { /* keep the fallback image */ };
-            
-            container.appendChild(iframe);
-        }
-        
-        setupVideoBackground();
-
-        // ── App State ─────────────────────────────────────────
         let ws = null, isConnected = false, isThinking = false;
-        let personName = '', hasMessages = false, isLoggedIn = false;
+        let personName = '', personId = '', hasMessages = false, isLoggedIn = false;
 
+        const $ = id => document.getElementById(id);
         const el = {
-            chatMsg: document.getElementById('chatMessages'),
-            input: document.getElementById('messageInput'),
-            send: document.getElementById('sendBtn'),
-            welcome: document.getElementById('welcomeScreen'),
-            chatView: document.getElementById('chatView'),
-            greeting: document.getElementById('greetingText'),
-            modal: document.getElementById('loginModal'),
-            loginUser: document.getElementById('loginUsername'),
-            loginPass: document.getElementById('loginPassword'),
-            loginBtn: document.getElementById('loginBtn'),
-            loginError: document.getElementById('loginError'),
-            badge: document.getElementById('emotionalBadge'),
-            switchBtn: document.getElementById('switchUserBtn'),
-            micBtn: document.getElementById('micBtn'),
-            voiceToggleBtn: document.getElementById('voiceToggleBtn'),
-            voiceIconOn: document.getElementById('voiceIconOn'),
-            voiceIconOff: document.getElementById('voiceIconOff'),
-            modelSelector: document.getElementById('modelSelector'),
-            toast: document.getElementById('toast'),
+            chatMsg: $('chatMessages'), input: $('messageInput'), send: $('sendBtn'),
+            welcome: $('welcomeScreen'), chatView: $('chatView'), greeting: $('greetingText'),
+            modal: $('loginModal'), loginUser: $('loginUsername'), loginPass: $('loginPassword'),
+            loginBtn: $('loginBtn'), loginError: $('loginError'), badge: $('emotionalBadge'),
+            switchBtn: $('switchUserBtn'), micBtn: $('micBtn'), inputArea: $('inputArea'),
+            voiceToggleBtn: $('voiceToggleBtn'), voiceIconOn: $('voiceIconOn'), voiceIconOff: $('voiceIconOff'),
+            modelSelector: $('modelSelector'), toast: $('toast'), userLabel: $('userLabel'),
+            modalClose: $('modalClose'), guestCloseBtn: $('guestCloseBtn'),
+            modalTitle: $('modalTitle'), modalDesc: $('modalDesc'),
         };
 
         // ── Toast ─────────────────────────────────────────────
         function showToast(msg) {
-            el.toast.textContent = msg;
-            el.toast.classList.add('show');
+            el.toast.textContent = msg; el.toast.classList.add('show');
             setTimeout(() => el.toast.classList.remove('show'), 2500);
         }
 
         // ── Model Switcher ────────────────────────────────────
-        // Load saved model preference
         const savedModel = localStorage.getItem('maxis_model');
         if (savedModel) el.modelSelector.value = savedModel;
 
         el.modelSelector.addEventListener('change', () => {
             const model = el.modelSelector.value;
             localStorage.setItem('maxis_model', model);
-            if (ws && isConnected) {
-                ws.send(JSON.stringify({ type: 'switch_model', model }));
-            }
+            if (ws && isConnected) ws.send(JSON.stringify({ type: 'switch_model', model }));
         });
 
-        // ── WebSocket Connection ──────────────────────────────
+        // ── WebSocket ─────────────────────────────────────────
         function connect() {
             const url = `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/ws/chat`;
             ws = new WebSocket(url);
 
             ws.onopen = () => {
-                isConnected = true; updateInputState();
+                isConnected = true;
+                el.badge.textContent = 'CONNECTED';
 
-                // Send model preference on connect
-                const model = el.modelSelector.value;
-                ws.send(JSON.stringify({ type: 'switch_model', model }));
+                // Send model preference
+                ws.send(JSON.stringify({ type: 'switch_model', model: el.modelSelector.value }));
 
-                // Auto-login if saved
+                // Try auto-login
                 const savedUser = localStorage.getItem('maxis_username');
                 const savedPass = localStorage.getItem('maxis_session_token');
                 if (savedUser && savedPass) {
                     ws.send(JSON.stringify({ type: 'login', username: savedUser, password: savedPass }));
                 } else {
-                    showLogin();
+                    showLoginModal(false); // First visit — must log in
                 }
             };
 
@@ -434,24 +458,13 @@
                     if (data.data?.emotional_state) el.badge.textContent = data.data.emotional_state;
 
                 } else if (data.type === 'login_success') {
-                    isLoggedIn = true;
-                    personName = data.name;
-                    el.loginError.textContent = '';
-                    hideLogin();
-                    localStorage.setItem('maxis_username', el.loginUser.value || localStorage.getItem('maxis_username'));
-                    if (el.loginPass.value) localStorage.setItem('maxis_session_token', el.loginPass.value);
-                    el.switchBtn.textContent = personName.charAt(0).toUpperCase();
-                    updateGreeting();
-                    hasMessages = false;
-                    el.chatMsg.innerHTML = '';
-                    el.welcome.classList.remove('hidden');
-                    el.chatView.classList.remove('active');
+                    onLoginSuccess(data);
 
                 } else if (data.type === 'login_failed') {
                     el.loginError.textContent = data.reason || 'Login failed.';
 
                 } else if (data.type === 'model_switched') {
-                    showToast(`Model switched to ${data.model}`);
+                    showToast(`Model → ${data.model}`);
 
                 } else if (data.type === 'thinking') {
                     showThinking();
@@ -461,50 +474,113 @@
                     appendMessage('maxis', data.content);
                     if (data.emotional_state) el.badge.textContent = data.emotional_state;
                     speakResponse(data.content);
+
+                } else if (data.type === 'error') {
+                    removeThinking();
+                    appendMessage('maxis', `⚠️ ${data.message}`);
                 }
             };
 
-            ws.onclose = () => { isConnected = false; isLoggedIn = false; updateInputState(); setTimeout(connect, 2000); };
+            ws.onclose = () => {
+                isConnected = false;
+                el.badge.textContent = 'OFFLINE';
+                updateInputState();
+                setTimeout(connect, 2000);
+            };
         }
 
-        // ── Login ─────────────────────────────────────────────
-        function showLogin() {
-            el.modal.classList.add('show');
+        // ── Login Success ─────────────────────────────────────
+        function onLoginSuccess(data) {
+            isLoggedIn = true;
+            personName = data.name;
+            personId = data.person_id;
+
+            // Save session
+            if (el.loginUser.value) localStorage.setItem('maxis_username', el.loginUser.value);
+            if (el.loginPass.value) localStorage.setItem('maxis_session_token', el.loginPass.value);
+
+            // Update UI
+            hideLoginModal();
+            el.switchBtn.textContent = personName.charAt(0).toUpperCase();
+            el.userLabel.textContent = personName;
+            el.userLabel.style.display = 'inline';
+            el.inputArea.classList.remove('locked');
+            el.input.disabled = false;
+            el.input.placeholder = 'Talk to Maxis...';
+            updateGreeting();
+            updateInputState();
+
+            // Clear chat for this session
+            hasMessages = false;
+            el.chatMsg.innerHTML = '';
+            el.welcome.classList.remove('hidden');
+            el.chatView.classList.remove('active');
+
+            if (data.is_creator) {
+                showToast('Welcome home, Creator ✨');
+            }
+        }
+
+        // ── Login Modal ───────────────────────────────────────
+        function showLoginModal(canClose) {
+            el.modalTitle.textContent = canClose ? 'Switch User' : 'Welcome to MAXIS';
+            el.modalDesc.textContent = canClose
+                ? 'Log in as a different user.'
+                : 'Log in or create a new account to start chatting.';
             el.loginUser.value = ''; el.loginPass.value = '';
             el.loginError.textContent = '';
+            el.modalClose.classList.toggle('visible', canClose);
+            el.guestCloseBtn.style.display = canClose ? 'block' : 'none';
+            el.modal.classList.add('show');
             setTimeout(() => el.loginUser.focus(), 100);
         }
-        function hideLogin() { el.modal.classList.remove('show'); }
+
+        function hideLoginModal() { el.modal.classList.remove('show'); }
 
         el.loginBtn.addEventListener('click', () => {
             const username = el.loginUser.value.trim();
             const password = el.loginPass.value;
             if (!username || !password) { el.loginError.textContent = 'Both fields are required.'; return; }
+            if (username.length < 2) { el.loginError.textContent = 'Username must be at least 2 characters.'; return; }
+            if (password.length < 4) { el.loginError.textContent = 'Password must be at least 4 characters.'; return; }
             el.loginError.textContent = '';
             ws.send(JSON.stringify({ type: 'login', username, password }));
         });
+
         el.loginPass.addEventListener('keydown', e => { if (e.key === 'Enter') el.loginBtn.click(); });
         el.loginUser.addEventListener('keydown', e => { if (e.key === 'Enter') el.loginPass.focus(); });
 
-        // Switch User
+        // Close button (only visible when switching users, not on first login)
+        el.modalClose.addEventListener('click', hideLoginModal);
+        el.guestCloseBtn.addEventListener('click', hideLoginModal);
+
+        // Switch User (logout)
         el.switchBtn.addEventListener('click', () => {
+            if (!isLoggedIn) {
+                showLoginModal(false);
+                return;
+            }
+            // Log out current user
             localStorage.removeItem('maxis_username');
             localStorage.removeItem('maxis_session_token');
-            isLoggedIn = false; personName = ''; hasMessages = false;
+            isLoggedIn = false; personName = ''; personId = '';
+            hasMessages = false;
             el.chatMsg.innerHTML = '';
             el.welcome.classList.remove('hidden');
             el.chatView.classList.remove('active');
             el.switchBtn.textContent = '?';
-            document.getElementById('modalTitle').textContent = 'Switch User';
-            document.getElementById('modalDesc').textContent = 'Log in as a different user.';
-            showLogin();
+            el.userLabel.style.display = 'none';
+            el.inputArea.classList.add('locked');
+            el.input.disabled = true;
+            el.input.placeholder = 'Log in to talk to Maxis...';
+            showLoginModal(false);
         });
 
         function updateGreeting() {
             if (!personName) return;
             const hr = new Date().getHours();
-            const time = hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening';
-            el.greeting.innerHTML = `${time}, <span class="name">${personName}</span><br><span>What's the plan?</span>`;
+            const t = hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening';
+            el.greeting.innerHTML = `${t}, <span class="name">${personName}</span><br><span>What's the plan?</span>`;
         }
 
         function updateInputState() {
@@ -562,21 +638,21 @@
             if (!voiceEnabled) window.speechSynthesis.cancel();
         });
 
-        function stripMarkdownForSpeech(text) {
-            return text.replace(/\*([^\*]+)\*/g, '$1').replace(/_([^_]+)_/g, '$1')
-                .replace(/\*\*/g, '').replace(/```[\s\S]*?```/g, ' ').replace(/`[^`]+`/g, ' ').replace(/#/g, '').trim();
+        function stripMd(t) {
+            return t.replace(/\*([^\*]+)\*/g,'$1').replace(/_([^_]+)_/g,'$1')
+                .replace(/\*\*/g,'').replace(/```[\s\S]*?```/g,' ').replace(/`[^`]+`/g,' ').replace(/#/g,'').trim();
         }
         function speakResponse(text) {
             if (!voiceEnabled || !window.speechSynthesis) return;
             window.speechSynthesis.cancel();
-            const clean = stripMarkdownForSpeech(text); if (!clean) return;
-            const u = new SpeechSynthesisUtterance(clean);
+            const c = stripMd(text); if (!c) return;
+            const u = new SpeechSynthesisUtterance(c);
             u.rate = 1.05; u.pitch = 1.0;
             const voices = window.speechSynthesis.getVoices();
-            let v = voices.find(v => v.name.includes('Google UK English Female')) ||
-                    voices.find(v => v.name.includes('Microsoft Hazel')) ||
-                    voices.find(v => v.name.includes('Samantha') && v.lang.includes('en')) ||
-                    voices.find(v => v.lang === 'en-GB' || v.lang === 'en-US');
+            let v = voices.find(v=>v.name.includes('Google UK English Female')) ||
+                    voices.find(v=>v.name.includes('Microsoft Hazel')) ||
+                    voices.find(v=>v.name.includes('Samantha')&&v.lang.includes('en')) ||
+                    voices.find(v=>v.lang==='en-GB'||v.lang==='en-US');
             if (v) u.voice = v;
             window.speechSynthesis.speak(u);
         }
@@ -594,7 +670,7 @@
             recognition.onend = () => stopRecording();
         } else { el.micBtn.style.display = 'none'; }
 
-        function toggleRecording() { if (!recognition) return; isRecording ? recognition.stop() : recognition.start(); }
+        function toggleRecording() { if (!recognition || !isLoggedIn) return; isRecording ? recognition.stop() : recognition.start(); }
         function stopRecording() { isRecording = false; el.micBtn.classList.remove('recording'); el.input.placeholder = "Talk to Maxis..."; }
         el.micBtn.addEventListener('click', toggleRecording);
 
