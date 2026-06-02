@@ -21,9 +21,11 @@ maxis-core/data/
 *.swp
 *.swo
 
-# OS
+# OS & Tools
 Thumbs.db
 .DS_Store
+cloudflared.exe
+cloudflared
 
 # Logs
 *.log

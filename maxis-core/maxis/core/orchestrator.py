@@ -88,6 +88,7 @@ class Orchestrator:
         self,
         message: str,
         person_id: str | None = None,
+        is_voice: bool = False,
     ) -> str:
         """
         Process a text message through the full pipeline.
@@ -128,6 +129,9 @@ class Orchestrator:
             memory_context=memory_context,
             time_context=time_context,
         )
+        
+        if is_voice:
+            system_prompt += "\n\n[SYSTEM DIRECTIVE]: The user just spoke to you via microphone instead of typing. Keep your response conversational, natural, and relatively brief so it sounds good when read aloud."
 
         # ── 6. Generate response ─────────────────────────────────────────
         messages = self.memory.working.get_messages()

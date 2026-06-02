@@ -81,6 +81,7 @@ async def websocket_chat_handler(websocket: WebSocket, orchestrator):
             if msg_type == "message":
                 content = data.get("content", "").strip()
                 person_id = data.get("person_id")
+                is_voice = data.get("is_voice", False)
 
                 if not content:
                     continue
@@ -96,6 +97,7 @@ async def websocket_chat_handler(websocket: WebSocket, orchestrator):
                     response = await orchestrator.process_message(
                         message=content,
                         person_id=person_id,
+                        is_voice=is_voice,
                     )
 
                     await manager.send_json(websocket, {

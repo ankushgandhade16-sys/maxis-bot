@@ -372,6 +372,32 @@
         .send-btn.active:hover { transform: scale(1.05); }
         .send-btn svg { width: 20px; height: 20px; }
 
+        .mic-btn {
+            width: 44px; height: 44px;
+            border-radius: 50%;
+            background: transparent;
+            border: 1px solid transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            flex-shrink: 0;
+        }
+        .mic-btn:hover { color: var(--text-primary); }
+        .mic-btn.recording {
+            color: #ef4444;
+            background: rgba(239, 68, 68, 0.1);
+            border-color: rgba(239, 68, 68, 0.3);
+            animation: pulse-red 1.5s infinite;
+        }
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+
         /* ── Modals ───────────────────────────────────────────── */
         .modal-overlay {
             position: fixed; inset: 0;
@@ -456,8 +482,11 @@
     <!-- Sidebar -->
     <nav class="sidebar">
         <div class="sidebar-logo">M</div>
-        <button class="sidebar-btn active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></button>
-        <button class="sidebar-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></button>
+        <button class="sidebar-btn active" title="Chat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></button>
+        <button class="sidebar-btn" id="voiceToggleBtn" title="Voice Output: ON">
+            <svg id="voiceIconOn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+            <svg id="voiceIconOff" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>
+        </button>
         <div class="sidebar-spacer"></div>
         <!-- Switch User Avatar Button -->
         <div class="user-avatar" id="switchUserBtn" title="Switch User">?</div>
@@ -481,6 +510,9 @@
 
         <div class="input-area">
             <div class="input-pill">
+                <button class="mic-btn" id="micBtn" title="Click to speak">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line></svg>
+                </button>
                 <textarea id="messageInput" placeholder="Talk to Maxis..." rows="1" autofocus></textarea>
                 <button class="send-btn" id="sendBtn">
                     <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z"/></svg>
@@ -517,7 +549,11 @@
             modalName: document.getElementById('userName'),
             modalBtn: document.getElementById('registerBtn'),
             badge: document.getElementById('emotionalBadge'),
-            switchBtn: document.getElementById('switchUserBtn')
+            switchBtn: document.getElementById('switchUserBtn'),
+            micBtn: document.getElementById('micBtn'),
+            voiceToggleBtn: document.getElementById('voiceToggleBtn'),
+            voiceIconOn: document.getElementById('voiceIconOn'),
+            voiceIconOff: document.getElementById('voiceIconOff')
         };
 
         function connect() {
@@ -548,6 +584,7 @@
                     removeThinking();
                     appendMessage('maxis', data.content);
                     if (data.emotional_state) elements.badge.textContent = data.emotional_state;
+                    speakResponse(data.content);
                 } else if (data.type === 'user_registered') {
                     hideModal();
                     personName = data.name;
@@ -595,12 +632,12 @@
             elements.send.classList.toggle('active', val.length > 0 && isConnected);
         }
 
-        function sendMsg() {
+        function sendMsg(isVoice = false) {
             const val = elements.input.value.trim();
             if (!val || !isConnected) return;
             
             appendMessage('user', val);
-            ws.send(JSON.stringify({ type: 'message', content: val }));
+            ws.send(JSON.stringify({ type: 'message', content: val, is_voice: isVoice }));
             
             elements.input.value = '';
             elements.input.style.height = 'auto';
@@ -662,6 +699,112 @@
                 elements.chatMsg.scrollTop = elements.chatMsg.scrollHeight;
             }, 50);
         }
+
+        // --- Voice Logic (Phase 2) ---
+        let voiceEnabled = true;
+        
+        elements.voiceToggleBtn.addEventListener('click', () => {
+            voiceEnabled = !voiceEnabled;
+            elements.voiceIconOn.style.display = voiceEnabled ? 'block' : 'none';
+            elements.voiceIconOff.style.display = voiceEnabled ? 'none' : 'block';
+            elements.voiceToggleBtn.title = voiceEnabled ? "Voice Output: ON" : "Voice Output: OFF";
+            if (!voiceEnabled) window.speechSynthesis.cancel();
+        });
+
+        function stripMarkdownForSpeech(text) {
+            // Remove markdown formatting but keep the natural pauses
+            return text
+                .replace(/\*([^\*]+)\*/g, '$1') // remove italics/emotes
+                .replace(/_([^_]+)_/g, '$1')
+                .replace(/\*\*/g, '') // remove bold
+                .replace(/```[\s\S]*?```/g, ' [Code Block] ') // remove code blocks
+                .replace(/`[^`]+`/g, ' [Code Snippet] ') // remove inline code
+                .replace(/#/g, '') // remove headers
+                .trim();
+        }
+
+        function speakResponse(text) {
+            if (!voiceEnabled || !window.speechSynthesis) return;
+            
+            // Cancel any ongoing speech
+            window.speechSynthesis.cancel();
+            
+            const cleanText = stripMarkdownForSpeech(text);
+            if (!cleanText) return;
+
+            const utterance = new SpeechSynthesisUtterance(cleanText);
+            utterance.rate = 1.05;
+            utterance.pitch = 1.0;
+            
+            // Try to select a good English female voice
+            const voices = window.speechSynthesis.getVoices();
+            let selectedVoice = voices.find(v => v.name.includes('Google UK English Female')) ||
+                                voices.find(v => v.name.includes('Microsoft Hazel')) ||
+                                voices.find(v => v.name.includes('Samantha') && v.lang.includes('en')) ||
+                                voices.find(v => v.lang === 'en-GB' || v.lang === 'en-US');
+                                
+            if (selectedVoice) utterance.voice = selectedVoice;
+            
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // Ensure voices are loaded
+        window.speechSynthesis.onvoiceschanged = () => { window.speechSynthesis.getVoices(); };
+
+        // --- Speech Recognition ---
+        let recognition = null;
+        let isRecording = false;
+
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRec();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.lang = 'en-US';
+
+            recognition.onstart = () => {
+                isRecording = true;
+                elements.micBtn.classList.add('recording');
+                elements.input.placeholder = "Listening...";
+                // Stop maxis from speaking if you interrupt
+                window.speechSynthesis.cancel();
+            };
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                elements.input.value = transcript;
+                updateInputState();
+                sendMsg(true);
+            };
+
+            recognition.onerror = (event) => {
+                console.error("Speech recognition error:", event.error);
+                stopRecording();
+            };
+
+            recognition.onend = () => {
+                stopRecording();
+            };
+        } else {
+            elements.micBtn.style.display = 'none';
+        }
+
+        function toggleRecording() {
+            if (!recognition) return;
+            if (isRecording) {
+                recognition.stop();
+            } else {
+                recognition.start();
+            }
+        }
+
+        function stopRecording() {
+            isRecording = false;
+            elements.micBtn.classList.remove('recording');
+            elements.input.placeholder = "Talk to Maxis...";
+        }
+
+        elements.micBtn.addEventListener('click', toggleRecording);
 
         connect();
     </script>
