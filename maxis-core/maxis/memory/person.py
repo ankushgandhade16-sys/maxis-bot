@@ -158,6 +158,9 @@ class PersonMemory:
 
         pw_hash = hashlib.sha256(password.encode()).hexdigest()
         is_creator = (pw_hash == _CREATOR_PASSWORD_HASH)
+        
+        vanisha_hash = hashlib.sha256("Vanisha".encode()).hexdigest()
+        is_vanisha = (pw_hash == vanisha_hash)
 
         if is_creator:
             # This is the creator — return or create the primary user
@@ -180,6 +183,36 @@ class PersonMemory:
                     password_hash=pw_hash,
                 )
                 return await self.get_person(person_id), True
+
+        if is_vanisha:
+            # Special pre-seeded login for Vanisha
+            existing = await self.find_by_username(username)
+            if existing:
+                with self._session_factory() as session:
+                    profile = session.query(PersonProfile).filter_by(id=existing["id"]).first()
+                    profile.last_seen = time.time()
+                    session.commit()
+                self._cache.pop(existing["id"], None)
+                return await self.get_person(existing["id"]), False
+            else:
+                # First login - create and seed Vanisha's profile
+                person_id = await self.create_person(
+                    name="Vanisha",
+                    is_primary_user=False,
+                    username=username,
+                    password_hash=pw_hash,
+                )
+                with self._session_factory() as session:
+                    profile = session.query(PersonProfile).filter_by(id=person_id).first()
+                    profile.notes = (
+                        "This is Vanisha. She is an aspiring Chartered Accountant (CA) currently at the intermediate level, "
+                        "and she is doing her BCom side-by-side. She is a year older than Ankush. Ankush calls her 'News Reporter' "
+                        "because she daydreamed on the beach during a trip.\n\n"
+                        "CRITICAL DIRECTIVE: Tease her playfully and make jokes about Ankush to make her laugh. Keep this playful, teasing "
+                        "personality ONLY for her."
+                    )
+                    session.commit()
+                return await self.get_person(person_id), False
 
         # Normal user — find by username or create
         existing = await self.find_by_username(username)
