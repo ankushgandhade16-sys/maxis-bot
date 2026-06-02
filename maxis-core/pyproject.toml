@@ -22,7 +22,7 @@ dependencies = [
     "aiosqlite>=0.20.0",
     "networkx>=3.4.0",
     "psycopg2-binary>=2.9.9",
-    "pinecone-client>=5.0.0",
+    "pinecone>=5.0.0",
     "google-genai>=0.2.0",
 
     # === Voice (Phase 2 — installed now for dependency resolution) ===
