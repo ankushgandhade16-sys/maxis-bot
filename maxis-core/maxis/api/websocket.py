@@ -51,12 +51,18 @@ async def websocket_chat_handler(websocket: WebSocket, orchestrator):
     Handle a WebSocket chat session.
 
     Protocol:
-    Client sends: {"type": "message", "content": "...", "person_id": "..."}
+    Client sends: {"type": "login", "username": "...", "password": "..."}
+    Client sends: {"type": "message", "content": "...", "is_voice": false}
+    Server sends: {"type": "login_success", "name": "...", "is_creator": false}
+    Server sends: {"type": "login_failed", "reason": "..."}
     Server sends: {"type": "response", "content": "...", "emotional_state": "..."}
     Server sends: {"type": "status", "data": {...}}
     Server sends: {"type": "error", "message": "..."}
     """
     await manager.connect(websocket)
+
+    # Per-connection session state
+    session_person_id = None
 
     try:
         # Send initial status
@@ -73,17 +79,59 @@ async def websocket_chat_handler(websocket: WebSocket, orchestrator):
             try:
                 data = json.loads(raw)
             except json.JSONDecodeError:
-                # Treat raw text as a simple message
                 data = {"type": "message", "content": raw}
 
             msg_type = data.get("type", "message")
 
-            if msg_type == "message":
+            if msg_type == "login":
+                username = data.get("username", "").strip()
+                password = data.get("password", "")
+
+                if not username or not password:
+                    await manager.send_json(websocket, {
+                        "type": "login_failed",
+                        "reason": "Username and password are required.",
+                    })
+                    continue
+
+                try:
+                    person, is_creator = await orchestrator.login_user(username, password)
+
+                    if person is None:
+                        await manager.send_json(websocket, {
+                            "type": "login_failed",
+                            "reason": "Wrong password for this username.",
+                        })
+                        continue
+
+                    session_person_id = person["id"]
+
+                    await manager.send_json(websocket, {
+                        "type": "login_success",
+                        "person_id": person["id"],
+                        "name": person["name"],
+                        "is_creator": is_creator,
+                    })
+
+                except Exception as e:
+                    logger.error(f"Login error: {e}")
+                    await manager.send_json(websocket, {
+                        "type": "login_failed",
+                        "reason": "Something went wrong. Try again.",
+                    })
+
+            elif msg_type == "message":
                 content = data.get("content", "").strip()
-                person_id = data.get("person_id")
                 is_voice = data.get("is_voice", False)
 
                 if not content:
+                    continue
+
+                if not session_person_id:
+                    await manager.send_json(websocket, {
+                        "type": "error",
+                        "message": "Please log in first.",
+                    })
                     continue
 
                 # Send thinking indicator
@@ -96,7 +144,7 @@ async def websocket_chat_handler(websocket: WebSocket, orchestrator):
                 try:
                     response = await orchestrator.process_message(
                         message=content,
-                        person_id=person_id,
+                        person_id=session_person_id,
                         is_voice=is_voice,
                     )
 
@@ -114,24 +162,6 @@ async def websocket_chat_handler(websocket: WebSocket, orchestrator):
                         "message": str(e),
                     })
 
-            elif msg_type == "register_user":
-                name = data.get("name", "User")
-                
-                # Check if a primary user exists
-                primary = await orchestrator.memory.persons.get_primary_user()
-                if not primary:
-                    # First ever user
-                    person_id = await orchestrator.register_primary_user(name)
-                else:
-                    # A friend / secondary user
-                    person_id = await orchestrator.register_user(name)
-
-                await manager.send_json(websocket, {
-                    "type": "user_registered",
-                    "person_id": person_id,
-                    "name": name,
-                })
-
             elif msg_type == "status":
                 await manager.send_json(websocket, {
                     "type": "status",
@@ -147,3 +177,5 @@ async def websocket_chat_handler(websocket: WebSocket, orchestrator):
     except Exception as e:
         logger.error(f"WebSocket error: {e}")
         manager.disconnect(websocket)
+
+

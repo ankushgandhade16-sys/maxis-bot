@@ -7,6 +7,7 @@ relationship dynamics, face embeddings, and accumulated impressions.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import time
 import uuid
@@ -23,12 +24,18 @@ class Base(DeclarativeBase):
     pass
 
 
+# SHA-256 hash of the creator password "Ankush@2007"
+_CREATOR_PASSWORD_HASH = hashlib.sha256("Ankush@2007".encode()).hexdigest()
+
+
 class PersonProfile(Base):
     """A person Maxis has met and remembers."""
     __tablename__ = "person_profiles"
 
     id = Column(String, primary_key=True)  # UUID
     name = Column(String, nullable=False, index=True)
+    username = Column(String, unique=True, nullable=True, index=True)  # login username
+    password_hash = Column(String, nullable=True)  # SHA-256 hash
     is_primary_user = Column(Integer, default=0)  # 1 for the main user
 
     # Recognition
@@ -86,6 +93,8 @@ class PersonMemory:
         name: str,
         is_primary_user: bool = False,
         face_embedding: list[float] | None = None,
+        username: str | None = None,
+        password_hash: str | None = None,
     ) -> str:
         """Create a new person profile. Returns the person ID."""
         if not self._initialized:
@@ -97,6 +106,8 @@ class PersonMemory:
         profile = PersonProfile(
             id=person_id,
             name=name,
+            username=username,
+            password_hash=password_hash,
             is_primary_user=1 if is_primary_user else 0,
             face_embedding_json=json.dumps(face_embedding or []),
             first_met=now,
@@ -112,6 +123,75 @@ class PersonMemory:
 
         logger.info(f"Created person profile: {name} (id={person_id[:8]})")
         return person_id
+
+    async def find_by_username(self, username: str) -> Optional[dict]:
+        """Find a person by their login username."""
+        if not self._initialized:
+            await self.initialize()
+
+        with self._session_factory() as session:
+            profile = session.query(PersonProfile).filter_by(username=username).first()
+            if profile:
+                return await self.get_person(profile.id)
+        return None
+
+    async def authenticate(self, username: str, password: str) -> tuple[Optional[dict], bool]:
+        """
+        Authenticate a user. Returns (person_dict, is_creator).
+
+        Creator detection: if the password hash matches the creator password,
+        always return the primary user profile regardless of username.
+        """
+        if not self._initialized:
+            await self.initialize()
+
+        pw_hash = hashlib.sha256(password.encode()).hexdigest()
+        is_creator = (pw_hash == _CREATOR_PASSWORD_HASH)
+
+        if is_creator:
+            # This is the creator — return or create the primary user
+            primary = await self.get_primary_user()
+            if primary:
+                # Update name/username if they logged in with a different username
+                with self._session_factory() as session:
+                    profile = session.query(PersonProfile).filter_by(id=primary["id"]).first()
+                    if profile:
+                        profile.last_seen = time.time()
+                        session.commit()
+                self._cache.pop(primary["id"], None)
+                return primary, True
+            else:
+                # First ever login — create the creator profile
+                person_id = await self.create_person(
+                    name="Ankush",
+                    is_primary_user=True,
+                    username=username,
+                    password_hash=pw_hash,
+                )
+                return await self.get_person(person_id), True
+
+        # Normal user — find by username or create
+        existing = await self.find_by_username(username)
+        if existing:
+            # Verify password
+            with self._session_factory() as session:
+                profile = session.query(PersonProfile).filter_by(username=username).first()
+                if profile and profile.password_hash == pw_hash:
+                    profile.last_seen = time.time()
+                    session.commit()
+                    self._cache.pop(existing["id"], None)
+                    return await self.get_person(existing["id"]), False
+                else:
+                    return None, False  # Wrong password
+        else:
+            # New user — create account
+            person_id = await self.create_person(
+                name=username,
+                is_primary_user=False,
+                username=username,
+                password_hash=pw_hash,
+            )
+            return await self.get_person(person_id), False
 
     async def get_person(self, person_id: str) -> Optional[dict]:
         """Get a person's full profile."""

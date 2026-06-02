@@ -41,6 +41,9 @@ class Orchestrator:
         self.emotional_state = EmotionalState()
         self.compressor: Optional[MemoryCompressor] = None
 
+        # Per-user working memory isolation
+        self._working_memories: dict[str, 'WorkingMemory'] = {}
+
         # Current session state
         self._current_person_id: Optional[str] = None
         self._session_start: float = time.time()
@@ -101,8 +104,15 @@ class Orchestrator:
         active_person = person_id or self._current_person_id
         start_time = time.time()
 
-        # ── 1. Add to working memory ────────────────────────────────────
-        self.memory.working.add_user_message(message, active_person)
+        # ── 1. Get or create per-user working memory ────────────────────
+        if active_person and active_person not in self._working_memories:
+            from maxis.memory.working import WorkingMemory
+            self._working_memories[active_person] = WorkingMemory()
+        
+        working = self._working_memories.get(active_person, self.memory.working)
+
+        # ── 2. Add to working memory ────────────────────────────────────
+        working.add_user_message(message, active_person)
 
         # ── 2. Retrieve relevant memories ────────────────────────────────
         memory_context = await self.memory.recall(
@@ -134,14 +144,14 @@ class Orchestrator:
             system_prompt += "\n\n[SYSTEM DIRECTIVE]: The user just spoke to you via microphone instead of typing. Keep your response conversational, natural, and relatively brief so it sounds good when read aloud."
 
         # ── 6. Generate response ─────────────────────────────────────────
-        messages = self.memory.working.get_messages()
+        messages = working.get_messages()
         response = await self.llm.generate(
             messages=messages,
             system_prompt=system_prompt,
         )
 
         # ── 7. Add response to working memory ───────────────────────────
-        self.memory.working.add_assistant_message(response)
+        working.add_assistant_message(response)
 
         # ── 8. Store interaction in episodic memory ──────────────────────
         await self.memory.store_interaction(
@@ -204,6 +214,34 @@ class Orchestrator:
     async def set_current_person(self, person_id: str):
         """Set who Maxis is currently talking to."""
         self._current_person_id = person_id
+
+    async def login_user(self, username: str, password: str) -> tuple[dict | None, bool]:
+        """
+        Authenticate a user via username/password.
+        Returns (person_dict, is_creator) or (None, False) on failure.
+        """
+        person, is_creator = await self.memory.persons.authenticate(username, password)
+
+        if person:
+            self._current_person_id = person["id"]
+
+            # Store semantic facts
+            await self.memory.semantic.store_fact(
+                subject=person["id"],
+                predicate="name",
+                obj=person["name"],
+            )
+            if is_creator:
+                await self.memory.semantic.store_fact(
+                    subject=person["id"],
+                    predicate="is_primary_user",
+                    obj="true",
+                )
+                logger.info(f"Creator authenticated: {username}")
+            else:
+                logger.info(f"User authenticated: {username} ({person['id'][:8]})")
+
+        return person, is_creator
 
     async def _load_emotional_state(self):
         """Load the last saved emotional state."""
