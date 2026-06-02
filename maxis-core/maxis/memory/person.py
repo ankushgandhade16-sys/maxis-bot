@@ -78,8 +78,19 @@ class PersonMemory:
         if self._initialized:
             return
 
-        db_path = SQLITE_DIR / "persons.db"
-        self._engine = create_engine(f"sqlite:///{db_path}", echo=False)
+        from maxis.config import get_config
+        config = get_config()
+
+        if config.cloud.database_url:
+            db_url = config.cloud.database_url
+            # SQLAlchemy expects 'postgresql://' not 'postgres://'
+            if db_url.startswith("postgres://"):
+                db_url = db_url.replace("postgres://", "postgresql://", 1)
+        else:
+            db_path = SQLITE_DIR / "persons.db"
+            db_url = f"sqlite:///{db_path}"
+
+        self._engine = create_engine(db_url, echo=False)
         Base.metadata.create_all(self._engine)
         self._session_factory = sessionmaker(bind=self._engine)
 

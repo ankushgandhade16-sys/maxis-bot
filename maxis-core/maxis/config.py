@@ -133,6 +133,13 @@ class GeminiConfig(BaseSettings):
     max_daily_tokens: int = 1_000_000
 
 
+class CloudConfig(BaseSettings):
+    """Cloud infrastructure settings (Supabase & Pinecone)."""
+    database_url: str = Field(default="", description="PostgreSQL connection string")
+    pinecone_api_key: str = Field(default="", description="Pinecone API key")
+    pinecone_index: str = "maxis"
+
+
 class MaxisConfig(BaseSettings):
     """Root configuration combining all subsystems."""
     ollama: OllamaConfig = OllamaConfig()
@@ -144,6 +151,7 @@ class MaxisConfig(BaseSettings):
     security: SecurityConfig = SecurityConfig()
     hardware: HardwareConfig = HardwareConfig()
     server: ServerConfig = ServerConfig()
+    cloud: CloudConfig = CloudConfig()
 
     class Config:
         env_prefix = "MAXIS_"

@@ -12,7 +12,8 @@ COPY pyproject.toml .
 
 # Install uv and dependencies
 RUN pip install uv
-RUN uv pip install --system "google-genai" "fastapi" "uvicorn[standard]" "loguru" "websockets" "pydantic-settings" "chromadb" "sentence-transformers" "sqlalchemy"
+RUN uv pip install --system "google-genai" "fastapi" "uvicorn[standard]" "loguru" "websockets" "pydantic-settings" "chromadb" "sentence-transformers" "sqlalchemy" "psycopg2-binary" "pinecone-client"
+
 
 COPY . .
 

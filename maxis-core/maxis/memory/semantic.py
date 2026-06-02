@@ -62,12 +62,22 @@ class SemanticMemory:
         self._initialized = False
 
     async def initialize(self):
-        """Load knowledge graph from SQLite into NetworkX."""
+        """Load knowledge graph from SQLite or Postgres into NetworkX."""
         if self._initialized:
             return
 
-        db_path = SQLITE_DIR / "knowledge.db"
-        self._engine = create_engine(f"sqlite:///{db_path}", echo=False)
+        from maxis.config import get_config
+        config = get_config()
+
+        if config.cloud.database_url:
+            db_url = config.cloud.database_url
+            if db_url.startswith("postgres://"):
+                db_url = db_url.replace("postgres://", "postgresql://", 1)
+        else:
+            db_path = SQLITE_DIR / "knowledge.db"
+            db_url = f"sqlite:///{db_path}"
+
+        self._engine = create_engine(db_url, echo=False)
         Base.metadata.create_all(self._engine)
         self._session_factory = sessionmaker(bind=self._engine)
 

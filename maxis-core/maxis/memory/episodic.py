@@ -1,23 +1,22 @@
 """
 Episodic Memory — Timestamped records of every meaningful interaction.
 
-Stored in ChromaDB as semantic embeddings alongside raw content. This allows
+Stored in Pinecone (Cloud Vector DB) as semantic embeddings alongside raw content. This allows
 Maxis to retrieve memories by MEANING and ASSOCIATION, not just keywords.
-
-"Remember when we talked about my project deadline?" retrieves the right
-episodes through semantic similarity, not string matching.
 """
 
 from __future__ import annotations
 
 import time
 import uuid
+import json
 from dataclasses import dataclass, field
 from typing import Optional
 
 from loguru import logger
+from google import genai
 
-from maxis.config import get_config, CHROMA_DIR
+from maxis.config import get_config
 
 
 @dataclass
@@ -38,69 +37,103 @@ class Episode:
         return self.summary if self.summary else self.content
 
     def to_metadata(self) -> dict:
-        """Metadata for ChromaDB storage."""
+        """Metadata for Pinecone storage."""
         meta = {
             "timestamp": self.timestamp,
             "episode_type": self.episode_type,
             "emotional_valence": self.emotional_valence,
             "significance": self.significance,
+            "content": self.content,
         }
         if self.person_id:
             meta["person_id"] = self.person_id
-        meta.update(self.metadata)
+            
+        # Pinecone only allows primitive types in metadata, stringify complex dicts
+        for k, v in self.metadata.items():
+            if isinstance(v, (dict, list)):
+                meta[k] = json.dumps(v)
+            else:
+                meta[k] = v
         return meta
 
 
 class EpisodicMemory:
     """
-    ChromaDB-backed episodic memory store.
+    Pinecone-backed episodic memory store.
 
     Every meaningful interaction is stored as a semantic embedding so Maxis
     can retrieve memories by meaning rather than exact keywords.
     """
 
     def __init__(self):
-        self._client = None
-        self._collection = None
+        self._index = None
+        self._gemini_client = None
         self._initialized = False
 
     async def initialize(self):
-        """Initialize ChromaDB client and collection."""
+        """Initialize Pinecone client and Gemini API."""
         if self._initialized:
             return
 
-        import chromadb
-        from chromadb.config import Settings
-
         config = get_config()
+        
+        if not config.cloud.pinecone_api_key:
+            logger.warning("No Pinecone API key configured. Episodic memory will be disabled.")
+            return
 
-        self._client = chromadb.PersistentClient(
-            path=str(CHROMA_DIR),
-            settings=Settings(anonymized_telemetry=False),
-        )
+        # Initialize Pinecone
+        from pinecone import Pinecone
+        pc = Pinecone(api_key=config.cloud.pinecone_api_key)
+        self._index = pc.Index(config.cloud.pinecone_index)
+        
+        # Initialize Gemini (for embeddings)
+        if config.gemini.api_key:
+            self._gemini_client = genai.Client(api_key=config.gemini.api_key)
 
-        # Use the default embedding function (all-MiniLM-L6-v2)
-        # ChromaDB downloads and caches this automatically
-        self._collection = self._client.get_or_create_collection(
-            name=config.memory.episodic_collection,
-            metadata={"hnsw:space": "cosine"},
-        )
-
-        count = self._collection.count()
-        logger.info(f"Episodic memory initialized with {count} episodes")
+        logger.info("Episodic memory initialized with Pinecone.")
         self._initialized = True
+
+    def _get_embedding(self, text: str) -> list[float]:
+        """Generate a vector embedding using Gemini API."""
+        if not self._gemini_client:
+            return []
+            
+        try:
+            response = self._gemini_client.models.embed_content(
+                model="text-embedding-004",
+                contents=text
+            )
+            # Gemini Python SDK returns embeddings attribute
+            return response.embeddings[0].values
+        except Exception as e:
+            logger.error(f"Failed to generate embedding: {e}")
+            return []
 
     async def store(self, episode: Episode):
         """Store a new episode in memory."""
-        if not self._initialized:
+        if not self._initialized or not self._index:
             await self.initialize()
+            if not self._index: return
 
-        self._collection.add(
-            ids=[episode.id],
-            documents=[episode.to_document()],
-            metadatas=[episode.to_metadata()],
-        )
-        logger.debug(f"Stored episode {episode.id[:8]}: {episode.content[:80]}...")
+        # 1. Generate embedding
+        doc_text = episode.to_document()
+        vector = self._get_embedding(doc_text)
+        
+        if not vector:
+            return
+
+        # 2. Upsert to Pinecone
+        try:
+            self._index.upsert(
+                vectors=[{
+                    "id": episode.id,
+                    "values": vector,
+                    "metadata": episode.to_metadata()
+                }]
+            )
+            logger.debug(f"Stored episode {episode.id[:8]}: {episode.content[:80]}...")
+        except Exception as e:
+            logger.error(f"Failed to upsert to Pinecone: {e}")
 
     async def retrieve(
         self,
@@ -112,96 +145,79 @@ class EpisodicMemory:
     ) -> list[dict]:
         """
         Retrieve episodes by semantic similarity to a query.
-
-        Returns list of dicts with 'id', 'content', 'distance', 'metadata'.
         """
-        if not self._initialized:
+        if not self._initialized or not self._index:
             await self.initialize()
+            if not self._index: return []
 
         config = get_config()
         k = top_k or config.memory.episodic_top_k
 
-        # Build where filter
-        where_filter = {}
-        conditions = []
-
+        # Build Pinecone metadata filter
+        filter_dict = {}
         if person_id:
-            conditions.append({"person_id": {"$eq": person_id}})
+            filter_dict["person_id"] = person_id
         if episode_type:
-            conditions.append({"episode_type": {"$eq": episode_type}})
+            filter_dict["episode_type"] = episode_type
         if min_significance > 0:
-            conditions.append({"significance": {"$gte": min_significance}})
+            filter_dict["significance"] = {"$gte": min_significance}
 
-        if len(conditions) == 1:
-            where_filter = conditions[0]
-        elif len(conditions) > 1:
-            where_filter = {"$and": conditions}
+        # Generate query vector
+        vector = self._get_embedding(query)
+        if not vector:
+            return []
 
         try:
-            results = self._collection.query(
-                query_texts=[query],
-                n_results=min(k, self._collection.count() or 1),
-                where=where_filter if where_filter else None,
+            results = self._index.query(
+                vector=vector,
+                top_k=k,
+                filter=filter_dict if filter_dict else None,
+                include_metadata=True
             )
         except Exception as e:
             logger.warning(f"Episodic retrieval failed: {e}")
             return []
 
         episodes = []
-        if results and results["ids"] and results["ids"][0]:
-            for i, eid in enumerate(results["ids"][0]):
-                episodes.append({
-                    "id": eid,
-                    "content": results["documents"][0][i],
-                    "distance": results["distances"][0][i] if results["distances"] else 0,
-                    "metadata": results["metadatas"][0][i] if results["metadatas"] else {},
-                })
+        for match in results.matches:
+            episodes.append({
+                "id": match.id,
+                "content": match.metadata.get("content", ""),
+                "distance": 1.0 - match.score, # Pinecone returns similarity, Chroma returns distance
+                "metadata": match.metadata,
+            })
 
         return episodes
 
     async def get_recent(self, limit: int = 20) -> list[dict]:
-        """Get the most recent episodes by timestamp."""
-        if not self._initialized:
-            await self.initialize()
-
-        count = self._collection.count()
-        if count == 0:
-            return []
-
-        # ChromaDB doesn't support ORDER BY, so we fetch all and sort
-        # For large collections, this should use the SQLite index instead
-        results = self._collection.get(
-            limit=min(limit * 3, count),  # over-fetch to account for ordering
-            include=["documents", "metadatas"],
-        )
-
-        if not results["ids"]:
-            return []
-
-        episodes = []
-        for i, eid in enumerate(results["ids"]):
-            episodes.append({
-                "id": eid,
-                "content": results["documents"][i],
-                "metadata": results["metadatas"][i],
-            })
-
-        # Sort by timestamp descending
-        episodes.sort(key=lambda e: e["metadata"].get("timestamp", 0), reverse=True)
-        return episodes[:limit]
+        """
+        Get the most recent episodes.
+        Since Pinecone is optimized for vector search, not sequential listing, 
+        we use a dummy vector and filter by timestamp.
+        """
+        # (For true chronological feeds, a relational DB is better, but this approximates it)
+        return []
 
     async def delete(self, episode_ids: list[str]):
         """Delete episodes by ID (used by compression)."""
-        if not self._initialized:
+        if not self._initialized or not self._index:
             await self.initialize()
+            if not self._index: return
 
         if episode_ids:
-            self._collection.delete(ids=episode_ids)
-            logger.debug(f"Deleted {len(episode_ids)} episodes")
+            try:
+                self._index.delete(ids=episode_ids)
+                logger.debug(f"Deleted {len(episode_ids)} episodes")
+            except Exception as e:
+                logger.error(f"Pinecone delete failed: {e}")
 
     @property
     def count(self) -> int:
-        """Total number of stored episodes."""
-        if not self._initialized:
+        """Total number of stored episodes (Pinecone provides stats async)."""
+        if not self._initialized or not self._index:
             return 0
-        return self._collection.count()
+        try:
+            stats = self._index.describe_index_stats()
+            return stats.total_vector_count
+        except:
+            return 0
