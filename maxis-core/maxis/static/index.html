@@ -1519,14 +1519,14 @@ el.newChatBtn.addEventListener('click', ()=>{
 
 // Send
 function updateInputState() { el.send.classList.toggle('active', el.input.value.trim().length>0 && isConnected && isLoggedIn); }
-function sendMsg() {
+function sendMsg(isVoice = false) {
     const v=el.input.value.trim(); if(!v||!isConnected||!isLoggedIn) return;
-    appendMessage('user',v); ws.send(JSON.stringify({type:'message',content:v}));
+    appendMessage('user',v); ws.send(JSON.stringify({type:'message',content:v, is_voice:isVoice}));
     el.input.value=''; el.input.style.height='auto'; updateInputState();
     brain.sensory.onInteraction();
 }
-el.send.addEventListener('click', sendMsg);
-el.input.addEventListener('keydown', e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg();}});
+el.send.addEventListener('click', () => sendMsg(false));
+el.input.addEventListener('keydown', e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg(false);}});
 
 function appendMessage(sender, text, anim=true) {
     if(!hasMessages){hasMessages=true;el.welcome.classList.add('hidden');el.chatView.classList.add('active');}
@@ -1551,7 +1551,7 @@ if('webkitSpeechRecognition' in window||'SpeechRecognition' in window){
     const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
     recognition=new SR(); recognition.continuous=false; recognition.interimResults=false; recognition.lang='en-US';
     recognition.onstart=()=>{isRecording=true;el.micBtn.classList.add('recording');el.input.placeholder='Listening...';};
-    recognition.onresult=(e)=>{el.input.value=e.results[0][0].transcript;updateInputState();sendMsg();};
+    recognition.onresult=(e)=>{el.input.value=e.results[0][0].transcript;updateInputState();sendMsg(true);};
     recognition.onerror=()=>stopRec(); recognition.onend=()=>stopRec();
 }else{el.micBtn.style.display='none';}
 function stopRec(){isRecording=false;el.micBtn.classList.remove('recording');el.input.placeholder='Speak to Eris...';}

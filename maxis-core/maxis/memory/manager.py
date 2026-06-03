@@ -102,7 +102,7 @@ class MemoryManager:
                     from maxis.memory.chat_history import ChatHistoryStore
                     chat_store = ChatHistoryStore()
                     await chat_store.initialize()
-                    recent_all = chat_store.get_recent_messages_all_users(limit=25)
+                    recent_all = chat_store.get_recent_messages_all_users(limit=150)
                     if recent_all:
                         hist_lines = []
                         for m in recent_all:
