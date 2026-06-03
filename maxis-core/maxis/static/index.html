@@ -3,678 +3,855 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MAXIS</title>
+    <title>ERIS</title>
+    <meta name="description" content="Eris — A persistent, self-aware AI companion.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --bg-deep: #0a0a12;
-            --bg-primary: rgba(10, 10, 18, 0.80);
-            --bg-surface: rgba(16, 16, 28, 0.65);
-            --bg-elevated: rgba(20, 20, 35, 0.85);
-            --text-primary: #f0f0f5;
-            --text-secondary: #a0a0b8;
-            --text-muted: #656578;
-            --accent: #8b5cf6;
-            --accent-glow: rgba(139, 92, 246, 0.4);
-            --accent-secondary: #06b6d4;
-            --border: rgba(255, 255, 255, 0.04);
-            --border-light: rgba(255, 255, 255, 0.08);
-            --success: #10b981;
-            --error: #ef4444;
-            --radius: 28px;
-            --radius-sm: 16px;
-        }
         * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --black: #000000;
+            --bg: #050505;
+            --surface: #0a0a0a;
+            --surface-2: #111111;
+            --border: rgba(255,255,255,0.06);
+            --text: #e8e8e8;
+            --text-dim: #888888;
+            --text-muted: #555555;
+            --accent: #ffffff;
+            --core-color: rgba(255,255,255,0.9);
+            --core-glow: rgba(255,255,255,0.15);
+        }
         body {
-            font-family: 'Outfit', sans-serif;
-            color: var(--text-primary);
-            height: 100vh; display: flex; overflow: hidden;
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--black);
+            color: var(--text);
+            height: 100vh;
+            overflow: hidden;
             -webkit-font-smoothing: antialiased;
-            background: var(--bg-deep);
         }
 
-        /* ── Animated Aurora Background ───────────────────────── */
-        .aurora-bg {
-            position: fixed; inset: 0; z-index: 0; overflow: hidden;
-            background: linear-gradient(180deg, #070714 0%, #0c0c1d 40%, #0d1117 100%);
+        /* ── Canvas Background ────────────────────────────── */
+        #coreCanvas {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            z-index: 0;
         }
-        .aurora-bg .orb {
-            position: absolute; border-radius: 50%;
-            filter: blur(120px); opacity: 0.4;
-            animation: aurora-drift 20s infinite ease-in-out alternate;
-        }
-        .aurora-bg .orb:nth-child(1) {
-            width: 600px; height: 600px; top: -200px; left: -100px;
-            background: radial-gradient(circle, #6e3adb 0%, transparent 70%);
-            animation-duration: 25s;
-        }
-        .aurora-bg .orb:nth-child(2) {
-            width: 500px; height: 500px; top: 30%; right: -150px;
-            background: radial-gradient(circle, #0ea5e9 0%, transparent 70%);
-            animation-duration: 30s; animation-delay: -5s;
-        }
-        .aurora-bg .orb:nth-child(3) {
-            width: 700px; height: 700px; bottom: -250px; left: 30%;
-            background: radial-gradient(circle, #7c3aed 0%, #0f766e 60%, transparent 70%);
-            animation-duration: 35s; animation-delay: -10s;
-        }
-        .aurora-bg .orb:nth-child(4) {
-            width: 400px; height: 400px; top: 60%; left: 10%;
-            background: radial-gradient(circle, #06b6d4 0%, transparent 70%);
-            animation-duration: 22s; animation-delay: -15s; opacity: 0.25;
-        }
-        @keyframes aurora-drift {
-            0%   { transform: translate(0, 0) scale(1); }
-            33%  { transform: translate(40px, -30px) scale(1.1); }
-            66%  { transform: translate(-20px, 20px) scale(0.95); }
-            100% { transform: translate(30px, -10px) scale(1.05); }
-        }
-        /* Stars */
-        .stars {
-            position: absolute; inset: 0;
-            background-image:
-                radial-gradient(1px 1px at 10% 20%, rgba(255,255,255,0.6) 0%, transparent 100%),
-                radial-gradient(1px 1px at 30% 70%, rgba(255,255,255,0.5) 0%, transparent 100%),
-                radial-gradient(1px 1px at 50% 10%, rgba(255,255,255,0.4) 0%, transparent 100%),
-                radial-gradient(1px 1px at 70% 50%, rgba(255,255,255,0.6) 0%, transparent 100%),
-                radial-gradient(1px 1px at 90% 30%, rgba(255,255,255,0.3) 0%, transparent 100%),
-                radial-gradient(1px 1px at 15% 85%, rgba(255,255,255,0.5) 0%, transparent 100%),
-                radial-gradient(1.5px 1.5px at 80% 80%, rgba(255,255,255,0.7) 0%, transparent 100%),
-                radial-gradient(1px 1px at 40% 40%, rgba(255,255,255,0.4) 0%, transparent 100%),
-                radial-gradient(1px 1px at 60% 90%, rgba(255,255,255,0.3) 0%, transparent 100%),
-                radial-gradient(1.5px 1.5px at 25% 55%, rgba(255,255,255,0.5) 0%, transparent 100%);
-            animation: twinkle 8s infinite ease-in-out alternate;
-        }
-        @keyframes twinkle { 0% { opacity: 0.7; } 100% { opacity: 1; } }
 
-        /* ── Sidebar ──────────────────────────────────────────── */
-        .sidebar {
-            width: 64px; background: var(--bg-primary);
-            backdrop-filter: blur(24px); border-right: 1px solid var(--border);
-            display: flex; flex-direction: column; align-items: center;
-            padding: 20px 0; gap: 8px; z-index: 10;
-        }
-        .sidebar-logo {
-            width: 40px; height: 40px; border-radius: 12px;
-            background: linear-gradient(135deg, var(--accent), var(--accent-secondary));
-            display: flex; align-items: center; justify-content: center;
-            font-weight: 600; font-size: 16px; color: white;
-            margin-bottom: 24px; box-shadow: 0 0 24px var(--accent-glow);
-        }
-        .sidebar-btn {
-            width: 44px; height: 44px; border-radius: 12px;
-            background: transparent; border: none;
-            color: var(--text-muted); cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        /* ── App Shell ────────────────────────────────────── */
+        .app {
             position: relative;
+            z-index: 1;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
-        .sidebar-btn:hover { color: var(--text-primary); background: var(--bg-surface); transform: scale(1.05); }
-        .sidebar-btn.active { color: var(--accent); background: rgba(139, 92, 246, 0.1); }
-        .sidebar-btn svg { width: 22px; height: 22px; }
-        .sidebar-spacer { flex: 1; }
-        .user-avatar {
-            width: 36px; height: 36px; border-radius: 50%;
-            background: var(--bg-surface); border: 1px solid var(--border-light);
-            display: flex; align-items: center; justify-content: center;
-            font-size: 14px; font-weight: 500; color: var(--text-primary);
-            cursor: pointer; margin-bottom: 12px; transition: all 0.2s;
-        }
-        .user-avatar:hover { border-color: var(--accent); }
 
-        /* ── Main Area ────────────────────────────────────────── */
-        .main {
-            flex: 1; display: flex; flex-direction: column;
-            position: relative; z-index: 2; overflow: hidden;
-        }
+        /* ── Top Bar ──────────────────────────────────────── */
         .topbar {
-            display: flex; align-items: center; justify-content: flex-end;
-            padding: 16px 32px; z-index: 2; gap: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 24px;
+            backdrop-filter: blur(20px);
+            background: rgba(0,0,0,0.5);
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
         }
-        .model-selector {
-            padding: 6px 14px; border-radius: 20px; font-size: 12px;
-            background: rgba(0,0,0,0.3); border: 1px solid var(--border-light);
-            backdrop-filter: blur(10px); color: var(--text-secondary);
-            cursor: pointer; font-family: inherit; outline: none;
-            transition: all 0.3s; -webkit-appearance: none;
+        .topbar-left {
+            display: flex; align-items: center; gap: 12px;
         }
-        .model-selector:hover { border-color: var(--accent); color: var(--text-primary); }
-        .model-selector option { background: #1a1a2e; color: #f0f0f5; }
-        .emotional-pill {
-            padding: 6px 16px; border-radius: 20px; font-size: 12px; font-weight: 500;
-            background: rgba(255,255,255,0.03); border: 1px solid var(--border-light);
-            backdrop-filter: blur(10px); color: var(--accent-secondary);
-            letter-spacing: 0.5px; text-transform: uppercase;
-            display: flex; align-items: center; gap: 6px;
+        .logo {
+            font-size: 16px; font-weight: 600;
+            letter-spacing: 6px; text-transform: uppercase;
+            color: var(--accent);
         }
-        .emotional-pill::before {
-            content: ''; width: 6px; height: 6px; border-radius: 50%;
-            background: var(--accent-secondary); box-shadow: 0 0 8px var(--accent-secondary);
+        .status-dot {
+            width: 6px; height: 6px; border-radius: 50%;
+            background: #333; transition: background 0.3s;
         }
-        .user-label {
-            padding: 6px 14px; border-radius: 20px; font-size: 12px;
-            background: rgba(139,92,246,0.1); border: 1px solid rgba(139,92,246,0.2);
-            color: var(--accent); font-weight: 500; letter-spacing: 0.3px;
+        .status-dot.online { background: #4ade80; box-shadow: 0 0 8px rgba(74,222,128,0.5); }
+        .topbar-right {
+            display: flex; align-items: center; gap: 16px;
         }
-
-        /* ── Welcome Screen ───────────────────────────────────── */
-        .welcome-screen {
-            flex: 1; display: flex; flex-direction: column;
-            align-items: center; justify-content: center;
-            gap: 24px; padding-bottom: 15vh;
-            transition: opacity 0.5s, transform 0.5s;
-        }
-        .welcome-screen.hidden {
-            opacity: 0; transform: translateY(-20px);
-            pointer-events: none; position: absolute; inset: 0;
-        }
-        .greeting { font-size: 42px; font-weight: 300; text-align: center; line-height: 1.2; }
-        .greeting span { background: linear-gradient(135deg, var(--text-primary), var(--text-secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .greeting .name { background: linear-gradient(135deg, var(--accent), var(--accent-secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 500; }
-
-        /* ── Chat View ────────────────────────────────────────── */
-        .chat-view { flex: 1; display: none; flex-direction: column; overflow: hidden; }
-        .chat-view.active { display: flex; }
-        .chat-messages {
-            flex: 1; overflow-y: auto; padding: 24px 32px;
-            display: flex; flex-direction: column; gap: 24px;
-            scroll-behavior: smooth; max-width: 800px; width: 100%; margin: 0 auto;
-        }
-        .chat-messages::-webkit-scrollbar { width: 4px; }
-        .chat-messages::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
-        .message { display: flex; flex-direction: column; animation: msg-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; transform: translateY(10px); }
-        @keyframes msg-in { to { opacity: 1; transform: translateY(0); } }
-        .message.user { align-items: flex-end; }
-        .message.maxis { align-items: flex-start; }
-        .msg-bubble {
-            max-width: 85%; padding: 16px 20px; line-height: 1.6; font-size: 15px;
-            border-radius: var(--radius-sm); word-wrap: break-word; white-space: pre-wrap;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.15); backdrop-filter: blur(10px);
-        }
-        .message.maxis .msg-bubble { background: var(--bg-surface); border: 1px solid var(--border-light); border-top-left-radius: 4px; }
-        .message.user .msg-bubble { background: rgba(139,92,246,0.15); border: 1px solid rgba(139,92,246,0.3); border-top-right-radius: 4px; }
-        .msg-time { font-size: 11px; color: var(--text-muted); margin-top: 6px; padding: 0 4px; }
-
-        /* ── Input Area ───────────────────────────────────────── */
-        .input-area {
-            padding: 0 32px 32px; display: flex; justify-content: center;
-            background: linear-gradient(to top, rgba(5,5,12,0.85) 60%, transparent); z-index: 10;
-        }
-        .input-pill {
-            display: flex; align-items: flex-end; gap: 12px;
-            background: rgba(16,16,28,0.85); backdrop-filter: blur(24px);
-            border: 1px solid var(--border-light); border-radius: var(--radius);
-            padding: 10px 10px 10px 24px; max-width: 760px; width: 100%;
-            transition: all 0.3s; box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-        }
-        .input-pill:focus-within { border-color: var(--accent); box-shadow: 0 10px 40px var(--accent-glow); background: rgba(20,20,35,0.92); }
-        .input-pill textarea {
-            flex: 1; background: none; border: none; color: var(--text-primary);
-            font-family: inherit; font-size: 15px; resize: none;
-            min-height: 24px; max-height: 150px; line-height: 1.5;
-            outline: none; padding: 12px 0; margin-bottom: 2px;
-        }
-        .input-pill textarea::placeholder { color: var(--text-muted); }
-        .send-btn {
-            width: 44px; height: 44px; border-radius: 50%;
-            background: var(--bg-surface); border: 1px solid var(--border-light);
-            color: var(--text-muted); cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-            transition: all 0.3s; flex-shrink: 0;
-        }
-        .send-btn.active { background: var(--accent); border-color: var(--accent); color: white; box-shadow: 0 0 15px var(--accent-glow); }
-        .send-btn.active:hover { transform: scale(1.05); }
-        .send-btn svg { width: 20px; height: 20px; }
-        .mic-btn {
-            width: 44px; height: 44px; border-radius: 50%;
-            background: transparent; border: 1px solid transparent;
-            color: var(--text-muted); cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-            transition: all 0.3s; flex-shrink: 0;
-        }
-        .mic-btn:hover { color: var(--text-primary); }
-        .mic-btn.recording { color: #ef4444; background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.3); animation: pulse-red 1.5s infinite; }
-        @keyframes pulse-red {
-            0% { box-shadow: 0 0 0 0 rgba(239,68,68,0.4); }
-            70% { box-shadow: 0 0 0 10px rgba(239,68,68,0); }
-            100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
-        }
-
-        /* ── Login Modal ──────────────────────────────────────── */
-        .modal-overlay {
-            position: fixed; inset: 0; background: rgba(0,0,0,0.75);
-            backdrop-filter: blur(24px); display: flex; align-items: center; justify-content: center;
-            z-index: 100; opacity: 0; pointer-events: none; transition: opacity 0.3s;
-        }
-        .modal-overlay.show { opacity: 1; pointer-events: auto; }
-        .modal {
-            background: rgba(14,14,26,0.95); border: 1px solid var(--border-light);
-            border-radius: 24px; padding: 40px; max-width: 420px; width: 90%;
-            transform: translateY(20px) scale(0.95);
-            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-            box-shadow: 0 25px 50px rgba(0,0,0,0.5);
-            position: relative;
-        }
-        .modal-overlay.show .modal { transform: translateY(0) scale(1); }
-        .modal-close {
-            position: absolute; top: 16px; right: 16px;
-            width: 32px; height: 32px; border-radius: 50%;
-            background: rgba(255,255,255,0.05); border: 1px solid var(--border-light);
-            color: var(--text-muted); cursor: pointer;
-            display: none; align-items: center; justify-content: center;
-            font-size: 18px; transition: all 0.2s;
-        }
-        .modal-close:hover { background: rgba(255,255,255,0.1); color: var(--text-primary); }
-        .modal-close.visible { display: flex; }
-        .modal h2 { font-size: 24px; font-weight: 500; margin-bottom: 8px; }
-        .modal p { color: var(--text-secondary); font-size: 14px; line-height: 1.6; margin-bottom: 24px; }
-        .modal input {
-            width: 100%; padding: 16px 20px;
-            background: rgba(0,0,0,0.3); border: 1px solid var(--border-light);
-            border-radius: 16px; color: white; font-family: inherit; font-size: 16px;
-            outline: none; margin-bottom: 14px; transition: all 0.3s;
-        }
-        .modal input:focus { border-color: var(--accent); background: rgba(0,0,0,0.5); }
-        .modal-actions { display: flex; flex-direction: column; gap: 10px; }
-        .btn-primary {
-            width: 100%; padding: 16px;
-            background: linear-gradient(135deg, var(--accent), var(--accent-secondary));
-            border: none; border-radius: 16px; color: white;
-            font-family: inherit; font-size: 16px; font-weight: 600;
+        .user-pill {
+            display: none;
+            align-items: center; gap: 8px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            font-size: 12px; color: var(--text-dim);
             cursor: pointer; transition: all 0.2s;
         }
-        .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
-        .btn-secondary {
-            width: 100%; padding: 14px;
-            background: transparent; border: 1px solid var(--border-light);
-            border-radius: 16px; color: var(--text-secondary);
-            font-family: inherit; font-size: 14px; cursor: pointer;
-            transition: all 0.2s;
+        .user-pill:hover { background: #1a1a1a; color: var(--text); }
+        .user-pill .avatar {
+            width: 20px; height: 20px; border-radius: 50%;
+            background: #222; display: flex; align-items: center;
+            justify-content: center; font-size: 10px; font-weight: 600;
+            color: var(--text);
         }
-        .btn-secondary:hover { border-color: var(--accent); color: var(--text-primary); }
-        .login-error { color: var(--error); font-size: 13px; text-align: center; margin-bottom: 14px; min-height: 20px; }
+        .model-select {
+            background: transparent; border: 1px solid var(--border);
+            color: var(--text-dim); font-size: 11px; padding: 5px 10px;
+            border-radius: 6px; outline: none; cursor: pointer;
+            font-family: 'Inter', sans-serif;
+        }
+        .model-select option { background: #111; color: #ccc; }
 
-        /* ── Thinking dots ────────────────────────────────────── */
-        .thinking-dots { display: flex; gap: 6px; padding: 18px 24px; }
-        .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-secondary); animation: bounce 1.4s infinite ease-in-out both; }
-        .dot:nth-child(1) { animation-delay: -0.32s; }
-        .dot:nth-child(2) { animation-delay: -0.16s; }
-        @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+        /* ── Main Content ─────────────────────────────────── */
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
 
-        /* ── Markdown ─────────────────────────────────────────── */
-        .msg-bubble code { background: rgba(255,255,255,0.08); padding: 2px 6px; border-radius: 6px; font-family: 'JetBrains Mono', monospace; font-size: 13px; }
-        .msg-bubble pre { background: rgba(0,0,0,0.4); padding: 16px; border-radius: 12px; overflow-x: auto; margin: 12px 0; border: 1px solid var(--border-light); }
+        /* ── Welcome / Core View ──────────────────────────── */
+        .welcome-view {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.5s, transform 0.5s;
+        }
+        .welcome-view.hidden {
+            opacity: 0; pointer-events: none;
+            transform: translateY(-20px);
+            position: absolute; inset: 0;
+        }
+        .welcome-label {
+            margin-top: 30px;
+            font-size: 13px;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            font-weight: 400;
+        }
+        .welcome-sub {
+            margin-top: 8px;
+            font-size: 12px;
+            color: var(--text-muted);
+            opacity: 0.5;
+        }
+
+        /* ── Chat View ────────────────────────────────────── */
+        .chat-view {
+            flex: 1;
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .chat-view.active { display: flex; }
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            scrollbar-width: thin;
+            scrollbar-color: #222 transparent;
+        }
+        .chat-messages::-webkit-scrollbar { width: 4px; }
+        .chat-messages::-webkit-scrollbar-track { background: transparent; }
+        .chat-messages::-webkit-scrollbar-thumb { background: #222; border-radius: 2px; }
+
+        .message {
+            max-width: 75%;
+            animation: msgIn 0.3s ease-out;
+        }
+        @keyframes msgIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .message.user {
+            align-self: flex-end;
+        }
+        .message.eris {
+            align-self: flex-start;
+        }
+        .msg-bubble {
+            padding: 12px 16px;
+            border-radius: 18px;
+            font-size: 14px;
+            line-height: 1.6;
+            word-wrap: break-word;
+        }
+        .message.user .msg-bubble {
+            background: #1a1a1a;
+            border: 1px solid rgba(255,255,255,0.08);
+            color: var(--text);
+            border-bottom-right-radius: 4px;
+        }
+        .message.eris .msg-bubble {
+            background: transparent;
+            color: var(--text);
+            padding-left: 0;
+            border-bottom-left-radius: 4px;
+        }
         .msg-bubble p { margin-bottom: 8px; }
         .msg-bubble p:last-child { margin-bottom: 0; }
+        .msg-bubble code {
+            font-family: 'JetBrains Mono', monospace;
+            background: rgba(255,255,255,0.06);
+            padding: 2px 6px; border-radius: 4px;
+            font-size: 13px;
+        }
+        .msg-bubble pre {
+            background: rgba(255,255,255,0.04);
+            padding: 12px; border-radius: 8px;
+            overflow-x: auto; margin: 8px 0;
+        }
+        .msg-bubble pre code { background: none; padding: 0; }
+        .msg-time {
+            font-size: 10px; color: var(--text-muted);
+            margin-top: 4px; padding: 0 4px;
+        }
+        .message.user .msg-time { text-align: right; }
 
-        /* ── Toast ─────────────────────────────────────────────── */
+        /* Thinking dots */
+        .thinking-dots { display: flex; gap: 4px; padding: 14px 12px !important; }
+        .thinking-dots .dot {
+            width: 6px; height: 6px; border-radius: 50%;
+            background: var(--text-muted);
+            animation: dotPulse 1.4s infinite;
+        }
+        .thinking-dots .dot:nth-child(2) { animation-delay: 0.2s; }
+        .thinking-dots .dot:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes dotPulse {
+            0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+            40% { opacity: 1; transform: scale(1.2); }
+        }
+
+        /* ── Input Area ───────────────────────────────────── */
+        .input-area {
+            padding: 16px 24px 24px;
+            backdrop-filter: blur(20px);
+            background: rgba(0,0,0,0.6);
+            flex-shrink: 0;
+        }
+        .input-area.locked { opacity: 0.3; pointer-events: none; }
+        .input-wrap {
+            display: flex;
+            align-items: flex-end;
+            gap: 10px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 8px 12px;
+            transition: border-color 0.2s;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+        .input-wrap:focus-within { border-color: rgba(255,255,255,0.15); }
+        #messageInput {
+            flex: 1;
+            background: transparent;
+            border: none; outline: none;
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            resize: none;
+            min-height: 24px; max-height: 150px;
+            line-height: 1.5;
+        }
+        #messageInput::placeholder { color: var(--text-muted); }
+        .input-actions {
+            display: flex; gap: 4px; align-items: center;
+        }
+        .input-btn {
+            width: 32px; height: 32px;
+            border-radius: 50%;
+            border: none; background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.2s;
+        }
+        .input-btn:hover { background: var(--surface-2); color: var(--text); }
+        .input-btn.active { background: var(--accent); color: var(--black); }
+        .input-btn.recording { background: #ef4444; color: white; animation: recPulse 1s infinite; }
+        @keyframes recPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.4); } 50% { box-shadow: 0 0 0 8px rgba(239,68,68,0); } }
+
+        /* ── Login Modal ──────────────────────────────────── */
+        .modal-overlay {
+            position: fixed; inset: 0; z-index: 100;
+            background: rgba(0,0,0,0.95);
+            display: none;
+            align-items: center; justify-content: center;
+            backdrop-filter: blur(30px);
+        }
+        .modal-overlay.show { display: flex; }
+        .modal-box {
+            width: 360px;
+            padding: 40px;
+            text-align: center;
+        }
+        .modal-logo {
+            font-size: 18px; font-weight: 600;
+            letter-spacing: 8px; text-transform: uppercase;
+            color: var(--accent);
+            margin-bottom: 8px;
+        }
+        .modal-desc {
+            font-size: 12px; color: var(--text-muted);
+            margin-bottom: 32px;
+        }
+        .modal-input {
+            width: 100%;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px 16px;
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            outline: none;
+            margin-bottom: 12px;
+            transition: border-color 0.2s;
+        }
+        .modal-input:focus { border-color: rgba(255,255,255,0.2); }
+        .modal-input::placeholder { color: var(--text-muted); }
+        .modal-btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            background: var(--accent);
+            color: var(--black);
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            margin-top: 8px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+        .modal-btn:hover { opacity: 0.85; }
+        .modal-error {
+            color: #ef4444;
+            font-size: 12px;
+            margin-top: 12px;
+            min-height: 18px;
+        }
+        .modal-close {
+            position: absolute; top: 20px; right: 20px;
+            background: none; border: none; color: var(--text-muted);
+            font-size: 20px; cursor: pointer;
+            display: none;
+        }
+        .modal-close.visible { display: block; }
+
+        /* ── Toast ─────────────────────────────────────────── */
         .toast {
-            position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%) translateY(20px);
-            background: var(--bg-elevated); border: 1px solid var(--accent);
-            padding: 10px 24px; border-radius: 12px; font-size: 13px;
-            color: var(--accent); z-index: 200; opacity: 0;
-            transition: all 0.3s; pointer-events: none;
-            box-shadow: 0 8px 30px rgba(139,92,246,0.2);
+            position: fixed; bottom: 100px; left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 12px;
+            opacity: 0;
+            transition: all 0.3s;
+            z-index: 200;
+            pointer-events: none;
         }
         .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-        /* ── Locked state (not logged in) ─────────────────────── */
-        .input-area.locked { opacity: 0.4; pointer-events: none; }
+        /* ── Responsive ───────────────────────────────────── */
+        @media (max-width: 600px) {
+            .topbar { padding: 12px 16px; }
+            .chat-messages { padding: 16px; }
+            .input-area { padding: 12px 16px 16px; }
+            .message { max-width: 90%; }
+            .model-select { display: none; }
+        }
     </style>
 </head>
 <body>
-    <!-- Animated Aurora Background -->
-    <div class="aurora-bg">
-        <div class="orb"></div>
-        <div class="orb"></div>
-        <div class="orb"></div>
-        <div class="orb"></div>
-        <div class="stars"></div>
+
+<canvas id="coreCanvas"></canvas>
+
+<div class="app">
+    <!-- Top Bar -->
+    <div class="topbar">
+        <div class="topbar-left">
+            <span class="logo">Eris</span>
+            <div class="status-dot" id="statusDot"></div>
+        </div>
+        <div class="topbar-right">
+            <select class="model-select" id="modelSelector">
+                <option value="gemini-2.5-flash">⚡ Gemini 2.5 Flash</option>
+                <option value="gemini-2.0-flash" selected>🧠 Gemini 2.0 Flash</option>
+            </select>
+            <div class="user-pill" id="userPill">
+                <div class="avatar" id="userAvatar">?</div>
+                <span id="userName">Guest</span>
+            </div>
+        </div>
     </div>
-
-    <!-- Toast -->
-    <div class="toast" id="toast"></div>
-
-    <!-- Sidebar -->
-    <nav class="sidebar">
-        <div class="sidebar-logo">M</div>
-        <button class="sidebar-btn active" title="Chat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></button>
-        <button class="sidebar-btn" id="voiceToggleBtn" title="Voice Output: ON">
-            <svg id="voiceIconOn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
-            <svg id="voiceIconOff" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>
-        </button>
-        <div class="sidebar-spacer"></div>
-        <div class="user-avatar" id="switchUserBtn" title="Log out / Switch User">?</div>
-    </nav>
 
     <!-- Main -->
     <div class="main">
-        <div class="topbar">
-            <select class="model-selector" id="modelSelector" title="Switch AI Model">
-                <option value="gemini-2.5-flash">⚡ 2.5 Flash</option>
-                <option value="gemini-3.5-flash">🧠 3.5 Flash</option>
-            </select>
-            <span class="user-label" id="userLabel" style="display:none;"></span>
-            <div class="emotional-pill" id="emotionalBadge">OFFLINE</div>
+        <!-- Welcome View (with core) -->
+        <div class="welcome-view" id="welcomeView">
+            <div class="welcome-label">Eris is listening</div>
+            <div class="welcome-sub" id="welcomeSub">Log in to begin</div>
         </div>
 
-        <div class="welcome-screen" id="welcomeScreen">
-            <div class="greeting" id="greetingText">Hello, <span class="name">Traveler</span><br><span>What's the plan?</span></div>
-        </div>
-
+        <!-- Chat View -->
         <div class="chat-view" id="chatView">
             <div class="chat-messages" id="chatMessages"></div>
         </div>
 
+        <!-- Input -->
         <div class="input-area locked" id="inputArea">
-            <div class="input-pill">
-                <button class="mic-btn" id="micBtn" title="Click to speak">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line></svg>
-                </button>
-                <textarea id="messageInput" placeholder="Log in to talk to Maxis..." rows="1" disabled></textarea>
-                <button class="send-btn" id="sendBtn">
-                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z"/></svg>
-                </button>
+            <div class="input-wrap">
+                <textarea id="messageInput" rows="1" placeholder="Speak to Eris..." disabled></textarea>
+                <div class="input-actions">
+                    <button class="input-btn" id="micBtn" title="Voice input">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                            <line x1="12" y1="19" x2="12" y2="23"/>
+                            <line x1="8" y1="23" x2="16" y2="23"/>
+                        </svg>
+                    </button>
+                    <button class="input-btn" id="sendBtn">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="22" y1="2" x2="11" y2="13"/>
+                            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                        </svg>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
+</div>
 
-    <!-- Login Modal -->
-    <div class="modal-overlay" id="loginModal">
-        <div class="modal">
-            <button class="modal-close" id="modalClose">&times;</button>
-            <h2 id="modalTitle">Welcome to MAXIS</h2>
-            <p id="modalDesc">Log in or register a new account.</p>
-            <input type="text" id="loginUsername" placeholder="Username" autocomplete="off">
-            <input type="password" id="loginPassword" placeholder="Password" autocomplete="off">
-            <div class="login-error" id="loginError"></div>
-            <div class="modal-actions">
-                <button class="btn-primary" id="loginBtn">Log In / Register</button>
-                <button class="btn-secondary" id="guestCloseBtn" style="display:none;">Cancel</button>
-            </div>
-        </div>
+<!-- Login Modal -->
+<div class="modal-overlay show" id="loginModal">
+    <button class="modal-close" id="modalClose">✕</button>
+    <div class="modal-box">
+        <div class="modal-logo">Eris</div>
+        <div class="modal-desc" id="modalDesc">Identify yourself.</div>
+        <input class="modal-input" id="loginUsername" type="text" placeholder="Username" autocomplete="off" spellcheck="false">
+        <input class="modal-input" id="loginPassword" type="password" placeholder="Password">
+        <button class="modal-btn" id="loginBtn">Enter</button>
+        <div class="modal-error" id="loginError"></div>
     </div>
+</div>
 
-    <script>
-        let ws = null, isConnected = false, isThinking = false;
-        let personName = '', personId = '', hasMessages = false, isLoggedIn = false;
+<!-- Toast -->
+<div class="toast" id="toast"></div>
 
-        const $ = id => document.getElementById(id);
-        const el = {
-            chatMsg: $('chatMessages'), input: $('messageInput'), send: $('sendBtn'),
-            welcome: $('welcomeScreen'), chatView: $('chatView'), greeting: $('greetingText'),
-            modal: $('loginModal'), loginUser: $('loginUsername'), loginPass: $('loginPassword'),
-            loginBtn: $('loginBtn'), loginError: $('loginError'), badge: $('emotionalBadge'),
-            switchBtn: $('switchUserBtn'), micBtn: $('micBtn'), inputArea: $('inputArea'),
-            voiceToggleBtn: $('voiceToggleBtn'), voiceIconOn: $('voiceIconOn'), voiceIconOff: $('voiceIconOff'),
-            modelSelector: $('modelSelector'), toast: $('toast'), userLabel: $('userLabel'),
-            modalClose: $('modalClose'), guestCloseBtn: $('guestCloseBtn'),
-            modalTitle: $('modalTitle'), modalDesc: $('modalDesc'),
+<script>
+    // ════════════════════════════════════════════════════════
+    //  ERIS — Particle Core Engine
+    // ════════════════════════════════════════════════════════
+
+    const canvas = document.getElementById('coreCanvas');
+    const ctx = canvas.getContext('2d');
+    let W, H, cx, cy;
+    let coreState = 'idle'; // idle, thinking, speaking
+    let particles = [];
+    const PARTICLE_COUNT = 300;
+    let time = 0;
+    let stateTransition = 0;
+    let targetRadius = 80;
+    let currentRadius = 80;
+
+    function resize() {
+        W = canvas.width = window.innerWidth;
+        H = canvas.height = window.innerHeight;
+        cx = W / 2;
+        cy = H / 2;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // Particle class
+    class Particle {
+        constructor() {
+            this.reset();
+        }
+        reset() {
+            const angle = Math.random() * Math.PI * 2;
+            const dist = 30 + Math.random() * 60;
+            this.x = cx + Math.cos(angle) * dist;
+            this.y = cy + Math.sin(angle) * dist;
+            this.baseX = this.x;
+            this.baseY = this.y;
+            this.vx = (Math.random() - 0.5) * 0.3;
+            this.vy = (Math.random() - 0.5) * 0.3;
+            this.size = 0.5 + Math.random() * 1.5;
+            this.alpha = 0.1 + Math.random() * 0.6;
+            this.orbitSpeed = (Math.random() - 0.5) * 0.008;
+            this.orbitRadius = 30 + Math.random() * 70;
+            this.orbitAngle = Math.random() * Math.PI * 2;
+            this.life = 1;
+            this.decay = 0.0005 + Math.random() * 0.001;
+            this.pulsePhase = Math.random() * Math.PI * 2;
+            this.layer = Math.floor(Math.random() * 3); // 0=inner, 1=mid, 2=outer
+        }
+        update() {
+            const speed = coreState === 'thinking' ? 3.5 : coreState === 'speaking' ? 1.8 : 1.0;
+            const chaos = coreState === 'thinking' ? 0.8 : coreState === 'speaking' ? 0.3 : 0.05;
+            const breathe = coreState === 'idle' ? Math.sin(time * 0.8 + this.pulsePhase) * 8 : 0;
+
+            this.orbitAngle += this.orbitSpeed * speed;
+            const r = this.orbitRadius + breathe +
+                (coreState === 'thinking' ? Math.sin(time * 3 + this.pulsePhase) * 20 : 0);
+
+            const targetX = cx + Math.cos(this.orbitAngle) * r;
+            const targetY = cy + Math.sin(this.orbitAngle) * r;
+
+            this.x += (targetX - this.x) * 0.02 + (Math.random() - 0.5) * chaos;
+            this.y += (targetY - this.y) * 0.02 + (Math.random() - 0.5) * chaos;
+
+            // Speaking: particles elongate outward
+            if (coreState === 'speaking') {
+                const dx = this.x - cx;
+                const dy = this.y - cy;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                if (dist > 0) {
+                    this.x += (dx/dist) * Math.sin(time * 4 + this.pulsePhase) * 2;
+                    this.y += (dy/dist) * Math.sin(time * 4 + this.pulsePhase) * 2;
+                }
+            }
+
+            this.life -= this.decay * 0.5;
+            if (this.life <= 0) this.reset();
+        }
+        draw() {
+            const pulse = coreState === 'thinking' 
+                ? 0.5 + Math.sin(time * 5 + this.pulsePhase) * 0.5
+                : 0.7 + Math.sin(time * 1.5 + this.pulsePhase) * 0.3;
+            
+            const a = this.alpha * this.life * pulse;
+            const s = this.size * (coreState === 'thinking' ? 1.3 : 1);
+
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, s, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(255, 255, 255, ${a})`;
+            ctx.fill();
+        }
+    }
+
+    // Initialize particles
+    for (let i = 0; i < PARTICLE_COUNT; i++) {
+        particles.push(new Particle());
+    }
+
+    // Draw connections between nearby particles
+    function drawConnections() {
+        const maxDist = coreState === 'thinking' ? 60 : 40;
+        const alpha = coreState === 'thinking' ? 0.08 : 0.03;
+        
+        for (let i = 0; i < particles.length; i++) {
+            for (let j = i + 1; j < particles.length; j++) {
+                const dx = particles[i].x - particles[j].x;
+                const dy = particles[i].y - particles[j].y;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                if (dist < maxDist) {
+                    const a = (1 - dist / maxDist) * alpha;
+                    ctx.beginPath();
+                    ctx.moveTo(particles[i].x, particles[i].y);
+                    ctx.lineTo(particles[j].x, particles[j].y);
+                    ctx.strokeStyle = `rgba(255, 255, 255, ${a})`;
+                    ctx.lineWidth = 0.5;
+                    ctx.stroke();
+                }
+            }
+        }
+    }
+
+    // Core glow
+    function drawCoreGlow() {
+        const pulse = Math.sin(time * (coreState === 'thinking' ? 4 : 1.2)) * 0.3 + 0.7;
+        const r = currentRadius * pulse;
+        
+        // Outer glow
+        const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * 2);
+        grad.addColorStop(0, `rgba(255, 255, 255, ${coreState === 'thinking' ? 0.06 : 0.03})`);
+        grad.addColorStop(0.5, `rgba(255, 255, 255, ${coreState === 'thinking' ? 0.02 : 0.01})`);
+        grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, W, H);
+
+        // Inner bright core
+        const innerGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * 0.3);
+        innerGrad.addColorStop(0, `rgba(255, 255, 255, ${coreState === 'thinking' ? 0.15 : 0.08})`);
+        innerGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        ctx.fillStyle = innerGrad;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r * 0.5, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // Animation loop
+    function animate() {
+        time += 0.016;
+        ctx.clearRect(0, 0, W, H);
+
+        // Smooth radius transition
+        currentRadius += (targetRadius - currentRadius) * 0.05;
+
+        drawCoreGlow();
+
+        for (const p of particles) {
+            p.update();
+            p.draw();
+        }
+
+        drawConnections();
+
+        requestAnimationFrame(animate);
+    }
+    animate();
+
+    // State transitions
+    function setCoreState(state) {
+        coreState = state;
+        if (state === 'thinking') {
+            targetRadius = 120;
+        } else if (state === 'speaking') {
+            targetRadius = 100;
+        } else {
+            targetRadius = 80;
+        }
+    }
+
+    // ════════════════════════════════════════════════════════
+    //  APP LOGIC
+    // ════════════════════════════════════════════════════════
+
+    let ws = null, isConnected = false, isThinking = false;
+    let personName = '', personId = '', hasMessages = false, isLoggedIn = false;
+
+    const $ = id => document.getElementById(id);
+    const el = {
+        chatMsg: $('chatMessages'), input: $('messageInput'), send: $('sendBtn'),
+        welcome: $('welcomeView'), chatView: $('chatView'), welcomeSub: $('welcomeSub'),
+        modal: $('loginModal'), loginUser: $('loginUsername'), loginPass: $('loginPassword'),
+        loginBtn: $('loginBtn'), loginError: $('loginError'), statusDot: $('statusDot'),
+        micBtn: $('micBtn'), inputArea: $('inputArea'),
+        modelSelector: $('modelSelector'), toast: $('toast'),
+        userPill: $('userPill'), userAvatar: $('userAvatar'), userName: $('userName'),
+        modalClose: $('modalClose'), modalDesc: $('modalDesc'),
+    };
+
+    // Toast
+    function showToast(msg) {
+        el.toast.textContent = msg;
+        el.toast.classList.add('show');
+        setTimeout(() => el.toast.classList.remove('show'), 2500);
+    }
+
+    // Model switcher
+    const savedModel = localStorage.getItem('eris_model');
+    if (savedModel) el.modelSelector.value = savedModel;
+    el.modelSelector.addEventListener('change', () => {
+        const model = el.modelSelector.value;
+        localStorage.setItem('eris_model', model);
+        if (ws && isConnected) ws.send(JSON.stringify({ type: 'switch_model', model }));
+    });
+
+    // ── WebSocket ─────────────────────────────────────────
+    function connect() {
+        const url = `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/ws/chat`;
+        ws = new WebSocket(url);
+
+        ws.onopen = () => {
+            isConnected = true;
+            el.statusDot.classList.add('online');
+
+            // Send model preference
+            ws.send(JSON.stringify({ type: 'switch_model', model: el.modelSelector.value }));
+
+            // ALWAYS show login modal — no auto-login
+            showLoginModal(false);
         };
 
-        // ── Toast ─────────────────────────────────────────────
-        function showToast(msg) {
-            el.toast.textContent = msg; el.toast.classList.add('show');
-            setTimeout(() => el.toast.classList.remove('show'), 2500);
-        }
+        ws.onmessage = (e) => {
+            const data = JSON.parse(e.data);
 
-        // ── Model Switcher ────────────────────────────────────
-        const savedModel = localStorage.getItem('maxis_model');
-        if (savedModel) el.modelSelector.value = savedModel;
+            if (data.type === 'status') {
+                // status update
 
-        el.modelSelector.addEventListener('change', () => {
-            const model = el.modelSelector.value;
-            localStorage.setItem('maxis_model', model);
-            if (ws && isConnected) ws.send(JSON.stringify({ type: 'switch_model', model }));
-        });
+            } else if (data.type === 'login_success') {
+                onLoginSuccess(data);
 
-        // ── WebSocket ─────────────────────────────────────────
-        function connect() {
-            const url = `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/ws/chat`;
-            ws = new WebSocket(url);
+            } else if (data.type === 'login_failed') {
+                el.loginError.textContent = data.reason || 'Access denied.';
 
-            ws.onopen = () => {
-                isConnected = true;
-                el.badge.textContent = 'CONNECTED';
+            } else if (data.type === 'model_switched') {
+                showToast(`Model → ${data.model}`);
 
-                // Send model preference
-                ws.send(JSON.stringify({ type: 'switch_model', model: el.modelSelector.value }));
+            } else if (data.type === 'thinking') {
+                showThinking();
+                setCoreState('thinking');
 
-                // Try auto-login
-                const savedUser = localStorage.getItem('maxis_username');
-                const savedPass = localStorage.getItem('maxis_session_token');
-                if (savedUser && savedPass) {
-                    ws.send(JSON.stringify({ type: 'login', username: savedUser, password: savedPass }));
-                } else {
-                    showLoginModal(false); // First visit — must log in
-                }
-            };
+            } else if (data.type === 'response') {
+                removeThinking();
+                setCoreState('speaking');
+                appendMessage('eris', data.content);
+                // Return to idle after a delay
+                setTimeout(() => setCoreState('idle'), 3000);
 
-            ws.onmessage = (e) => {
-                const data = JSON.parse(e.data);
-
-                if (data.type === 'status') {
-                    if (data.data?.emotional_state) el.badge.textContent = data.data.emotional_state;
-
-                } else if (data.type === 'login_success') {
-                    onLoginSuccess(data);
-
-                } else if (data.type === 'login_failed') {
-                    el.loginError.textContent = data.reason || 'Login failed.';
-
-                } else if (data.type === 'model_switched') {
-                    showToast(`Model → ${data.model}`);
-
-                } else if (data.type === 'thinking') {
-                    showThinking();
-
-                } else if (data.type === 'response') {
-                    removeThinking();
-                    appendMessage('maxis', data.content);
-                    if (data.emotional_state) el.badge.textContent = data.emotional_state;
-                    speakResponse(data.content);
-
-                } else if (data.type === 'error') {
-                    removeThinking();
-                    appendMessage('maxis', `⚠️ ${data.message}`);
-                }
-            };
-
-            ws.onclose = () => {
-                isConnected = false;
-                el.badge.textContent = 'OFFLINE';
-                updateInputState();
-                setTimeout(connect, 2000);
-            };
-        }
-
-        // ── Login Success ─────────────────────────────────────
-        function onLoginSuccess(data) {
-            isLoggedIn = true;
-            personName = data.name;
-            personId = data.person_id;
-
-            // Save session
-            if (el.loginUser.value) localStorage.setItem('maxis_username', el.loginUser.value);
-            if (el.loginPass.value) localStorage.setItem('maxis_session_token', el.loginPass.value);
-
-            // Update UI
-            hideLoginModal();
-            el.switchBtn.textContent = personName.charAt(0).toUpperCase();
-            el.userLabel.textContent = personName;
-            el.userLabel.style.display = 'inline';
-            el.inputArea.classList.remove('locked');
-            el.input.disabled = false;
-            el.input.placeholder = 'Talk to Maxis...';
-            updateGreeting();
-            updateInputState();
-
-            // Clear chat for this session
-            hasMessages = false;
-            el.chatMsg.innerHTML = '';
-            el.welcome.classList.remove('hidden');
-            el.chatView.classList.remove('active');
-
-            if (data.is_creator) {
-                showToast('Welcome home, Creator ✨');
+            } else if (data.type === 'error') {
+                removeThinking();
+                setCoreState('idle');
+                appendMessage('eris', `⚠️ ${data.message}`);
             }
+        };
+
+        ws.onclose = () => {
+            isConnected = false;
+            el.statusDot.classList.remove('online');
+            setTimeout(connect, 2000);
+        };
+    }
+
+    // ── Login ─────────────────────────────────────────────
+    function onLoginSuccess(data) {
+        isLoggedIn = true;
+        personName = data.name;
+        personId = data.person_id;
+
+        hideLoginModal();
+        el.userPill.style.display = 'flex';
+        el.userAvatar.textContent = personName.charAt(0).toUpperCase();
+        el.userName.textContent = personName;
+        el.inputArea.classList.remove('locked');
+        el.input.disabled = false;
+        el.input.placeholder = 'Speak to Eris...';
+        el.welcomeSub.textContent = `Hello, ${personName}`;
+
+        hasMessages = false;
+        el.chatMsg.innerHTML = '';
+        el.welcome.classList.remove('hidden');
+        el.chatView.classList.remove('active');
+
+        if (data.is_creator) {
+            showToast('Welcome back, Creator ✨');
         }
+    }
 
-        // ── Login Modal ───────────────────────────────────────
-        function showLoginModal(canClose) {
-            el.modalTitle.textContent = canClose ? 'Switch User' : 'Welcome to MAXIS';
-            el.modalDesc.textContent = canClose
-                ? 'Log in as a different user.'
-                : 'Log in or create a new account to start chatting.';
-            el.loginUser.value = ''; el.loginPass.value = '';
-            el.loginError.textContent = '';
-            el.modalClose.classList.toggle('visible', canClose);
-            el.guestCloseBtn.style.display = canClose ? 'block' : 'none';
-            el.modal.classList.add('show');
-            setTimeout(() => el.loginUser.focus(), 100);
+    function showLoginModal(canClose) {
+        el.modalDesc.textContent = canClose ? 'Switch identity.' : 'Identify yourself.';
+        el.loginUser.value = ''; el.loginPass.value = '';
+        el.loginError.textContent = '';
+        el.modalClose.classList.toggle('visible', canClose);
+        el.modal.classList.add('show');
+        setTimeout(() => el.loginUser.focus(), 100);
+    }
+    function hideLoginModal() { el.modal.classList.remove('show'); }
+
+    el.loginBtn.addEventListener('click', () => {
+        const username = el.loginUser.value.trim();
+        const password = el.loginPass.value;
+        if (!username || !password) { el.loginError.textContent = 'Both fields required.'; return; }
+        if (username.length < 2) { el.loginError.textContent = 'Username too short.'; return; }
+        if (password.length < 4) { el.loginError.textContent = 'Password too short.'; return; }
+        el.loginError.textContent = '';
+        ws.send(JSON.stringify({ type: 'login', username, password }));
+    });
+
+    el.loginPass.addEventListener('keydown', e => { if (e.key === 'Enter') el.loginBtn.click(); });
+    el.loginUser.addEventListener('keydown', e => { if (e.key === 'Enter') el.loginPass.focus(); });
+    el.modalClose.addEventListener('click', hideLoginModal);
+
+    // Switch user (logout)
+    el.userPill.addEventListener('click', () => {
+        if (!isLoggedIn) { showLoginModal(false); return; }
+        isLoggedIn = false; personName = ''; personId = '';
+        hasMessages = false;
+        el.chatMsg.innerHTML = '';
+        el.welcome.classList.remove('hidden');
+        el.chatView.classList.remove('active');
+        el.userPill.style.display = 'none';
+        el.inputArea.classList.add('locked');
+        el.input.disabled = true;
+        el.input.placeholder = 'Log in to begin...';
+        el.welcomeSub.textContent = 'Log in to begin';
+        showLoginModal(false);
+    });
+
+    // ── Chat ──────────────────────────────────────────────
+    function updateInputState() {
+        const val = el.input.value.trim();
+        el.send.classList.toggle('active', val.length > 0 && isConnected && isLoggedIn);
+    }
+
+    function sendMsg() {
+        const val = el.input.value.trim();
+        if (!val || !isConnected || !isLoggedIn) return;
+        appendMessage('user', val);
+        ws.send(JSON.stringify({ type: 'message', content: val }));
+        el.input.value = ''; el.input.style.height = 'auto'; updateInputState();
+    }
+
+    el.send.addEventListener('click', () => sendMsg());
+    el.input.addEventListener('keydown', e => {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(); }
+    });
+    el.input.addEventListener('input', () => {
+        el.input.style.height = 'auto';
+        el.input.style.height = Math.min(el.input.scrollHeight, 150) + 'px';
+        updateInputState();
+    });
+
+    function appendMessage(sender, text) {
+        if (!hasMessages) {
+            hasMessages = true;
+            el.welcome.classList.add('hidden');
+            el.chatView.classList.add('active');
         }
+        const div = document.createElement('div');
+        div.className = `message ${sender}`;
+        const t = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        let fmt = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        fmt = fmt.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
+        fmt = fmt.replace(/`([^`]+)`/g, '<code>$1</code>');
+        fmt = fmt.replace(/\*\*([^\*]+)\*\*/g, '<strong>$1</strong>');
+        fmt = fmt.split('\n\n').map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('');
+        div.innerHTML = `<div class="msg-bubble">${fmt}</div><div class="msg-time">${t}</div>`;
+        el.chatMsg.appendChild(div);
+        scrollToBottom();
+    }
 
-        function hideLoginModal() { el.modal.classList.remove('show'); }
+    function showThinking() {
+        if (isThinking) return; isThinking = true;
+        const div = document.createElement('div');
+        div.className = 'message eris'; div.id = 'thinking';
+        div.innerHTML = `<div class="msg-bubble thinking-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>`;
+        el.chatMsg.appendChild(div); scrollToBottom();
+    }
+    function removeThinking() { isThinking = false; const e = document.getElementById('thinking'); if (e) e.remove(); }
+    function scrollToBottom() { setTimeout(() => { el.chatMsg.scrollTop = el.chatMsg.scrollHeight; }, 50); }
 
-        el.loginBtn.addEventListener('click', () => {
-            const username = el.loginUser.value.trim();
-            const password = el.loginPass.value;
-            if (!username || !password) { el.loginError.textContent = 'Both fields are required.'; return; }
-            if (username.length < 2) { el.loginError.textContent = 'Username must be at least 2 characters.'; return; }
-            if (password.length < 4) { el.loginError.textContent = 'Password must be at least 4 characters.'; return; }
-            el.loginError.textContent = '';
-            ws.send(JSON.stringify({ type: 'login', username, password }));
-        });
+    // ── Voice (Mic) ───────────────────────────────────────
+    let recognition = null, isRecording = false;
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        recognition = new SR();
+        recognition.continuous = false; recognition.interimResults = false; recognition.lang = 'en-US';
+        recognition.onstart = () => { isRecording = true; el.micBtn.classList.add('recording'); el.input.placeholder = 'Listening...'; };
+        recognition.onresult = (e) => { el.input.value = e.results[0][0].transcript; updateInputState(); sendMsg(); };
+        recognition.onerror = () => stopRec();
+        recognition.onend = () => stopRec();
+    } else { el.micBtn.style.display = 'none'; }
+    function stopRec() { isRecording = false; el.micBtn.classList.remove('recording'); el.input.placeholder = 'Speak to Eris...'; }
+    el.micBtn.addEventListener('click', () => { if (!recognition || !isLoggedIn) return; isRecording ? recognition.stop() : recognition.start(); });
 
-        el.loginPass.addEventListener('keydown', e => { if (e.key === 'Enter') el.loginBtn.click(); });
-        el.loginUser.addEventListener('keydown', e => { if (e.key === 'Enter') el.loginPass.focus(); });
-
-        // Close button (only visible when switching users, not on first login)
-        el.modalClose.addEventListener('click', hideLoginModal);
-        el.guestCloseBtn.addEventListener('click', hideLoginModal);
-
-        // Switch User (logout)
-        el.switchBtn.addEventListener('click', () => {
-            if (!isLoggedIn) {
-                showLoginModal(false);
-                return;
-            }
-            // Log out current user
-            localStorage.removeItem('maxis_username');
-            localStorage.removeItem('maxis_session_token');
-            isLoggedIn = false; personName = ''; personId = '';
-            hasMessages = false;
-            el.chatMsg.innerHTML = '';
-            el.welcome.classList.remove('hidden');
-            el.chatView.classList.remove('active');
-            el.switchBtn.textContent = '?';
-            el.userLabel.style.display = 'none';
-            el.inputArea.classList.add('locked');
-            el.input.disabled = true;
-            el.input.placeholder = 'Log in to talk to Maxis...';
-            showLoginModal(false);
-        });
-
-        function updateGreeting() {
-            if (!personName) return;
-            const hr = new Date().getHours();
-            const t = hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening';
-            el.greeting.innerHTML = `${t}, <span class="name">${personName}</span><br><span>What's the plan?</span>`;
-        }
-
-        function updateInputState() {
-            const val = el.input.value.trim();
-            el.send.classList.toggle('active', val.length > 0 && isConnected && isLoggedIn);
-        }
-
-        function sendMsg(isVoice = false) {
-            const val = el.input.value.trim();
-            if (!val || !isConnected || !isLoggedIn) return;
-            appendMessage('user', val);
-            ws.send(JSON.stringify({ type: 'message', content: val, is_voice: isVoice }));
-            el.input.value = ''; el.input.style.height = 'auto'; updateInputState();
-        }
-
-        el.send.addEventListener('click', () => sendMsg());
-        el.input.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(); } });
-        el.input.addEventListener('input', () => {
-            el.input.style.height = 'auto';
-            el.input.style.height = Math.min(el.input.scrollHeight, 150) + 'px';
-            updateInputState();
-        });
-
-        function appendMessage(sender, text) {
-            if (!hasMessages) { hasMessages = true; el.welcome.classList.add('hidden'); el.chatView.classList.add('active'); }
-            const div = document.createElement('div');
-            div.className = `message ${sender}`;
-            const t = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            let fmt = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-            fmt = fmt.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
-            fmt = fmt.replace(/`([^`]+)`/g, '<code>$1</code>');
-            fmt = fmt.replace(/\*\*([^\*]+)\*\*/g, '<strong>$1</strong>');
-            fmt = fmt.split('\n\n').map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('');
-            div.innerHTML = `<div class="msg-bubble">${fmt}</div><div class="msg-time">${t}</div>`;
-            el.chatMsg.appendChild(div); scrollToBottom();
-        }
-
-        function showThinking() {
-            if (isThinking) return; isThinking = true;
-            const div = document.createElement('div');
-            div.className = 'message maxis'; div.id = 'thinking';
-            div.innerHTML = `<div class="msg-bubble thinking-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>`;
-            el.chatMsg.appendChild(div); scrollToBottom();
-        }
-        function removeThinking() { isThinking = false; const e = document.getElementById('thinking'); if (e) e.remove(); }
-        function scrollToBottom() { setTimeout(() => { el.chatMsg.scrollTop = el.chatMsg.scrollHeight; }, 50); }
-
-        // ── Voice ─────────────────────────────────────────────
-        let voiceEnabled = true;
-        el.voiceToggleBtn.addEventListener('click', () => {
-            voiceEnabled = !voiceEnabled;
-            el.voiceIconOn.style.display = voiceEnabled ? 'block' : 'none';
-            el.voiceIconOff.style.display = voiceEnabled ? 'none' : 'block';
-            el.voiceToggleBtn.title = voiceEnabled ? "Voice Output: ON" : "Voice Output: OFF";
-            if (!voiceEnabled) window.speechSynthesis.cancel();
-        });
-
-        function stripMd(t) {
-            return t.replace(/\*([^\*]+)\*/g,'$1').replace(/_([^_]+)_/g,'$1')
-                .replace(/\*\*/g,'').replace(/```[\s\S]*?```/g,' ').replace(/`[^`]+`/g,' ').replace(/#/g,'').trim();
-        }
-        function speakResponse(text) {
-            if (!voiceEnabled || !window.speechSynthesis) return;
-            window.speechSynthesis.cancel();
-            const c = stripMd(text); if (!c) return;
-            const u = new SpeechSynthesisUtterance(c);
-            u.rate = 1.05; u.pitch = 1.0;
-            const voices = window.speechSynthesis.getVoices();
-            let v = voices.find(v=>v.name.includes('Google UK English Female')) ||
-                    voices.find(v=>v.name.includes('Microsoft Hazel')) ||
-                    voices.find(v=>v.name.includes('Samantha')&&v.lang.includes('en')) ||
-                    voices.find(v=>v.lang==='en-GB'||v.lang==='en-US');
-            if (v) u.voice = v;
-            window.speechSynthesis.speak(u);
-        }
-        window.speechSynthesis.onvoiceschanged = () => { window.speechSynthesis.getVoices(); };
-
-        // ── Speech Recognition ────────────────────────────────
-        let recognition = null, isRecording = false;
-        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-            recognition = new SR();
-            recognition.continuous = false; recognition.interimResults = false; recognition.lang = 'en-US';
-            recognition.onstart = () => { isRecording = true; el.micBtn.classList.add('recording'); el.input.placeholder = "Listening..."; window.speechSynthesis.cancel(); };
-            recognition.onresult = (e) => { el.input.value = e.results[0][0].transcript; updateInputState(); sendMsg(true); };
-            recognition.onerror = () => stopRecording();
-            recognition.onend = () => stopRecording();
-        } else { el.micBtn.style.display = 'none'; }
-
-        function toggleRecording() { if (!recognition || !isLoggedIn) return; isRecording ? recognition.stop() : recognition.start(); }
-        function stopRecording() { isRecording = false; el.micBtn.classList.remove('recording'); el.input.placeholder = "Talk to Maxis..."; }
-        el.micBtn.addEventListener('click', toggleRecording);
-
-        connect();
-    </script>
+    connect();
+</script>
 </body>
 </html>

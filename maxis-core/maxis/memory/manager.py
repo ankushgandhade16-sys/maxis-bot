@@ -192,7 +192,7 @@ class MemoryManager:
         from maxis.memory.episodic import Episode
 
         # Store the interaction as an episode
-        content = f"User: {user_message}\nMaxis: {assistant_response}"
+        content = f"User: {user_message}\nEris: {assistant_response}"
         episode = Episode(
             content=content,
             person_id=person_id,
