@@ -97,31 +97,59 @@ class MemoryManager:
                         ep_lines.append(f"[{ts}] {ep['content'][:200]}")
                     sections.append("### Your Past Interactions (private)\n" + "\n".join(ep_lines))
 
-            # Common memories — recent interactions across ALL users
-            # This gives Eris shared context so she doesn't hallucinate
-            common_episodes = await self.episodic.retrieve(
-                query=query,
-                person_id=None,  # no filter = all users
-                top_k=5 if is_creator else 3,  # creator gets more context
-            )
-            if common_episodes:
-                ep_lines = []
-                for ep in common_episodes:
-                    ts = time.strftime(
-                        "%b %d at %I:%M %p",
-                        time.localtime(ep["metadata"].get("timestamp", 0)),
-                    )
-                    
-                    who_id = ep["metadata"].get("person_id")
-                    who = "unknown"
-                    if who_id:
-                        p = await self.persons.get_person(who_id)
-                        if p:
-                            who = p.get("name", "unknown")
-                    
-                    ep_lines.append(f"[{ts} | user:{who}] {ep['content'][:300]}")
-                header = "### All Users' Conversations (Creator Access)" if is_creator else "### General Knowledge (shared context)"
-                sections.append(header + "\n" + "\n".join(ep_lines))
+            if is_creator:
+                try:
+                    from maxis.memory.chat_history import ChatHistoryStore
+                    chat_store = ChatHistoryStore()
+                    await chat_store.initialize()
+                    recent_all = chat_store.get_recent_messages_all_users(limit=25)
+                    if recent_all:
+                        hist_lines = []
+                        for m in recent_all:
+                            ts = time.strftime(
+                                "%I:%M %p",
+                                time.localtime(m.get("timestamp", 0)),
+                            )
+                            who_id = m.get("person_id")
+                            who = "unknown"
+                            if who_id:
+                                p = await self.persons.get_person(who_id)
+                                if p:
+                                    who = p.get("name", "unknown")
+                            
+                            name = who if m["role"] == "user" else "Eris"
+                            hist_lines.append(f"[{ts}] {name}: {m['content']}")
+                        
+                        sections.append("### Live Global Chat Feed (Creator Omniscience)\n" + "\n".join(hist_lines))
+                except Exception as e:
+                    from loguru import logger
+                    logger.warning(f"Creator global chat fetch failed: {e}")
+            else:
+                # Common memories — recent interactions across ALL users
+                # This gives Eris shared context so she doesn't hallucinate
+                common_episodes = await self.episodic.retrieve(
+                    query=query,
+                    person_id=None,  # no filter = all users
+                    top_k=3, 
+                )
+                if common_episodes:
+                    ep_lines = []
+                    for ep in common_episodes:
+                        ts = time.strftime(
+                            "%b %d at %I:%M %p",
+                            time.localtime(ep["metadata"].get("timestamp", 0)),
+                        )
+                        
+                        who_id = ep["metadata"].get("person_id")
+                        who = "unknown"
+                        if who_id:
+                            p = await self.persons.get_person(who_id)
+                            if p:
+                                who = p.get("name", "unknown")
+                        
+                        ep_lines.append(f"[{ts} | user:{who}] {ep['content'][:300]}")
+                    header = "### General Knowledge (shared context)"
+                    sections.append(header + "\n" + "\n".join(ep_lines))
         except Exception as e:
             logger.warning(f"Episodic recall failed: {e}")
 
