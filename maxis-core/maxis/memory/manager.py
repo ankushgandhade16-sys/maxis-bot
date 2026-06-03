@@ -59,6 +59,7 @@ class MemoryManager:
         query: str,
         person_id: str | None = None,
         include_emotional: bool = True,
+        is_creator: bool = False,
     ) -> str:
         """
         Perform a unified memory recall across all layers.
@@ -97,11 +98,11 @@ class MemoryManager:
                     sections.append("### Your Past Interactions (private)\n" + "\n".join(ep_lines))
 
             # Common memories — recent interactions across ALL users
-            # This gives Maxis shared context so she doesn't hallucinate
+            # This gives Eris shared context so she doesn't hallucinate
             common_episodes = await self.episodic.retrieve(
                 query=query,
                 person_id=None,  # no filter = all users
-                top_k=3,
+                top_k=5 if is_creator else 3,  # creator gets more context
             )
             if common_episodes:
                 ep_lines = []
@@ -111,8 +112,9 @@ class MemoryManager:
                         time.localtime(ep["metadata"].get("timestamp", 0)),
                     )
                     who = ep["metadata"].get("person_id", "unknown")[:8]
-                    ep_lines.append(f"[{ts} | user:{who}] {ep['content'][:200]}")
-                sections.append("### General Knowledge (shared context)\n" + "\n".join(ep_lines))
+                    ep_lines.append(f"[{ts} | user:{who}] {ep['content'][:300]}")
+                header = "### All Users' Conversations (Creator Access)" if is_creator else "### General Knowledge (shared context)"
+                sections.append(header + "\n" + "\n".join(ep_lines))
         except Exception as e:
             logger.warning(f"Episodic recall failed: {e}")
 

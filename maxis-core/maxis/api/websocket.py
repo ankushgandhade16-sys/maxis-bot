@@ -1,8 +1,9 @@
 """
 WebSocket handler — Real-time chat interface.
 
-Handles bidirectional text (and later voice) communication
-between clients and the Maxis orchestrator.
+Handles bidirectional text communication between clients and the Eris
+orchestrator. Supports chat history, session management, and creator
+omniscience.
 """
 
 from __future__ import annotations
@@ -52,17 +53,25 @@ async def websocket_chat_handler(websocket: WebSocket, orchestrator):
 
     Protocol:
     Client sends: {"type": "login", "username": "...", "password": "..."}
-    Client sends: {"type": "message", "content": "...", "is_voice": false}
+    Client sends: {"type": "message", "content": "..."}
+    Client sends: {"type": "list_chats"}
+    Client sends: {"type": "load_chat", "session_id": "..."}
+    Client sends: {"type": "new_chat"}
+    Client sends: {"type": "switch_model", "model": "..."}
     Server sends: {"type": "login_success", "name": "...", "is_creator": false}
     Server sends: {"type": "login_failed", "reason": "..."}
     Server sends: {"type": "response", "content": "...", "emotional_state": "..."}
-    Server sends: {"type": "status", "data": {...}}
+    Server sends: {"type": "thinking"}
+    Server sends: {"type": "chat_history", "sessions": [...]}
+    Server sends: {"type": "chat_messages", "messages": [...]}
     Server sends: {"type": "error", "message": "..."}
     """
     await manager.connect(websocket)
 
     # Per-connection session state
     session_person_id = None
+    session_is_creator = False
+    current_chat_session_id = None
 
     try:
         # Send initial status
@@ -105,6 +114,7 @@ async def websocket_chat_handler(websocket: WebSocket, orchestrator):
                         continue
 
                     session_person_id = person["id"]
+                    session_is_creator = is_creator
 
                     await manager.send_json(websocket, {
                         "type": "login_success",
@@ -112,6 +122,27 @@ async def websocket_chat_handler(websocket: WebSocket, orchestrator):
                         "name": person["name"],
                         "is_creator": is_creator,
                     })
+
+                    # Auto-create a new chat session
+                    try:
+                        current_chat_session_id = orchestrator.chat_history.create_session(
+                            person_id=session_person_id,
+                        )
+                    except Exception as e:
+                        logger.warning(f"Failed to create chat session: {e}")
+
+                    # Send chat history
+                    try:
+                        if is_creator:
+                            sessions = orchestrator.chat_history.get_all_sessions()
+                        else:
+                            sessions = orchestrator.chat_history.get_sessions(session_person_id)
+                        await manager.send_json(websocket, {
+                            "type": "chat_history",
+                            "sessions": sessions,
+                        })
+                    except Exception as e:
+                        logger.warning(f"Failed to send chat history: {e}")
 
                 except Exception as e:
                     logger.error(f"Login error: {e}")
@@ -134,6 +165,17 @@ async def websocket_chat_handler(websocket: WebSocket, orchestrator):
                     })
                     continue
 
+                # Store user message in chat history
+                if current_chat_session_id:
+                    try:
+                        orchestrator.chat_history.add_message(
+                            session_id=current_chat_session_id,
+                            role="user",
+                            content=content,
+                        )
+                    except Exception as e:
+                        logger.warning(f"Failed to store user message: {e}")
+
                 # Send thinking indicator
                 await manager.send_json(websocket, {
                     "type": "thinking",
@@ -146,7 +188,19 @@ async def websocket_chat_handler(websocket: WebSocket, orchestrator):
                         message=content,
                         person_id=session_person_id,
                         is_voice=is_voice,
+                        is_creator=session_is_creator,
                     )
+
+                    # Store assistant response in chat history
+                    if current_chat_session_id:
+                        try:
+                            orchestrator.chat_history.add_message(
+                                session_id=current_chat_session_id,
+                                role="eris",
+                                content=response,
+                            )
+                        except Exception as e:
+                            logger.warning(f"Failed to store eris response: {e}")
 
                     await manager.send_json(websocket, {
                         "type": "response",
@@ -161,6 +215,54 @@ async def websocket_chat_handler(websocket: WebSocket, orchestrator):
                         "type": "error",
                         "message": str(e),
                     })
+
+            elif msg_type == "list_chats":
+                if not session_person_id:
+                    continue
+                try:
+                    if session_is_creator:
+                        sessions = orchestrator.chat_history.get_all_sessions()
+                    else:
+                        sessions = orchestrator.chat_history.get_sessions(session_person_id)
+                    await manager.send_json(websocket, {
+                        "type": "chat_history",
+                        "sessions": sessions,
+                    })
+                except Exception as e:
+                    logger.warning(f"Failed to list chats: {e}")
+
+            elif msg_type == "load_chat":
+                session_id = data.get("session_id", "")
+                if not session_id or not session_person_id:
+                    continue
+                try:
+                    messages = orchestrator.chat_history.get_messages(session_id)
+                    current_chat_session_id = session_id
+                    await manager.send_json(websocket, {
+                        "type": "chat_messages",
+                        "messages": messages,
+                    })
+                except Exception as e:
+                    logger.warning(f"Failed to load chat: {e}")
+
+            elif msg_type == "new_chat":
+                if not session_person_id:
+                    continue
+                try:
+                    current_chat_session_id = orchestrator.chat_history.create_session(
+                        person_id=session_person_id,
+                    )
+                    # Refresh the chat list
+                    if session_is_creator:
+                        sessions = orchestrator.chat_history.get_all_sessions()
+                    else:
+                        sessions = orchestrator.chat_history.get_sessions(session_person_id)
+                    await manager.send_json(websocket, {
+                        "type": "chat_history",
+                        "sessions": sessions,
+                    })
+                except Exception as e:
+                    logger.warning(f"Failed to create new chat: {e}")
 
             elif msg_type == "status":
                 await manager.send_json(websocket, {
@@ -186,5 +288,3 @@ async def websocket_chat_handler(websocket: WebSocket, orchestrator):
     except Exception as e:
         logger.error(f"WebSocket error: {e}")
         manager.disconnect(websocket)
-
-

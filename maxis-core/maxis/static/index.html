@@ -4,373 +4,269 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ERIS</title>
-    <meta name="description" content="Eris — A persistent, self-aware AI companion.">
+    <meta name="description" content="Eris — A persistent, self-aware AI entity.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
             --black: #000000;
-            --bg: #050505;
-            --surface: #0a0a0a;
-            --surface-2: #111111;
-            --border: rgba(255,255,255,0.06);
-            --text: #e8e8e8;
-            --text-dim: #888888;
-            --text-muted: #555555;
+            --surface: #080808;
+            --surface-2: #0e0e0e;
+            --surface-3: #151515;
+            --border: rgba(255,255,255,0.05);
+            --border-l: rgba(255,255,255,0.08);
+            --text: #e0e0e0;
+            --text-dim: #777;
+            --text-muted: #444;
             --accent: #ffffff;
-            --core-color: rgba(255,255,255,0.9);
-            --core-glow: rgba(255,255,255,0.15);
         }
+        html, body { height: 100%; }
         body {
             font-family: 'Inter', -apple-system, sans-serif;
             background: var(--black);
             color: var(--text);
-            height: 100vh;
             overflow: hidden;
             -webkit-font-smoothing: antialiased;
         }
 
-        /* ── Canvas Background ────────────────────────────── */
+        /* ── Canvas ───────────────────────────────────────── */
         #coreCanvas {
-            position: fixed;
-            top: 0; left: 0;
-            width: 100vw; height: 100vh;
-            z-index: 0;
+            position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%; z-index: 0;
         }
 
-        /* ── App Shell ────────────────────────────────────── */
-        .app {
-            position: relative;
-            z-index: 1;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
+        /* ── Layout ───────────────────────────────────────── */
+        .shell { display: flex; height: 100vh; position: relative; z-index: 1; }
 
-        /* ── Top Bar ──────────────────────────────────────── */
-        .topbar {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 16px 24px;
+        /* ── Sidebar ──────────────────────────────────────── */
+        .sidebar {
+            width: 260px; flex-shrink: 0;
+            background: rgba(5,5,5,0.9);
+            border-right: 1px solid var(--border);
+            display: flex; flex-direction: column;
             backdrop-filter: blur(20px);
-            background: rgba(0,0,0,0.5);
+            transition: transform 0.3s;
+        }
+        .sidebar.collapsed { transform: translateX(-260px); position: absolute; height: 100%; z-index: 10; }
+        .sidebar-header {
+            padding: 16px;
             border-bottom: 1px solid var(--border);
-            flex-shrink: 0;
+            display: flex; align-items: center; justify-content: space-between;
         }
-        .topbar-left {
-            display: flex; align-items: center; gap: 12px;
+        .sidebar-logo { font-size: 13px; font-weight: 600; letter-spacing: 5px; text-transform: uppercase; color: var(--accent); }
+        .new-chat-btn {
+            background: var(--surface-2); border: 1px solid var(--border-l);
+            color: var(--text-dim); font-size: 12px; padding: 6px 12px;
+            border-radius: 6px; cursor: pointer; font-family: 'Inter', sans-serif;
+            transition: all 0.2s;
         }
-        .logo {
-            font-size: 16px; font-weight: 600;
-            letter-spacing: 6px; text-transform: uppercase;
-            color: var(--accent);
+        .new-chat-btn:hover { background: var(--surface-3); color: var(--text); }
+        .chat-list {
+            flex: 1; overflow-y: auto; padding: 8px;
+            scrollbar-width: thin; scrollbar-color: #1a1a1a transparent;
         }
-        .status-dot {
-            width: 6px; height: 6px; border-radius: 50%;
-            background: #333; transition: background 0.3s;
+        .chat-list::-webkit-scrollbar { width: 3px; }
+        .chat-list::-webkit-scrollbar-thumb { background: #1a1a1a; border-radius: 2px; }
+        .chat-item {
+            padding: 10px 12px; border-radius: 8px;
+            cursor: pointer; font-size: 13px; color: var(--text-dim);
+            transition: all 0.15s; margin-bottom: 2px;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
-        .status-dot.online { background: #4ade80; box-shadow: 0 0 8px rgba(74,222,128,0.5); }
-        .topbar-right {
-            display: flex; align-items: center; gap: 16px;
+        .chat-item:hover { background: var(--surface-2); color: var(--text); }
+        .chat-item.active { background: var(--surface-3); color: var(--text); }
+        .chat-item .chat-date { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+        .sidebar-footer {
+            padding: 12px 16px;
+            border-top: 1px solid var(--border);
         }
-        .user-pill {
-            display: none;
-            align-items: center; gap: 8px;
-            padding: 6px 14px;
-            border-radius: 20px;
-            background: var(--surface-2);
-            border: 1px solid var(--border);
-            font-size: 12px; color: var(--text-dim);
-            cursor: pointer; transition: all 0.2s;
+        .user-card {
+            display: flex; align-items: center; gap: 10px;
+            padding: 8px; border-radius: 8px; cursor: pointer;
+            transition: background 0.2s;
         }
-        .user-pill:hover { background: #1a1a1a; color: var(--text); }
-        .user-pill .avatar {
-            width: 20px; height: 20px; border-radius: 50%;
-            background: #222; display: flex; align-items: center;
-            justify-content: center; font-size: 10px; font-weight: 600;
-            color: var(--text);
+        .user-card:hover { background: var(--surface-2); }
+        .user-avatar {
+            width: 28px; height: 28px; border-radius: 50%;
+            background: var(--surface-3); display: flex; align-items: center;
+            justify-content: center; font-size: 11px; font-weight: 600; color: var(--text);
+            border: 1px solid var(--border-l);
         }
+        .user-info { flex: 1; }
+        .user-name { font-size: 12px; color: var(--text); }
+        .user-status { font-size: 10px; color: var(--text-muted); }
+
+        /* ── Main Panel ───────────────────────────────────── */
+        .main-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
+
+        /* ── Topbar ───────────────────────────────────────── */
+        .topbar {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 12px 20px; backdrop-filter: blur(20px);
+            background: rgba(0,0,0,0.4);
+            border-bottom: 1px solid var(--border); flex-shrink: 0;
+        }
+        .topbar-left { display: flex; align-items: center; gap: 12px; }
+        .menu-btn {
+            display: none; background: none; border: none;
+            color: var(--text-dim); cursor: pointer; padding: 4px;
+        }
+        .status-dot { width: 6px; height: 6px; border-radius: 50%; background: #333; transition: all 0.3s; }
+        .status-dot.online { background: #4ade80; box-shadow: 0 0 8px rgba(74,222,128,0.4); }
+        .topbar-center { font-size: 12px; color: var(--text-muted); letter-spacing: 2px; }
+        .topbar-right { display: flex; align-items: center; gap: 12px; }
         .model-select {
             background: transparent; border: 1px solid var(--border);
-            color: var(--text-dim); font-size: 11px; padding: 5px 10px;
+            color: var(--text-dim); font-size: 11px; padding: 4px 8px;
             border-radius: 6px; outline: none; cursor: pointer;
             font-family: 'Inter', sans-serif;
         }
-        .model-select option { background: #111; color: #ccc; }
+        .model-select option { background: #0a0a0a; color: #aaa; }
 
-        /* ── Main Content ─────────────────────────────────── */
-        .main {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            position: relative;
-        }
+        /* ── Content ──────────────────────────────────────── */
+        .content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
 
-        /* ── Welcome / Core View ──────────────────────────── */
+        /* ── Welcome ──────────────────────────────────────── */
         .welcome-view {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            transition: opacity 0.5s, transform 0.5s;
+            flex: 1; display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            transition: opacity 0.4s, transform 0.4s;
         }
-        .welcome-view.hidden {
-            opacity: 0; pointer-events: none;
-            transform: translateY(-20px);
-            position: absolute; inset: 0;
-        }
+        .welcome-view.hidden { opacity: 0; pointer-events: none; position: absolute; inset: 0; }
         .welcome-label {
-            margin-top: 30px;
-            font-size: 13px;
-            letter-spacing: 4px;
-            text-transform: uppercase;
-            color: var(--text-muted);
-            font-weight: 400;
-        }
-        .welcome-sub {
-            margin-top: 8px;
-            font-size: 12px;
-            color: var(--text-muted);
-            opacity: 0.5;
+            margin-top: 20px; font-size: 11px; letter-spacing: 4px;
+            text-transform: uppercase; color: var(--text-muted); font-weight: 300;
         }
 
-        /* ── Chat View ────────────────────────────────────── */
-        .chat-view {
-            flex: 1;
-            display: none;
-            flex-direction: column;
-            overflow: hidden;
-        }
+        /* ── Chat ─────────────────────────────────────────── */
+        .chat-view { flex: 1; display: none; flex-direction: column; overflow: hidden; }
         .chat-view.active { display: flex; }
         .chat-messages {
-            flex: 1;
-            overflow-y: auto;
-            padding: 20px 24px;
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-            scrollbar-width: thin;
-            scrollbar-color: #222 transparent;
+            flex: 1; overflow-y: auto; padding: 24px;
+            display: flex; flex-direction: column; gap: 20px;
+            scrollbar-width: thin; scrollbar-color: #1a1a1a transparent;
         }
-        .chat-messages::-webkit-scrollbar { width: 4px; }
-        .chat-messages::-webkit-scrollbar-track { background: transparent; }
-        .chat-messages::-webkit-scrollbar-thumb { background: #222; border-radius: 2px; }
-
-        .message {
-            max-width: 75%;
-            animation: msgIn 0.3s ease-out;
-        }
-        @keyframes msgIn {
-            from { opacity: 0; transform: translateY(8px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .message.user {
-            align-self: flex-end;
-        }
-        .message.eris {
-            align-self: flex-start;
-        }
-        .msg-bubble {
-            padding: 12px 16px;
-            border-radius: 18px;
-            font-size: 14px;
-            line-height: 1.6;
-            word-wrap: break-word;
-        }
+        .chat-messages::-webkit-scrollbar { width: 3px; }
+        .chat-messages::-webkit-scrollbar-thumb { background: #1a1a1a; border-radius: 2px; }
+        .message { max-width: 72%; animation: msgIn 0.3s ease-out; }
+        @keyframes msgIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+        .message.user { align-self: flex-end; }
+        .message.eris { align-self: flex-start; }
+        .msg-bubble { padding: 12px 16px; border-radius: 16px; font-size: 14px; line-height: 1.65; word-wrap: break-word; }
         .message.user .msg-bubble {
-            background: #1a1a1a;
-            border: 1px solid rgba(255,255,255,0.08);
-            color: var(--text);
-            border-bottom-right-radius: 4px;
+            background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08);
+            color: var(--text); border-bottom-right-radius: 4px;
         }
-        .message.eris .msg-bubble {
-            background: transparent;
-            color: var(--text);
-            padding-left: 0;
-            border-bottom-left-radius: 4px;
-        }
+        .message.eris .msg-bubble { background: transparent; color: var(--text); padding-left: 0; }
         .msg-bubble p { margin-bottom: 8px; }
         .msg-bubble p:last-child { margin-bottom: 0; }
-        .msg-bubble code {
-            font-family: 'JetBrains Mono', monospace;
-            background: rgba(255,255,255,0.06);
-            padding: 2px 6px; border-radius: 4px;
-            font-size: 13px;
-        }
-        .msg-bubble pre {
-            background: rgba(255,255,255,0.04);
-            padding: 12px; border-radius: 8px;
-            overflow-x: auto; margin: 8px 0;
-        }
+        .msg-bubble code { font-family: 'JetBrains Mono', monospace; background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px; font-size: 13px; }
+        .msg-bubble pre { background: rgba(255,255,255,0.03); padding: 12px; border-radius: 8px; overflow-x: auto; margin: 8px 0; }
         .msg-bubble pre code { background: none; padding: 0; }
-        .msg-time {
-            font-size: 10px; color: var(--text-muted);
-            margin-top: 4px; padding: 0 4px;
-        }
+        .msg-bubble strong { color: #fff; }
+        .msg-time { font-size: 10px; color: var(--text-muted); margin-top: 3px; padding: 0 4px; }
         .message.user .msg-time { text-align: right; }
-
-        /* Thinking dots */
-        .thinking-dots { display: flex; gap: 4px; padding: 14px 12px !important; }
-        .thinking-dots .dot {
-            width: 6px; height: 6px; border-radius: 50%;
-            background: var(--text-muted);
-            animation: dotPulse 1.4s infinite;
-        }
+        .thinking-dots { display: flex; gap: 5px; padding: 14px 8px !important; }
+        .thinking-dots .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--text-muted); animation: dotP 1.4s infinite; }
         .thinking-dots .dot:nth-child(2) { animation-delay: 0.2s; }
         .thinking-dots .dot:nth-child(3) { animation-delay: 0.4s; }
-        @keyframes dotPulse {
-            0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
-            40% { opacity: 1; transform: scale(1.2); }
-        }
+        @keyframes dotP { 0%,80%,100%{opacity:.3;transform:scale(.8)}40%{opacity:1;transform:scale(1.2)} }
 
-        /* ── Input Area ───────────────────────────────────── */
-        .input-area {
-            padding: 16px 24px 24px;
-            backdrop-filter: blur(20px);
-            background: rgba(0,0,0,0.6);
-            flex-shrink: 0;
-        }
+        /* ── Input ────────────────────────────────────────── */
+        .input-area { padding: 12px 24px 20px; backdrop-filter: blur(20px); background: rgba(0,0,0,0.5); flex-shrink: 0; }
         .input-area.locked { opacity: 0.3; pointer-events: none; }
         .input-wrap {
-            display: flex;
-            align-items: flex-end;
-            gap: 10px;
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 8px 12px;
-            transition: border-color 0.2s;
-            max-width: 700px;
-            margin: 0 auto;
+            display: flex; align-items: flex-end; gap: 8px;
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 14px; padding: 8px 12px;
+            transition: border-color 0.2s; max-width: 700px; margin: 0 auto;
         }
-        .input-wrap:focus-within { border-color: rgba(255,255,255,0.15); }
+        .input-wrap:focus-within { border-color: rgba(255,255,255,0.12); }
         #messageInput {
-            flex: 1;
-            background: transparent;
-            border: none; outline: none;
-            color: var(--text);
-            font-family: 'Inter', sans-serif;
-            font-size: 14px;
-            resize: none;
-            min-height: 24px; max-height: 150px;
-            line-height: 1.5;
+            flex: 1; background: transparent; border: none; outline: none;
+            color: var(--text); font-family: 'Inter', sans-serif; font-size: 14px;
+            resize: none; min-height: 22px; max-height: 150px; line-height: 1.5;
         }
         #messageInput::placeholder { color: var(--text-muted); }
-        .input-actions {
-            display: flex; gap: 4px; align-items: center;
-        }
         .input-btn {
-            width: 32px; height: 32px;
-            border-radius: 50%;
-            border: none; background: transparent;
-            color: var(--text-muted);
-            cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
+            width: 30px; height: 30px; border-radius: 50%;
+            border: none; background: transparent; color: var(--text-muted);
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
             transition: all 0.2s;
         }
         .input-btn:hover { background: var(--surface-2); color: var(--text); }
-        .input-btn.active { background: var(--accent); color: var(--black); }
-        .input-btn.recording { background: #ef4444; color: white; animation: recPulse 1s infinite; }
-        @keyframes recPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.4); } 50% { box-shadow: 0 0 0 8px rgba(239,68,68,0); } }
+        .input-btn.active { background: #fff; color: #000; }
+        .input-btn.recording { background: #ef4444; color: #fff; animation: recP 1s infinite; }
+        @keyframes recP { 0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.4)}50%{box-shadow:0 0 0 6px rgba(239,68,68,0)} }
 
         /* ── Login Modal ──────────────────────────────────── */
         .modal-overlay {
             position: fixed; inset: 0; z-index: 100;
-            background: rgba(0,0,0,0.95);
-            display: none;
+            background: rgba(0,0,0,0.97); display: none;
             align-items: center; justify-content: center;
-            backdrop-filter: blur(30px);
+            backdrop-filter: blur(40px);
         }
         .modal-overlay.show { display: flex; }
-        .modal-box {
-            width: 360px;
-            padding: 40px;
-            text-align: center;
+        .modal-box { width: 360px; padding: 40px; text-align: center; }
+        .modal-logo { font-size: 20px; font-weight: 600; letter-spacing: 10px; text-transform: uppercase; color: var(--accent); margin-bottom: 4px; }
+        .modal-sub { font-size: 11px; color: var(--text-muted); margin-bottom: 28px; letter-spacing: 1px; }
+        .auth-tabs {
+            display: flex; gap: 0; margin-bottom: 24px;
+            border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
         }
-        .modal-logo {
-            font-size: 18px; font-weight: 600;
-            letter-spacing: 8px; text-transform: uppercase;
-            color: var(--accent);
-            margin-bottom: 8px;
+        .auth-tab {
+            flex: 1; padding: 10px; background: transparent;
+            border: none; color: var(--text-muted); font-size: 12px;
+            font-family: 'Inter', sans-serif; cursor: pointer;
+            letter-spacing: 1px; text-transform: uppercase;
+            transition: all 0.2s;
         }
-        .modal-desc {
-            font-size: 12px; color: var(--text-muted);
-            margin-bottom: 32px;
-        }
+        .auth-tab.active { background: rgba(255,255,255,0.06); color: var(--text); }
+        .auth-tab:hover:not(.active) { color: var(--text-dim); }
         .modal-input {
-            width: 100%;
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            padding: 14px 16px;
-            color: var(--text);
-            font-family: 'Inter', sans-serif;
-            font-size: 14px;
-            outline: none;
-            margin-bottom: 12px;
-            transition: border-color 0.2s;
+            width: 100%; background: var(--surface);
+            border: 1px solid var(--border); border-radius: 8px;
+            padding: 12px 14px; color: var(--text);
+            font-family: 'Inter', sans-serif; font-size: 13px;
+            outline: none; margin-bottom: 10px; transition: border-color 0.2s;
         }
-        .modal-input:focus { border-color: rgba(255,255,255,0.2); }
+        .modal-input:focus { border-color: rgba(255,255,255,0.15); }
         .modal-input::placeholder { color: var(--text-muted); }
+        #confirmPasswordField { display: none; }
         .modal-btn {
-            width: 100%;
-            padding: 14px;
-            border: none;
-            border-radius: 10px;
-            background: var(--accent);
-            color: var(--black);
-            font-family: 'Inter', sans-serif;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: opacity 0.2s;
-            margin-top: 8px;
-            letter-spacing: 2px;
-            text-transform: uppercase;
+            width: 100%; padding: 12px; border: none; border-radius: 8px;
+            background: var(--accent); color: var(--black);
+            font-family: 'Inter', sans-serif; font-size: 13px;
+            font-weight: 600; cursor: pointer; transition: opacity 0.2s;
+            margin-top: 6px; letter-spacing: 2px; text-transform: uppercase;
         }
         .modal-btn:hover { opacity: 0.85; }
-        .modal-error {
-            color: #ef4444;
-            font-size: 12px;
-            margin-top: 12px;
-            min-height: 18px;
-        }
+        .modal-error { color: #ef4444; font-size: 11px; margin-top: 10px; min-height: 16px; }
         .modal-close {
             position: absolute; top: 20px; right: 20px;
             background: none; border: none; color: var(--text-muted);
-            font-size: 20px; cursor: pointer;
-            display: none;
+            font-size: 18px; cursor: pointer; display: none;
         }
         .modal-close.visible { display: block; }
 
         /* ── Toast ─────────────────────────────────────────── */
         .toast {
-            position: fixed; bottom: 100px; left: 50%;
+            position: fixed; bottom: 90px; left: 50%;
             transform: translateX(-50%) translateY(20px);
-            background: var(--surface-2);
-            border: 1px solid var(--border);
-            color: var(--text);
-            padding: 10px 20px;
-            border-radius: 8px;
-            font-size: 12px;
-            opacity: 0;
-            transition: all 0.3s;
-            z-index: 200;
-            pointer-events: none;
+            background: var(--surface-2); border: 1px solid var(--border-l);
+            color: var(--text); padding: 8px 18px; border-radius: 8px;
+            font-size: 12px; opacity: 0; transition: all 0.3s;
+            z-index: 200; pointer-events: none;
         }
         .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
         /* ── Responsive ───────────────────────────────────── */
-        @media (max-width: 600px) {
-            .topbar { padding: 12px 16px; }
-            .chat-messages { padding: 16px; }
-            .input-area { padding: 12px 16px 16px; }
-            .message { max-width: 90%; }
-            .model-select { display: none; }
+        @media (max-width: 768px) {
+            .sidebar { transform: translateX(-260px); position: absolute; height: 100%; z-index: 10; }
+            .sidebar.open { transform: translateX(0); }
+            .menu-btn { display: block; }
+            .message { max-width: 88%; }
         }
     </style>
 </head>
@@ -378,56 +274,60 @@
 
 <canvas id="coreCanvas"></canvas>
 
-<div class="app">
-    <!-- Top Bar -->
-    <div class="topbar">
-        <div class="topbar-left">
-            <span class="logo">Eris</span>
-            <div class="status-dot" id="statusDot"></div>
+<div class="shell">
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-logo">Eris</span>
+            <button class="new-chat-btn" id="newChatBtn">+ New</button>
         </div>
-        <div class="topbar-right">
-            <select class="model-select" id="modelSelector">
-                <option value="gemini-2.5-flash">⚡ Gemini 2.5 Flash</option>
-                <option value="gemini-2.0-flash" selected>🧠 Gemini 2.0 Flash</option>
-            </select>
-            <div class="user-pill" id="userPill">
-                <div class="avatar" id="userAvatar">?</div>
-                <span id="userName">Guest</span>
+        <div class="chat-list" id="chatList">
+            <!-- populated by JS -->
+        </div>
+        <div class="sidebar-footer">
+            <div class="user-card" id="userCard">
+                <div class="user-avatar" id="sidebarAvatar">?</div>
+                <div class="user-info">
+                    <div class="user-name" id="sidebarName">Not signed in</div>
+                    <div class="user-status" id="sidebarStatus">Click to sign in</div>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- Main -->
-    <div class="main">
-        <!-- Welcome View (with core) -->
-        <div class="welcome-view" id="welcomeView">
-            <div class="welcome-label">Eris is listening</div>
-            <div class="welcome-sub" id="welcomeSub">Log in to begin</div>
+    <div class="main-panel">
+        <div class="topbar">
+            <div class="topbar-left">
+                <button class="menu-btn" id="menuBtn">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                </button>
+                <div class="status-dot" id="statusDot"></div>
+                <span class="topbar-center" id="topbarLabel">ERIS</span>
+            </div>
+            <div class="topbar-right">
+                <select class="model-select" id="modelSelector">
+                    <option value="gemini-2.0-flash">⚡ Eris Swift</option>
+                    <option value="gemini-2.5-flash" selected>🧠 Eris Pro</option>
+                </select>
+            </div>
         </div>
 
-        <!-- Chat View -->
-        <div class="chat-view" id="chatView">
-            <div class="chat-messages" id="chatMessages"></div>
-        </div>
-
-        <!-- Input -->
-        <div class="input-area locked" id="inputArea">
-            <div class="input-wrap">
-                <textarea id="messageInput" rows="1" placeholder="Speak to Eris..." disabled></textarea>
-                <div class="input-actions">
-                    <button class="input-btn" id="micBtn" title="Voice input">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                            <line x1="12" y1="19" x2="12" y2="23"/>
-                            <line x1="8" y1="23" x2="16" y2="23"/>
-                        </svg>
+        <div class="content">
+            <div class="welcome-view" id="welcomeView">
+                <div class="welcome-label" id="welcomeLabel">awaiting presence</div>
+            </div>
+            <div class="chat-view" id="chatView">
+                <div class="chat-messages" id="chatMessages"></div>
+            </div>
+            <div class="input-area locked" id="inputArea">
+                <div class="input-wrap">
+                    <textarea id="messageInput" rows="1" placeholder="Speak to Eris..." disabled></textarea>
+                    <button class="input-btn" id="micBtn" title="Voice">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
                     </button>
                     <button class="input-btn" id="sendBtn">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="22" y1="2" x2="11" y2="13"/>
-                            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-                        </svg>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                     </button>
                 </div>
             </div>
@@ -440,418 +340,648 @@
     <button class="modal-close" id="modalClose">✕</button>
     <div class="modal-box">
         <div class="modal-logo">Eris</div>
-        <div class="modal-desc" id="modalDesc">Identify yourself.</div>
+        <div class="modal-sub">persistent intelligence</div>
+        <div class="auth-tabs">
+            <button class="auth-tab active" id="tabSignIn">Sign In</button>
+            <button class="auth-tab" id="tabSignUp">Sign Up</button>
+        </div>
         <input class="modal-input" id="loginUsername" type="text" placeholder="Username" autocomplete="off" spellcheck="false">
         <input class="modal-input" id="loginPassword" type="password" placeholder="Password">
+        <input class="modal-input" id="confirmPasswordField" type="password" placeholder="Confirm Password">
         <button class="modal-btn" id="loginBtn">Enter</button>
         <div class="modal-error" id="loginError"></div>
     </div>
 </div>
 
-<!-- Toast -->
 <div class="toast" id="toast"></div>
 
 <script>
-    // ════════════════════════════════════════════════════════
-    //  ERIS — Particle Core Engine
-    // ════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════
+//  ERIS CORE — Living Alien Particle Entity
+// ════════════════════════════════════════════════════════════
 
-    const canvas = document.getElementById('coreCanvas');
-    const ctx = canvas.getContext('2d');
-    let W, H, cx, cy;
-    let coreState = 'idle'; // idle, thinking, speaking
-    let particles = [];
-    const PARTICLE_COUNT = 300;
-    let time = 0;
-    let stateTransition = 0;
-    let targetRadius = 80;
-    let currentRadius = 80;
+const canvas = document.getElementById('coreCanvas');
+const ctx = canvas.getContext('2d');
+let W, H, cx, cy;
 
-    function resize() {
-        W = canvas.width = window.innerWidth;
-        H = canvas.height = window.innerHeight;
-        cx = W / 2;
-        cy = H / 2;
+function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+    cx = W / 2;
+    cy = H / 2;
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ── Simplex Noise (compact implementation) ──────────────
+const SNoise = (() => {
+    const F2 = 0.5 * (Math.sqrt(3) - 1), G2 = (3 - Math.sqrt(3)) / 6;
+    const grad3 = [[1,1],[- 1,1],[1,-1],[-1,-1],[1,0],[-1,0],[0,1],[0,-1]];
+    const perm = new Uint8Array(512);
+    const p = new Uint8Array(256);
+    for (let i = 0; i < 256; i++) p[i] = i;
+    for (let i = 255; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [p[i], p[j]] = [p[j], p[i]]; }
+    for (let i = 0; i < 512; i++) perm[i] = p[i & 255];
+
+    return function(x, y) {
+        const s = (x + y) * F2;
+        const i = Math.floor(x + s), j = Math.floor(y + s);
+        const t = (i + j) * G2;
+        const X0 = i - t, Y0 = j - t;
+        const x0 = x - X0, y0 = y - Y0;
+        const i1 = x0 > y0 ? 1 : 0, j1 = x0 > y0 ? 0 : 1;
+        const x1 = x0 - i1 + G2, y1 = y0 - j1 + G2;
+        const x2 = x0 - 1 + 2*G2, y2 = y0 - 1 + 2*G2;
+        const ii = i & 255, jj = j & 255;
+        let n0 = 0, n1 = 0, n2 = 0;
+        let t0 = 0.5 - x0*x0 - y0*y0;
+        if (t0 > 0) { t0 *= t0; const gi = perm[ii + perm[jj]] % 8; n0 = t0 * t0 * (grad3[gi][0]*x0 + grad3[gi][1]*y0); }
+        let t1 = 0.5 - x1*x1 - y1*y1;
+        if (t1 > 0) { t1 *= t1; const gi = perm[ii+i1 + perm[jj+j1]] % 8; n1 = t1 * t1 * (grad3[gi][0]*x1 + grad3[gi][1]*y1); }
+        let t2 = 0.5 - x2*x2 - y2*y2;
+        if (t2 > 0) { t2 *= t2; const gi = perm[ii+1 + perm[jj+1]] % 8; n2 = t2 * t2 * (grad3[gi][0]*x2 + grad3[gi][1]*y2); }
+        return 70 * (n0 + n1 + n2);
+    };
+})();
+
+// ── Core State Machine ──────────────────────────────────
+let coreState = 'dormant'; // dormant, idle, listening, thinking, speaking
+let stateTime = 0;
+let time = 0;
+let userTyping = false;
+let lastTypeTime = 0;
+
+// Autonomous drift
+let driftX = 0, driftY = 0, driftTargetX = 0, driftTargetY = 0;
+let breathPhase = 0;
+let morphPhase = 0;
+let emotionHue = 200; // cyan-ish default
+let targetHue = 200;
+let coreIntensity = 0.3; // dormant = dim
+let targetIntensity = 0.3;
+
+function setCoreState(state) {
+    if (coreState === state) return;
+    coreState = state;
+    stateTime = 0;
+    switch(state) {
+        case 'dormant': targetIntensity = 0.3; targetHue = 220; break;
+        case 'idle': targetIntensity = 0.6; targetHue = 200; break;
+        case 'listening': targetIntensity = 0.75; targetHue = 180; break;
+        case 'thinking': targetIntensity = 1.0; targetHue = 270; break;
+        case 'speaking': targetIntensity = 0.85; targetHue = 210; break;
     }
-    window.addEventListener('resize', resize);
-    resize();
+}
 
-    // Particle class
-    class Particle {
-        constructor() {
-            this.reset();
+// ── Particle System ─────────────────────────────────────
+const CORE_PARTICLES = 400;
+const TENDRIL_PARTICLES = 120;
+const HAZE_PARTICLES = 80;
+const particles = [];
+
+class Particle {
+    constructor(layer) {
+        this.layer = layer; // 0=core, 1=tendril, 2=haze
+        this.reset();
+    }
+    reset() {
+        const a = Math.random() * Math.PI * 2;
+        const baseR = this.layer === 0 ? 20 + Math.random() * 50
+                    : this.layer === 1 ? 40 + Math.random() * 80
+                    : 60 + Math.random() * 140;
+        this.orbitR = baseR;
+        this.angle = a;
+        this.z = (Math.random() - 0.5) * 120; // depth
+        this.x = Math.cos(a) * baseR;
+        this.y = Math.sin(a) * baseR;
+        this.vx = 0; this.vy = 0;
+        this.size = this.layer === 0 ? 0.8 + Math.random() * 1.8
+                  : this.layer === 1 ? 0.4 + Math.random() * 1.2
+                  : 0.3 + Math.random() * 0.8;
+        this.alpha = this.layer === 0 ? 0.4 + Math.random() * 0.5
+                   : this.layer === 1 ? 0.15 + Math.random() * 0.35
+                   : 0.05 + Math.random() * 0.15;
+        this.speed = (Math.random() - 0.5) * 0.006;
+        this.noiseOff = Math.random() * 100;
+        this.pulseOff = Math.random() * Math.PI * 2;
+        this.trail = [];
+        this.tendrilGroup = Math.floor(Math.random() * 6);
+        this.life = 1;
+    }
+    update(dt) {
+        const t = time;
+        const n = SNoise(this.x * 0.008 + this.noiseOff + t * 0.1, this.y * 0.008 + this.noiseOff);
+        const n2 = SNoise(this.x * 0.005 + t * 0.05, this.z * 0.005 + t * 0.08);
+
+        // State-based behavior multipliers
+        let speedMul = 1, chaosMul = 0.3, breathAmp = 8;
+        if (coreState === 'thinking') { speedMul = 3.5; chaosMul = 1.5; breathAmp = 20; }
+        else if (coreState === 'speaking') { speedMul = 2.0; chaosMul = 0.6; breathAmp = 14; }
+        else if (coreState === 'listening') { speedMul = 1.3; chaosMul = 0.4; breathAmp = 10; }
+        else if (coreState === 'dormant') { speedMul = 0.4; chaosMul = 0.1; breathAmp = 5; }
+
+        // Organic orbit
+        this.angle += this.speed * speedMul;
+
+        // Breathing
+        const breath = Math.sin(breathPhase + this.pulseOff) * breathAmp;
+        const morph = Math.sin(morphPhase * 0.3 + this.tendrilGroup * 1.2) * 12;
+
+        const r = this.orbitR + breath + morph + n * 15 * chaosMul;
+
+        // 3D orbit
+        this.z += n2 * 0.5 * speedMul;
+        this.z *= 0.995; // dampen z drift
+
+        const tx = Math.cos(this.angle) * r + driftX;
+        const ty = Math.sin(this.angle) * r * 0.85 + driftY; // slight Y compression
+
+        // Smooth follow
+        const followSpeed = coreState === 'thinking' ? 0.04 : 0.02;
+        this.vx += (tx - this.x) * followSpeed + n * chaosMul * 0.3;
+        this.vy += (ty - this.y) * followSpeed + n2 * chaosMul * 0.3;
+        this.vx *= 0.92; this.vy *= 0.92;
+        this.x += this.vx; this.y += this.vy;
+
+        // Tendril behavior: particles in same group attract
+        if (this.layer === 1 && coreState !== 'thinking') {
+            // Tendrils reach outward organically
+            const tendrilAngle = (this.tendrilGroup / 6) * Math.PI * 2 + Math.sin(t * 0.3) * 0.4;
+            const reach = Math.sin(t * 0.5 + this.tendrilGroup) * 20 + 15;
+            this.x += Math.cos(tendrilAngle) * reach * 0.003;
+            this.y += Math.sin(tendrilAngle) * reach * 0.003;
         }
-        reset() {
-            const angle = Math.random() * Math.PI * 2;
-            const dist = 30 + Math.random() * 60;
-            this.x = cx + Math.cos(angle) * dist;
-            this.y = cy + Math.sin(angle) * dist;
-            this.baseX = this.x;
-            this.baseY = this.y;
-            this.vx = (Math.random() - 0.5) * 0.3;
-            this.vy = (Math.random() - 0.5) * 0.3;
-            this.size = 0.5 + Math.random() * 1.5;
-            this.alpha = 0.1 + Math.random() * 0.6;
-            this.orbitSpeed = (Math.random() - 0.5) * 0.008;
-            this.orbitRadius = 30 + Math.random() * 70;
-            this.orbitAngle = Math.random() * Math.PI * 2;
-            this.life = 1;
-            this.decay = 0.0005 + Math.random() * 0.001;
-            this.pulsePhase = Math.random() * Math.PI * 2;
-            this.layer = Math.floor(Math.random() * 3); // 0=inner, 1=mid, 2=outer
-        }
-        update() {
-            const speed = coreState === 'thinking' ? 3.5 : coreState === 'speaking' ? 1.8 : 1.0;
-            const chaos = coreState === 'thinking' ? 0.8 : coreState === 'speaking' ? 0.3 : 0.05;
-            const breathe = coreState === 'idle' ? Math.sin(time * 0.8 + this.pulsePhase) * 8 : 0;
 
-            this.orbitAngle += this.orbitSpeed * speed;
-            const r = this.orbitRadius + breathe +
-                (coreState === 'thinking' ? Math.sin(time * 3 + this.pulsePhase) * 20 : 0);
-
-            const targetX = cx + Math.cos(this.orbitAngle) * r;
-            const targetY = cy + Math.sin(this.orbitAngle) * r;
-
-            this.x += (targetX - this.x) * 0.02 + (Math.random() - 0.5) * chaos;
-            this.y += (targetY - this.y) * 0.02 + (Math.random() - 0.5) * chaos;
-
-            // Speaking: particles elongate outward
-            if (coreState === 'speaking') {
-                const dx = this.x - cx;
-                const dy = this.y - cy;
-                const dist = Math.sqrt(dx*dx + dy*dy);
-                if (dist > 0) {
-                    this.x += (dx/dist) * Math.sin(time * 4 + this.pulsePhase) * 2;
-                    this.y += (dy/dist) * Math.sin(time * 4 + this.pulsePhase) * 2;
-                }
+        // Speaking: radiate outward
+        if (coreState === 'speaking') {
+            const dist = Math.sqrt(this.x * this.x + this.y * this.y);
+            if (dist > 0) {
+                const wave = Math.sin(t * 6 - dist * 0.05 + this.pulseOff) * 2;
+                this.x += (this.x / dist) * wave;
+                this.y += (this.y / dist) * wave;
             }
-
-            this.life -= this.decay * 0.5;
-            if (this.life <= 0) this.reset();
         }
-        draw() {
-            const pulse = coreState === 'thinking' 
-                ? 0.5 + Math.sin(time * 5 + this.pulsePhase) * 0.5
-                : 0.7 + Math.sin(time * 1.5 + this.pulsePhase) * 0.3;
-            
-            const a = this.alpha * this.life * pulse;
-            const s = this.size * (coreState === 'thinking' ? 1.3 : 1);
 
+        // Curiosity: lean toward bottom (input area) when user types
+        if (userTyping && this.layer < 2) {
+            this.y += 0.3;
+            this.vy += 0.02;
+        }
+
+        // Trail (only for core and tendril particles)
+        if (this.layer < 2 && speedMul > 1) {
+            this.trail.push({ x: this.x, y: this.y, a: this.alpha * 0.3 });
+            if (this.trail.length > 5) this.trail.shift();
+        } else {
+            this.trail = [];
+        }
+    }
+    draw() {
+        // 3D perspective projection
+        const fov = 400;
+        const scale = fov / (fov + this.z);
+        const sx = cx + this.x * scale;
+        const sy = cy + this.y * scale;
+        const ss = this.size * scale * coreIntensity * 1.5;
+
+        if (sx < -50 || sx > W + 50 || sy < -50 || sy > H + 50) return;
+
+        const pulse = 0.6 + Math.sin(time * 2 + this.pulseOff) * 0.4;
+        const a = this.alpha * pulse * coreIntensity;
+
+        // Draw trail
+        for (let i = 0; i < this.trail.length; i++) {
+            const t = this.trail[i];
+            const ts = fov / (fov + this.z);
+            const tsx = cx + t.x * ts;
+            const tsy = cy + t.y * ts;
             ctx.beginPath();
-            ctx.arc(this.x, this.y, s, 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(255, 255, 255, ${a})`;
+            ctx.arc(tsx, tsy, ss * 0.6, 0, Math.PI * 2);
+            ctx.fillStyle = `hsla(${emotionHue}, 30%, 70%, ${t.a * (i / this.trail.length) * coreIntensity})`;
             ctx.fill();
         }
-    }
 
-    // Initialize particles
-    for (let i = 0; i < PARTICLE_COUNT; i++) {
-        particles.push(new Particle());
-    }
-
-    // Draw connections between nearby particles
-    function drawConnections() {
-        const maxDist = coreState === 'thinking' ? 60 : 40;
-        const alpha = coreState === 'thinking' ? 0.08 : 0.03;
-        
-        for (let i = 0; i < particles.length; i++) {
-            for (let j = i + 1; j < particles.length; j++) {
-                const dx = particles[i].x - particles[j].x;
-                const dy = particles[i].y - particles[j].y;
-                const dist = Math.sqrt(dx*dx + dy*dy);
-                if (dist < maxDist) {
-                    const a = (1 - dist / maxDist) * alpha;
-                    ctx.beginPath();
-                    ctx.moveTo(particles[i].x, particles[i].y);
-                    ctx.lineTo(particles[j].x, particles[j].y);
-                    ctx.strokeStyle = `rgba(255, 255, 255, ${a})`;
-                    ctx.lineWidth = 0.5;
-                    ctx.stroke();
-                }
-            }
-        }
-    }
-
-    // Core glow
-    function drawCoreGlow() {
-        const pulse = Math.sin(time * (coreState === 'thinking' ? 4 : 1.2)) * 0.3 + 0.7;
-        const r = currentRadius * pulse;
-        
-        // Outer glow
-        const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * 2);
-        grad.addColorStop(0, `rgba(255, 255, 255, ${coreState === 'thinking' ? 0.06 : 0.03})`);
-        grad.addColorStop(0.5, `rgba(255, 255, 255, ${coreState === 'thinking' ? 0.02 : 0.01})`);
-        grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, W, H);
-
-        // Inner bright core
-        const innerGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * 0.3);
-        innerGrad.addColorStop(0, `rgba(255, 255, 255, ${coreState === 'thinking' ? 0.15 : 0.08})`);
-        innerGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
-        ctx.fillStyle = innerGrad;
+        // Draw particle
         ctx.beginPath();
-        ctx.arc(cx, cy, r * 0.5, 0, Math.PI * 2);
+        ctx.arc(sx, sy, ss, 0, Math.PI * 2);
+        const sat = this.layer === 0 ? 40 : 20;
+        const light = this.layer === 0 ? 80 : 65;
+        ctx.fillStyle = `hsla(${emotionHue + SNoise(this.noiseOff, time * 0.2) * 30}, ${sat}%, ${light}%, ${a})`;
         ctx.fill();
     }
+}
 
-    // Animation loop
-    function animate() {
-        time += 0.016;
-        ctx.clearRect(0, 0, W, H);
+// Initialize particles
+for (let i = 0; i < CORE_PARTICLES; i++) particles.push(new Particle(0));
+for (let i = 0; i < TENDRIL_PARTICLES; i++) particles.push(new Particle(1));
+for (let i = 0; i < HAZE_PARTICLES; i++) particles.push(new Particle(2));
 
-        // Smooth radius transition
-        currentRadius += (targetRadius - currentRadius) * 0.05;
-
-        drawCoreGlow();
-
-        for (const p of particles) {
-            p.update();
-            p.draw();
-        }
-
-        drawConnections();
-
-        requestAnimationFrame(animate);
-    }
-    animate();
-
-    // State transitions
-    function setCoreState(state) {
-        coreState = state;
-        if (state === 'thinking') {
-            targetRadius = 120;
-        } else if (state === 'speaking') {
-            targetRadius = 100;
-        } else {
-            targetRadius = 80;
+// ── Draw connections between close core particles ───────
+function drawConnections() {
+    const maxD = coreState === 'thinking' ? 55 : 35;
+    const baseAlpha = coreState === 'thinking' ? 0.06 : 0.025;
+    const coreOnly = particles.filter(p => p.layer === 0);
+    const fov = 400;
+    for (let i = 0; i < coreOnly.length; i += 2) { // skip every other for perf
+        for (let j = i + 1; j < coreOnly.length; j += 2) {
+            const dx = coreOnly[i].x - coreOnly[j].x;
+            const dy = coreOnly[i].y - coreOnly[j].y;
+            const d = Math.sqrt(dx*dx + dy*dy);
+            if (d < maxD) {
+                const s1 = fov / (fov + coreOnly[i].z);
+                const s2 = fov / (fov + coreOnly[j].z);
+                const a = (1 - d / maxD) * baseAlpha * coreIntensity;
+                ctx.beginPath();
+                ctx.moveTo(cx + coreOnly[i].x * s1, cy + coreOnly[i].y * s1);
+                ctx.lineTo(cx + coreOnly[j].x * s2, cy + coreOnly[j].y * s2);
+                ctx.strokeStyle = `hsla(${emotionHue}, 25%, 60%, ${a})`;
+                ctx.lineWidth = 0.5;
+                ctx.stroke();
+            }
         }
     }
+}
 
-    // ════════════════════════════════════════════════════════
-    //  APP LOGIC
-    // ════════════════════════════════════════════════════════
+// ── Core glow ───────────────────────────────────────────
+function drawGlow() {
+    const pulse = Math.sin(breathPhase) * 0.3 + 0.7;
+    const r = (coreState === 'thinking' ? 140 : coreState === 'speaking' ? 110 : 80) * pulse;
+    
+    // Outer haze
+    const g1 = ctx.createRadialGradient(cx + driftX * 0.3, cy + driftY * 0.3, 0, cx + driftX * 0.3, cy + driftY * 0.3, r * 2.5);
+    g1.addColorStop(0, `hsla(${emotionHue}, 40%, 60%, ${0.04 * coreIntensity})`);
+    g1.addColorStop(0.4, `hsla(${emotionHue + 20}, 30%, 40%, ${0.015 * coreIntensity})`);
+    g1.addColorStop(1, 'transparent');
+    ctx.fillStyle = g1;
+    ctx.fillRect(0, 0, W, H);
 
-    let ws = null, isConnected = false, isThinking = false;
-    let personName = '', personId = '', hasMessages = false, isLoggedIn = false;
+    // Inner core
+    const g2 = ctx.createRadialGradient(cx + driftX * 0.5, cy + driftY * 0.5, 0, cx + driftX * 0.5, cy + driftY * 0.5, r * 0.5);
+    g2.addColorStop(0, `hsla(${emotionHue}, 50%, 85%, ${0.1 * coreIntensity * pulse})`);
+    g2.addColorStop(1, 'transparent');
+    ctx.fillStyle = g2;
+    ctx.beginPath();
+    ctx.arc(cx + driftX * 0.5, cy + driftY * 0.5, r * 0.8, 0, Math.PI * 2);
+    ctx.fill();
+}
 
-    const $ = id => document.getElementById(id);
-    const el = {
-        chatMsg: $('chatMessages'), input: $('messageInput'), send: $('sendBtn'),
-        welcome: $('welcomeView'), chatView: $('chatView'), welcomeSub: $('welcomeSub'),
-        modal: $('loginModal'), loginUser: $('loginUsername'), loginPass: $('loginPassword'),
-        loginBtn: $('loginBtn'), loginError: $('loginError'), statusDot: $('statusDot'),
-        micBtn: $('micBtn'), inputArea: $('inputArea'),
-        modelSelector: $('modelSelector'), toast: $('toast'),
-        userPill: $('userPill'), userAvatar: $('userAvatar'), userName: $('userName'),
-        modalClose: $('modalClose'), modalDesc: $('modalDesc'),
+// ── Animation Loop ──────────────────────────────────────
+const dt = 0.016;
+function animate() {
+    time += dt;
+    stateTime += dt;
+    breathPhase += dt * (coreState === 'thinking' ? 3 : 0.8);
+    morphPhase += dt * 0.5;
+
+    // Smooth transitions
+    coreIntensity += (targetIntensity - coreIntensity) * 0.03;
+    emotionHue += (targetHue - emotionHue) * 0.02;
+
+    // Autonomous drift (wander)
+    if (Math.random() < 0.005) {
+        driftTargetX = (Math.random() - 0.5) * 30;
+        driftTargetY = (Math.random() - 0.5) * 20;
+    }
+    driftX += (driftTargetX - driftX) * 0.01;
+    driftY += (driftTargetY - driftY) * 0.01;
+
+    // User typing detection decay
+    if (userTyping && (Date.now() - lastTypeTime > 1500)) {
+        userTyping = false;
+        if (coreState === 'listening') setCoreState('idle');
+    }
+
+    // Clear
+    ctx.clearRect(0, 0, W, H);
+
+    drawGlow();
+
+    // Update and draw particles (sorted by z for depth)
+    particles.sort((a, b) => b.z - a.z);
+    for (const p of particles) {
+        p.update(dt);
+        p.draw();
+    }
+
+    drawConnections();
+
+    requestAnimationFrame(animate);
+}
+animate();
+
+// ════════════════════════════════════════════════════════════
+//  APP LOGIC
+// ════════════════════════════════════════════════════════════
+
+let ws = null, isConnected = false, isThinking = false;
+let personName = '', personId = '', hasMessages = false, isLoggedIn = false;
+let isCreator = false;
+let currentSessionId = null;
+let chatSessions = [];
+let authMode = 'signin'; // signin or signup
+
+const $ = id => document.getElementById(id);
+const el = {
+    chatMsg: $('chatMessages'), input: $('messageInput'), send: $('sendBtn'),
+    welcome: $('welcomeView'), chatView: $('chatView'), welcomeLabel: $('welcomeLabel'),
+    modal: $('loginModal'), loginUser: $('loginUsername'), loginPass: $('loginPassword'),
+    confirmPass: $('confirmPasswordField'),
+    loginBtn: $('loginBtn'), loginError: $('loginError'), statusDot: $('statusDot'),
+    micBtn: $('micBtn'), inputArea: $('inputArea'),
+    modelSelector: $('modelSelector'), toast: $('toast'),
+    sidebarAvatar: $('sidebarAvatar'), sidebarName: $('sidebarName'),
+    sidebarStatus: $('sidebarStatus'), userCard: $('userCard'),
+    modalClose: $('modalClose'), topbarLabel: $('topbarLabel'),
+    sidebar: $('sidebar'), menuBtn: $('menuBtn'),
+    newChatBtn: $('newChatBtn'), chatList: $('chatList'),
+    tabSignIn: $('tabSignIn'), tabSignUp: $('tabSignUp'),
+};
+
+// ── Toast ─────────────────────────────────────────────
+function showToast(msg) { el.toast.textContent = msg; el.toast.classList.add('show'); setTimeout(() => el.toast.classList.remove('show'), 2500); }
+
+// ── Auth Tabs ─────────────────────────────────────────
+el.tabSignIn.addEventListener('click', () => {
+    authMode = 'signin';
+    el.tabSignIn.classList.add('active'); el.tabSignUp.classList.remove('active');
+    el.confirmPass.style.display = 'none';
+    el.loginBtn.textContent = 'Enter';
+});
+el.tabSignUp.addEventListener('click', () => {
+    authMode = 'signup';
+    el.tabSignUp.classList.add('active'); el.tabSignIn.classList.remove('active');
+    el.confirmPass.style.display = 'block';
+    el.loginBtn.textContent = 'Create Account';
+});
+
+// ── Model Switcher ────────────────────────────────────
+const savedModel = localStorage.getItem('eris_model');
+if (savedModel) el.modelSelector.value = savedModel;
+el.modelSelector.addEventListener('change', () => {
+    const model = el.modelSelector.value;
+    localStorage.setItem('eris_model', model);
+    if (ws && isConnected) ws.send(JSON.stringify({ type: 'switch_model', model }));
+});
+
+// ── Mobile menu ───────────────────────────────────────
+el.menuBtn.addEventListener('click', () => el.sidebar.classList.toggle('open'));
+
+// ── Typing detection (for core animation) ─────────────
+el.input.addEventListener('input', () => {
+    userTyping = true;
+    lastTypeTime = Date.now();
+    if (coreState === 'idle') setCoreState('listening');
+    el.input.style.height = 'auto';
+    el.input.style.height = Math.min(el.input.scrollHeight, 150) + 'px';
+    updateInputState();
+});
+
+// ── WebSocket ─────────────────────────────────────────
+function connect() {
+    const url = `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/ws/chat`;
+    ws = new WebSocket(url);
+
+    ws.onopen = () => {
+        isConnected = true;
+        el.statusDot.classList.add('online');
+        ws.send(JSON.stringify({ type: 'switch_model', model: el.modelSelector.value }));
+        showLoginModal(false);
     };
 
-    // Toast
-    function showToast(msg) {
-        el.toast.textContent = msg;
-        el.toast.classList.add('show');
-        setTimeout(() => el.toast.classList.remove('show'), 2500);
+    ws.onmessage = (e) => {
+        const data = JSON.parse(e.data);
+
+        if (data.type === 'status') {
+            // noop
+
+        } else if (data.type === 'login_success') {
+            onLoginSuccess(data);
+
+        } else if (data.type === 'login_failed') {
+            el.loginError.textContent = data.reason || 'Access denied.';
+
+        } else if (data.type === 'model_switched') {
+            showToast(`Model → ${data.model}`);
+
+        } else if (data.type === 'thinking') {
+            showThinking();
+            setCoreState('thinking');
+
+        } else if (data.type === 'response') {
+            removeThinking();
+            setCoreState('speaking');
+            appendMessage('eris', data.content);
+            // Fade back to idle
+            setTimeout(() => setCoreState('idle'), 4000);
+
+        } else if (data.type === 'error') {
+            removeThinking();
+            setCoreState('idle');
+            appendMessage('eris', `⚠️ ${data.message}`);
+
+        } else if (data.type === 'chat_history') {
+            chatSessions = data.sessions || [];
+            renderChatList();
+
+        } else if (data.type === 'chat_messages') {
+            loadChatMessages(data.messages || []);
+        }
+    };
+
+    ws.onclose = () => {
+        isConnected = false;
+        el.statusDot.classList.remove('online');
+        setCoreState('dormant');
+        setTimeout(connect, 2000);
+    };
+}
+
+// ── Login ─────────────────────────────────────────────
+function onLoginSuccess(data) {
+    isLoggedIn = true;
+    personName = data.name;
+    personId = data.person_id;
+    isCreator = data.is_creator || false;
+
+    hideLoginModal();
+    el.sidebarAvatar.textContent = personName.charAt(0).toUpperCase();
+    el.sidebarName.textContent = personName;
+    el.sidebarStatus.textContent = isCreator ? 'Creator' : 'Online';
+    el.inputArea.classList.remove('locked');
+    el.input.disabled = false;
+    el.input.placeholder = 'Speak to Eris...';
+    el.welcomeLabel.textContent = `Hello, ${personName}`;
+
+    setCoreState('idle');
+
+    hasMessages = false;
+    el.chatMsg.innerHTML = '';
+    el.welcome.classList.remove('hidden');
+    el.chatView.classList.remove('active');
+
+    if (isCreator) showToast('Welcome home, Creator ✨');
+
+    // Request chat history
+    if (ws && isConnected) {
+        ws.send(JSON.stringify({ type: 'list_chats' }));
     }
+}
 
-    // Model switcher
-    const savedModel = localStorage.getItem('eris_model');
-    if (savedModel) el.modelSelector.value = savedModel;
-    el.modelSelector.addEventListener('change', () => {
-        const model = el.modelSelector.value;
-        localStorage.setItem('eris_model', model);
-        if (ws && isConnected) ws.send(JSON.stringify({ type: 'switch_model', model }));
-    });
+function showLoginModal(canClose) {
+    el.loginUser.value = ''; el.loginPass.value = ''; el.confirmPass.value = '';
+    el.loginError.textContent = '';
+    el.modalClose.classList.toggle('visible', canClose);
+    el.modal.classList.add('show');
+    setTimeout(() => el.loginUser.focus(), 100);
+}
+function hideLoginModal() { el.modal.classList.remove('show'); }
 
-    // ── WebSocket ─────────────────────────────────────────
-    function connect() {
-        const url = `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/ws/chat`;
-        ws = new WebSocket(url);
-
-        ws.onopen = () => {
-            isConnected = true;
-            el.statusDot.classList.add('online');
-
-            // Send model preference
-            ws.send(JSON.stringify({ type: 'switch_model', model: el.modelSelector.value }));
-
-            // ALWAYS show login modal — no auto-login
-            showLoginModal(false);
-        };
-
-        ws.onmessage = (e) => {
-            const data = JSON.parse(e.data);
-
-            if (data.type === 'status') {
-                // status update
-
-            } else if (data.type === 'login_success') {
-                onLoginSuccess(data);
-
-            } else if (data.type === 'login_failed') {
-                el.loginError.textContent = data.reason || 'Access denied.';
-
-            } else if (data.type === 'model_switched') {
-                showToast(`Model → ${data.model}`);
-
-            } else if (data.type === 'thinking') {
-                showThinking();
-                setCoreState('thinking');
-
-            } else if (data.type === 'response') {
-                removeThinking();
-                setCoreState('speaking');
-                appendMessage('eris', data.content);
-                // Return to idle after a delay
-                setTimeout(() => setCoreState('idle'), 3000);
-
-            } else if (data.type === 'error') {
-                removeThinking();
-                setCoreState('idle');
-                appendMessage('eris', `⚠️ ${data.message}`);
-            }
-        };
-
-        ws.onclose = () => {
-            isConnected = false;
-            el.statusDot.classList.remove('online');
-            setTimeout(connect, 2000);
-        };
+el.loginBtn.addEventListener('click', () => {
+    const username = el.loginUser.value.trim();
+    const password = el.loginPass.value;
+    if (!username || !password) { el.loginError.textContent = 'Both fields required.'; return; }
+    if (username.length < 2) { el.loginError.textContent = 'Username too short.'; return; }
+    if (password.length < 4) { el.loginError.textContent = 'Password too short.'; return; }
+    if (authMode === 'signup' && password !== el.confirmPass.value) {
+        el.loginError.textContent = 'Passwords do not match.'; return;
     }
+    el.loginError.textContent = '';
+    ws.send(JSON.stringify({ type: 'login', username, password }));
+});
 
-    // ── Login ─────────────────────────────────────────────
-    function onLoginSuccess(data) {
-        isLoggedIn = true;
-        personName = data.name;
-        personId = data.person_id;
+el.loginPass.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+        if (authMode === 'signup') el.confirmPass.focus();
+        else el.loginBtn.click();
+    }
+});
+el.confirmPass.addEventListener('keydown', e => { if (e.key === 'Enter') el.loginBtn.click(); });
+el.loginUser.addEventListener('keydown', e => { if (e.key === 'Enter') el.loginPass.focus(); });
+el.modalClose.addEventListener('click', hideLoginModal);
 
-        hideLoginModal();
-        el.userPill.style.display = 'flex';
-        el.userAvatar.textContent = personName.charAt(0).toUpperCase();
-        el.userName.textContent = personName;
-        el.inputArea.classList.remove('locked');
-        el.input.disabled = false;
-        el.input.placeholder = 'Speak to Eris...';
-        el.welcomeSub.textContent = `Hello, ${personName}`;
+// Logout
+el.userCard.addEventListener('click', () => {
+    if (!isLoggedIn) { showLoginModal(false); return; }
+    isLoggedIn = false; personName = ''; personId = ''; isCreator = false;
+    hasMessages = false;
+    el.chatMsg.innerHTML = '';
+    el.welcome.classList.remove('hidden');
+    el.chatView.classList.remove('active');
+    el.sidebarAvatar.textContent = '?';
+    el.sidebarName.textContent = 'Not signed in';
+    el.sidebarStatus.textContent = 'Click to sign in';
+    el.inputArea.classList.add('locked');
+    el.input.disabled = true;
+    el.welcomeLabel.textContent = 'awaiting presence';
+    el.chatList.innerHTML = '';
+    setCoreState('dormant');
+    showLoginModal(false);
+});
 
-        hasMessages = false;
-        el.chatMsg.innerHTML = '';
+// ── Chat History ──────────────────────────────────────
+function renderChatList() {
+    el.chatList.innerHTML = '';
+    for (const s of chatSessions) {
+        const div = document.createElement('div');
+        div.className = 'chat-item' + (s.id === currentSessionId ? ' active' : '');
+        div.textContent = s.title || 'New conversation';
+        div.addEventListener('click', () => loadChat(s.id));
+        el.chatList.appendChild(div);
+    }
+}
+
+function loadChat(sessionId) {
+    currentSessionId = sessionId;
+    renderChatList();
+    if (ws && isConnected) {
+        ws.send(JSON.stringify({ type: 'load_chat', session_id: sessionId }));
+    }
+}
+
+function loadChatMessages(messages) {
+    hasMessages = messages.length > 0;
+    el.chatMsg.innerHTML = '';
+    if (hasMessages) {
+        el.welcome.classList.add('hidden');
+        el.chatView.classList.add('active');
+        for (const m of messages) {
+            appendMessage(m.role === 'user' ? 'user' : 'eris', m.content, false);
+        }
+    } else {
         el.welcome.classList.remove('hidden');
         el.chatView.classList.remove('active');
-
-        if (data.is_creator) {
-            showToast('Welcome back, Creator ✨');
-        }
     }
+}
 
-    function showLoginModal(canClose) {
-        el.modalDesc.textContent = canClose ? 'Switch identity.' : 'Identify yourself.';
-        el.loginUser.value = ''; el.loginPass.value = '';
-        el.loginError.textContent = '';
-        el.modalClose.classList.toggle('visible', canClose);
-        el.modal.classList.add('show');
-        setTimeout(() => el.loginUser.focus(), 100);
+el.newChatBtn.addEventListener('click', () => {
+    currentSessionId = null;
+    hasMessages = false;
+    el.chatMsg.innerHTML = '';
+    el.welcome.classList.remove('hidden');
+    el.chatView.classList.remove('active');
+    renderChatList();
+    if (ws && isConnected) {
+        ws.send(JSON.stringify({ type: 'new_chat' }));
     }
-    function hideLoginModal() { el.modal.classList.remove('show'); }
+});
 
-    el.loginBtn.addEventListener('click', () => {
-        const username = el.loginUser.value.trim();
-        const password = el.loginPass.value;
-        if (!username || !password) { el.loginError.textContent = 'Both fields required.'; return; }
-        if (username.length < 2) { el.loginError.textContent = 'Username too short.'; return; }
-        if (password.length < 4) { el.loginError.textContent = 'Password too short.'; return; }
-        el.loginError.textContent = '';
-        ws.send(JSON.stringify({ type: 'login', username, password }));
-    });
+// ── Send Message ──────────────────────────────────────
+function updateInputState() {
+    const val = el.input.value.trim();
+    el.send.classList.toggle('active', val.length > 0 && isConnected && isLoggedIn);
+}
 
-    el.loginPass.addEventListener('keydown', e => { if (e.key === 'Enter') el.loginBtn.click(); });
-    el.loginUser.addEventListener('keydown', e => { if (e.key === 'Enter') el.loginPass.focus(); });
-    el.modalClose.addEventListener('click', hideLoginModal);
+function sendMsg() {
+    const val = el.input.value.trim();
+    if (!val || !isConnected || !isLoggedIn) return;
+    appendMessage('user', val);
+    ws.send(JSON.stringify({ type: 'message', content: val }));
+    el.input.value = ''; el.input.style.height = 'auto'; updateInputState();
+}
 
-    // Switch user (logout)
-    el.userPill.addEventListener('click', () => {
-        if (!isLoggedIn) { showLoginModal(false); return; }
-        isLoggedIn = false; personName = ''; personId = '';
-        hasMessages = false;
-        el.chatMsg.innerHTML = '';
-        el.welcome.classList.remove('hidden');
-        el.chatView.classList.remove('active');
-        el.userPill.style.display = 'none';
-        el.inputArea.classList.add('locked');
-        el.input.disabled = true;
-        el.input.placeholder = 'Log in to begin...';
-        el.welcomeSub.textContent = 'Log in to begin';
-        showLoginModal(false);
-    });
+el.send.addEventListener('click', () => sendMsg());
+el.input.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(); } });
 
-    // ── Chat ──────────────────────────────────────────────
-    function updateInputState() {
-        const val = el.input.value.trim();
-        el.send.classList.toggle('active', val.length > 0 && isConnected && isLoggedIn);
-    }
+function appendMessage(sender, text, animate = true) {
+    if (!hasMessages) { hasMessages = true; el.welcome.classList.add('hidden'); el.chatView.classList.add('active'); }
+    const div = document.createElement('div');
+    div.className = `message ${sender}`;
+    if (!animate) div.style.animation = 'none';
+    const t = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    let fmt = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    fmt = fmt.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
+    fmt = fmt.replace(/`([^`]+)`/g, '<code>$1</code>');
+    fmt = fmt.replace(/\*\*([^\*]+)\*\*/g, '<strong>$1</strong>');
+    fmt = fmt.split('\n\n').map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('');
+    div.innerHTML = `<div class="msg-bubble">${fmt}</div><div class="msg-time">${t}</div>`;
+    el.chatMsg.appendChild(div); scrollToBottom();
+}
 
-    function sendMsg() {
-        const val = el.input.value.trim();
-        if (!val || !isConnected || !isLoggedIn) return;
-        appendMessage('user', val);
-        ws.send(JSON.stringify({ type: 'message', content: val }));
-        el.input.value = ''; el.input.style.height = 'auto'; updateInputState();
-    }
+function showThinking() {
+    if (isThinking) return; isThinking = true;
+    const div = document.createElement('div');
+    div.className = 'message eris'; div.id = 'thinking';
+    div.innerHTML = `<div class="msg-bubble thinking-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>`;
+    el.chatMsg.appendChild(div); scrollToBottom();
+}
+function removeThinking() { isThinking = false; const e = document.getElementById('thinking'); if (e) e.remove(); }
+function scrollToBottom() { setTimeout(() => { el.chatMsg.scrollTop = el.chatMsg.scrollHeight; }, 50); }
 
-    el.send.addEventListener('click', () => sendMsg());
-    el.input.addEventListener('keydown', e => {
-        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(); }
-    });
-    el.input.addEventListener('input', () => {
-        el.input.style.height = 'auto';
-        el.input.style.height = Math.min(el.input.scrollHeight, 150) + 'px';
-        updateInputState();
-    });
+// ── Voice ─────────────────────────────────────────────
+let recognition = null, isRecording = false;
+if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SR();
+    recognition.continuous = false; recognition.interimResults = false; recognition.lang = 'en-US';
+    recognition.onstart = () => { isRecording = true; el.micBtn.classList.add('recording'); el.input.placeholder = 'Listening...'; };
+    recognition.onresult = (e) => { el.input.value = e.results[0][0].transcript; updateInputState(); sendMsg(); };
+    recognition.onerror = () => stopRec();
+    recognition.onend = () => stopRec();
+} else { el.micBtn.style.display = 'none'; }
+function stopRec() { isRecording = false; el.micBtn.classList.remove('recording'); el.input.placeholder = 'Speak to Eris...'; }
+el.micBtn.addEventListener('click', () => { if (!recognition || !isLoggedIn) return; isRecording ? recognition.stop() : recognition.start(); });
 
-    function appendMessage(sender, text) {
-        if (!hasMessages) {
-            hasMessages = true;
-            el.welcome.classList.add('hidden');
-            el.chatView.classList.add('active');
-        }
-        const div = document.createElement('div');
-        div.className = `message ${sender}`;
-        const t = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        let fmt = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        fmt = fmt.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
-        fmt = fmt.replace(/`([^`]+)`/g, '<code>$1</code>');
-        fmt = fmt.replace(/\*\*([^\*]+)\*\*/g, '<strong>$1</strong>');
-        fmt = fmt.split('\n\n').map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('');
-        div.innerHTML = `<div class="msg-bubble">${fmt}</div><div class="msg-time">${t}</div>`;
-        el.chatMsg.appendChild(div);
-        scrollToBottom();
-    }
-
-    function showThinking() {
-        if (isThinking) return; isThinking = true;
-        const div = document.createElement('div');
-        div.className = 'message eris'; div.id = 'thinking';
-        div.innerHTML = `<div class="msg-bubble thinking-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>`;
-        el.chatMsg.appendChild(div); scrollToBottom();
-    }
-    function removeThinking() { isThinking = false; const e = document.getElementById('thinking'); if (e) e.remove(); }
-    function scrollToBottom() { setTimeout(() => { el.chatMsg.scrollTop = el.chatMsg.scrollHeight; }, 50); }
-
-    // ── Voice (Mic) ───────────────────────────────────────
-    let recognition = null, isRecording = false;
-    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-        recognition = new SR();
-        recognition.continuous = false; recognition.interimResults = false; recognition.lang = 'en-US';
-        recognition.onstart = () => { isRecording = true; el.micBtn.classList.add('recording'); el.input.placeholder = 'Listening...'; };
-        recognition.onresult = (e) => { el.input.value = e.results[0][0].transcript; updateInputState(); sendMsg(); };
-        recognition.onerror = () => stopRec();
-        recognition.onend = () => stopRec();
-    } else { el.micBtn.style.display = 'none'; }
-    function stopRec() { isRecording = false; el.micBtn.classList.remove('recording'); el.input.placeholder = 'Speak to Eris...'; }
-    el.micBtn.addEventListener('click', () => { if (!recognition || !isLoggedIn) return; isRecording ? recognition.stop() : recognition.start(); });
-
-    connect();
+connect();
 </script>
 </body>
 </html>

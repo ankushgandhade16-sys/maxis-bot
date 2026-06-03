@@ -26,6 +26,7 @@ from maxis.emotion.state import EmotionalState
 from maxis.intelligence.llm_router import LLMRouter
 from maxis.memory.manager import MemoryManager
 from maxis.memory.compression import MemoryCompressor
+from maxis.memory.chat_history import ChatHistoryStore
 
 
 class Orchestrator:
@@ -40,6 +41,7 @@ class Orchestrator:
         self.llm = LLMRouter()
         self.emotional_state = EmotionalState()
         self.compressor: Optional[MemoryCompressor] = None
+        self.chat_history = ChatHistoryStore()
 
         # Per-user working memory isolation
         self._working_memories: dict[str, 'WorkingMemory'] = {}
@@ -60,6 +62,9 @@ class Orchestrator:
 
         # Initialize memory
         await self.memory.initialize()
+
+        # Initialize chat history
+        await self.chat_history.initialize()
 
         # Initialize LLM
         await self.llm.initialize()
@@ -92,6 +97,7 @@ class Orchestrator:
         message: str,
         person_id: str | None = None,
         is_voice: bool = False,
+        is_creator: bool = False,
     ) -> str:
         """
         Process a text message through the full pipeline.
@@ -118,6 +124,7 @@ class Orchestrator:
         memory_context = await self.memory.recall(
             query=message,
             person_id=active_person,
+            is_creator=is_creator,
         )
 
         # ── 3. Build person context ──────────────────────────────────────
