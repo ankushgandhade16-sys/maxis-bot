@@ -231,23 +231,22 @@ class LLMRouter:
                     system_instruction=system_instruction,
                 )
             )
-            
-        # Add a simple retry loop for 503s/429s since Gemini Flash is in high demand
+
+        import asyncio
         resp = None
-        last_error = None
-        for attempt in range(3):
+        for attempt in range(4):
             try:
                 resp = await asyncio.to_thread(call_gemini)
                 break
             except Exception as e:
                 last_error = e
                 if "503" in str(e) or "429" in str(e):
-                    if attempt < 2:
-                        await asyncio.sleep(2 ** attempt)  # exponential backoff: 1s, 2s
+                    if attempt < 3:
+                        await asyncio.sleep(2 ** attempt)  # exponential backoff: 1s, 2s, 4s
                         continue
                 raise last_error
 
-        if resp.usage_metadata:
+        if resp and getattr(resp, "usage_metadata", None):
             total_tokens = resp.usage_metadata.total_token_count
             await self._token_budget.record_usage("gemini", total_tokens)
 
