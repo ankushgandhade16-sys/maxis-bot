@@ -52,13 +52,23 @@ class ChatHistoryStore:
     Provides CRUD operations for conversation history,
     and special creator access to view all users' sessions.
     """
+    _instance = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(ChatHistoryStore, cls).__new__(cls)
+            cls._instance._engine = None
+            cls._instance._Session = None
+        return cls._instance
 
     def __init__(self):
-        self._engine = None
-        self._Session = None
+        # Initialization handled by __new__ to ensure singleton properties
+        pass
 
     async def initialize(self):
         """Initialize the chat history database."""
+        if self._engine is not None:
+            return  # Already initialized
         from maxis.config import get_config
         config = get_config()
 
