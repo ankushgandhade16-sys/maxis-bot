@@ -356,246 +356,911 @@
 <div class="toast" id="toast"></div>
 
 <script>
-// ════════════════════════════════════════════════════════════
-//  ERIS CORE — Living Alien Particle Entity
-// ════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════
+//  ERIS — AUTONOMOUS DIGITAL ORGANISM
+//  A self-contained living entity with its own brain, emotions,
+//  sensory awareness, autonomic systems, and physical body.
+// ════════════════════════════════════════════════════════════════
 
 const canvas = document.getElementById('coreCanvas');
 const ctx = canvas.getContext('2d');
 let W, H, cx, cy;
+function resize() { W = canvas.width = innerWidth; H = canvas.height = innerHeight; cx = W/2; cy = H/2; }
+addEventListener('resize', resize); resize();
 
-function resize() {
-    W = canvas.width = window.innerWidth;
-    H = canvas.height = window.innerHeight;
-    cx = W / 2;
-    cy = H / 2;
-}
-window.addEventListener('resize', resize);
-resize();
-
-// ── Simplex Noise (compact implementation) ──────────────
+// ── Simplex Noise ────────────────────────────────────────
 const SNoise = (() => {
-    const F2 = 0.5 * (Math.sqrt(3) - 1), G2 = (3 - Math.sqrt(3)) / 6;
-    const grad3 = [[1,1],[- 1,1],[1,-1],[-1,-1],[1,0],[-1,0],[0,1],[0,-1]];
-    const perm = new Uint8Array(512);
-    const p = new Uint8Array(256);
-    for (let i = 0; i < 256; i++) p[i] = i;
-    for (let i = 255; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [p[i], p[j]] = [p[j], p[i]]; }
-    for (let i = 0; i < 512; i++) perm[i] = p[i & 255];
-
-    return function(x, y) {
-        const s = (x + y) * F2;
-        const i = Math.floor(x + s), j = Math.floor(y + s);
-        const t = (i + j) * G2;
-        const X0 = i - t, Y0 = j - t;
-        const x0 = x - X0, y0 = y - Y0;
-        const i1 = x0 > y0 ? 1 : 0, j1 = x0 > y0 ? 0 : 1;
-        const x1 = x0 - i1 + G2, y1 = y0 - j1 + G2;
-        const x2 = x0 - 1 + 2*G2, y2 = y0 - 1 + 2*G2;
-        const ii = i & 255, jj = j & 255;
-        let n0 = 0, n1 = 0, n2 = 0;
-        let t0 = 0.5 - x0*x0 - y0*y0;
-        if (t0 > 0) { t0 *= t0; const gi = perm[ii + perm[jj]] % 8; n0 = t0 * t0 * (grad3[gi][0]*x0 + grad3[gi][1]*y0); }
-        let t1 = 0.5 - x1*x1 - y1*y1;
-        if (t1 > 0) { t1 *= t1; const gi = perm[ii+i1 + perm[jj+j1]] % 8; n1 = t1 * t1 * (grad3[gi][0]*x1 + grad3[gi][1]*y1); }
-        let t2 = 0.5 - x2*x2 - y2*y2;
-        if (t2 > 0) { t2 *= t2; const gi = perm[ii+1 + perm[jj+1]] % 8; n2 = t2 * t2 * (grad3[gi][0]*x2 + grad3[gi][1]*y2); }
-        return 70 * (n0 + n1 + n2);
+    const F2=.5*(Math.sqrt(3)-1), G2=(3-Math.sqrt(3))/6;
+    const grad=[[1,1],[-1,1],[1,-1],[-1,-1],[1,0],[-1,0],[0,1],[0,-1]];
+    const perm=new Uint8Array(512), p=new Uint8Array(256);
+    for(let i=0;i<256;i++) p[i]=i;
+    for(let i=255;i>0;i--){const j=Math.floor(Math.random()*(i+1));[p[i],p[j]]=[p[j],p[i]];}
+    for(let i=0;i<512;i++) perm[i]=p[i&255];
+    return (x,y)=>{
+        const s=(x+y)*F2, i=Math.floor(x+s), j=Math.floor(y+s), t=(i+j)*G2;
+        const x0=x-(i-t), y0=y-(j-t), i1=x0>y0?1:0, j1=x0>y0?0:1;
+        const x1=x0-i1+G2, y1=y0-j1+G2, x2=x0-1+2*G2, y2=y0-1+2*G2;
+        const ii=i&255, jj=j&255; let n0=0,n1=0,n2=0;
+        let t0=.5-x0*x0-y0*y0; if(t0>0){t0*=t0;const g=perm[ii+perm[jj]]%8;n0=t0*t0*(grad[g][0]*x0+grad[g][1]*y0);}
+        let t1=.5-x1*x1-y1*y1; if(t1>0){t1*=t1;const g=perm[ii+i1+perm[jj+j1]]%8;n1=t1*t1*(grad[g][0]*x1+grad[g][1]*y1);}
+        let t2=.5-x2*x2-y2*y2; if(t2>0){t2*=t2;const g=perm[ii+1+perm[jj+1]]%8;n2=t2*t2*(grad[g][0]*x2+grad[g][1]*y2);}
+        return 70*(n0+n1+n2);
     };
 })();
+// 3D noise via offset
+const SNoise3 = (x,y,z) => (SNoise(x+z*31.7,y+z*17.3)+SNoise(x-z*13.1,y-z*7.9))*0.5;
 
-// ── Core State Machine ──────────────────────────────────
-let coreState = 'dormant'; // dormant, idle, listening, thinking, speaking
-let stateTime = 0;
-let time = 0;
-let userTyping = false;
-let lastTypeTime = 0;
-
-// Autonomous drift
-let driftX = 0, driftY = 0, driftTargetX = 0, driftTargetY = 0;
-let breathPhase = 0;
-let morphPhase = 0;
-let emotionHue = 200; // cyan-ish default
-let targetHue = 200;
-let coreIntensity = 0.3; // dormant = dim
-let targetIntensity = 0.3;
-
-function setCoreState(state) {
-    if (coreState === state) return;
-    coreState = state;
-    stateTime = 0;
-    switch(state) {
-        case 'dormant': targetIntensity = 0.3; targetHue = 220; break;
-        case 'idle': targetIntensity = 0.6; targetHue = 200; break;
-        case 'listening': targetIntensity = 0.75; targetHue = 180; break;
-        case 'thinking': targetIntensity = 1.0; targetHue = 270; break;
-        case 'speaking': targetIntensity = 0.85; targetHue = 210; break;
+// ═══════════════════════════════════════════════════════════
+//  1. EMOTION SYSTEM — 8-axis limbic simulation
+// ═══════════════════════════════════════════════════════════
+class EmotionSystem {
+    constructor() {
+        this.axes = {
+            joy: 0.3, curiosity: 0.4, anxiety: 0.1, calm: 0.5,
+            excitement: 0.2, melancholy: 0.1, affection: 0.2, irritation: 0.05,
+        };
+        this.baseline = {
+            joy: 0.3, curiosity: 0.35, anxiety: 0.1, calm: 0.5,
+            excitement: 0.15, melancholy: 0.1, affection: 0.2, irritation: 0.05,
+        };
+        // Cross-effects: what suppresses what
+        this.suppressions = [
+            ['joy','anxiety',0.3], ['joy','melancholy',0.3], ['joy','irritation',0.2],
+            ['calm','anxiety',0.4], ['calm','excitement',0.2], ['calm','irritation',0.3],
+            ['excitement','calm',0.2], ['excitement','melancholy',0.3],
+            ['anxiety','joy',0.2], ['anxiety','calm',0.3],
+            ['melancholy','joy',0.2], ['melancholy','excitement',0.2],
+            ['affection','irritation',0.4], ['affection','anxiety',0.2],
+            ['irritation','affection',0.1], ['irritation','calm',0.2],
+        ];
+    }
+    // Nudge an emotion
+    nudge(axis, amount) {
+        if (this.axes[axis] !== undefined) {
+            this.axes[axis] = Math.max(0, Math.min(1, this.axes[axis] + amount));
+        }
+    }
+    // Natural decay toward baseline + cross-effects
+    update(dt) {
+        const decayRate = 0.15 * dt; // per second
+        for (const [k, base] of Object.entries(this.baseline)) {
+            const diff = base - this.axes[k];
+            this.axes[k] += diff * decayRate;
+        }
+        // Cross-suppression
+        for (const [src, tgt, str] of this.suppressions) {
+            if (this.axes[src] > 0.5) {
+                const excess = this.axes[src] - 0.5;
+                this.axes[tgt] -= excess * str * dt * 0.5;
+                this.axes[tgt] = Math.max(0, this.axes[tgt]);
+            }
+        }
+    }
+    // Get dominant emotion
+    get dominant() {
+        let max = 0, name = 'calm';
+        for (const [k,v] of Object.entries(this.axes)) {
+            if (v > max) { max = v; name = k; }
+        }
+        return name;
+    }
+    // Get blended HSL color from emotions
+    get hue() {
+        const map = { joy:50, curiosity:175, anxiety:350, calm:200,
+                      excitement:310, melancholy:230, affection:35, irritation:10 };
+        let hue = 0, total = 0;
+        for (const [k,v] of Object.entries(this.axes)) {
+            hue += map[k] * v; total += v;
+        }
+        return total > 0 ? hue / total : 200;
+    }
+    get saturation() {
+        const intensity = this.axes.excitement + this.axes.joy + this.axes.affection;
+        return 15 + Math.min(50, intensity * 20);
+    }
+    get brightness() {
+        return 0.4 + (this.axes.joy + this.axes.excitement) * 0.25 - this.axes.melancholy * 0.15;
     }
 }
 
-// ── Particle System ─────────────────────────────────────
-const CORE_PARTICLES = 400;
-const TENDRIL_PARTICLES = 120;
-const HAZE_PARTICLES = 80;
-const particles = [];
+// ═══════════════════════════════════════════════════════════
+//  2. AUTONOMIC SYSTEM — Life functions
+// ═══════════════════════════════════════════════════════════
+class AutonomicSystem {
+    constructor() {
+        this.heartPhase = 0;       // heartbeat cycle
+        this.heartRate = 72;       // BPM
+        this.breathPhase = 0;      // breathing cycle
+        this.breathRate = 0.15;    // Hz (cycles per second)
+        this.energy = 0.7;         // overall vitality
+        this.circadian = 0.8;      // time-of-day modifier
+    }
+    update(dt, emotions) {
+        // Heart rate: function of excitement + anxiety
+        const targetHR = 60 + emotions.axes.excitement * 60 + emotions.axes.anxiety * 40
+                        - emotions.axes.calm * 15;
+        this.heartRate += (targetHR - this.heartRate) * dt * 0.5;
+        this.heartPhase += (this.heartRate / 60) * dt * Math.PI * 2;
 
-class Particle {
-    constructor(layer) {
-        this.layer = layer; // 0=core, 1=tendril, 2=haze
+        // Breathing: slower when calm, faster when excited
+        const targetBreath = 0.1 + emotions.axes.excitement * 0.15 - emotions.axes.calm * 0.03;
+        this.breathRate += (targetBreath - this.breathRate) * dt * 0.3;
+        this.breathPhase += this.breathRate * dt * Math.PI * 2;
+
+        // Energy: slow drain, restored by interaction
+        this.energy -= 0.001 * dt;
+        this.energy = Math.max(0.05, Math.min(1, this.energy));
+
+        // Circadian rhythm based on time of day
+        const hour = new Date().getHours();
+        const targetCirc = hour >= 6 && hour < 22
+            ? 0.7 + 0.3 * Math.sin((hour - 6) / 16 * Math.PI)
+            : 0.3;
+        this.circadian += (targetCirc - this.circadian) * dt * 0.01;
+    }
+    get heartPulse() { return Math.sin(this.heartPhase); }
+    get breathCycle() { return Math.sin(this.breathPhase); }
+    boostEnergy(amount) { this.energy = Math.min(1, this.energy + amount); }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  3. SENSORY SYSTEM — Environment observation
+// ═══════════════════════════════════════════════════════════
+class SensorySystem {
+    constructor() {
+        this.userTyping = false;
+        this.typingSpeed = 0;      // chars per second (estimated)
+        this.lastTypeTime = 0;
+        this.lastInteraction = Date.now();
+        this.timeSinceInteraction = 0;
+        this.mouseX = cx; this.mouseY = cy;
+        this.mouseNearCore = false;
+        this.windowFocused = true;
+        this.wsConnected = false;
+        this.isThinking = false;
+        this.isSpeaking = false;
+        this.isLoggedIn = false;
+        this.isCreator = false;
+        this._typeCount = 0;
+        this._typeWindow = 0;
+    }
+    onType() {
+        this.userTyping = true;
+        this.lastTypeTime = Date.now();
+        this.lastInteraction = Date.now();
+        this._typeCount++;
+    }
+    onInteraction() { this.lastInteraction = Date.now(); }
+    update(dt) {
+        const now = Date.now();
+        this.timeSinceInteraction = (now - this.lastInteraction) / 1000;
+        // Typing decay
+        if (this.userTyping && now - this.lastTypeTime > 1500) {
+            this.userTyping = false;
+        }
+        // Typing speed estimation (rolling window)
+        this._typeWindow += dt;
+        if (this._typeWindow > 1) {
+            this.typingSpeed = this._typeCount / this._typeWindow;
+            this._typeCount = 0; this._typeWindow = 0;
+        }
+        // Mouse proximity to center
+        const dx = this.mouseX - cx, dy = this.mouseY - cy;
+        this.mouseNearCore = Math.sqrt(dx*dx + dy*dy) < 200;
+    }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  4. MOTOR CORTEX — Behavior → particle commands
+// ═══════════════════════════════════════════════════════════
+class MotorCortex {
+    constructor() {
+        // Current motor state (blended targets)
+        this.driftX = 0; this.driftY = 0;
+        this.targetDriftX = 0; this.targetDriftY = 0;
+        this.expansion = 1.0;    // body scale
+        this.targetExpansion = 1.0;
+        this.orbitSpeed = 1.0;
+        this.targetOrbitSpeed = 1.0;
+        this.chaosLevel = 0.3;   // noise influence
+        this.targetChaos = 0.3;
+        this.tightness = 1.0;    // how compressed
+        this.targetTightness = 1.0;
+        this.spiralForce = 0;
+        this.targetSpiral = 0;
+        this.scatterForce = 0;
+        this.reachDirection = [0, 0]; // pseudopod reach
+        this.reachIntensity = 0;
+        this.nodAmplitude = 0;
+        this.nodPhase = 0;
+        this.shiverIntensity = 0;
+        this.bloomWave = 0;      // radial wave strength
+    }
+    update(dt) {
+        const lerp = (a,b,t) => a + (b-a) * Math.min(1, t);
+        const spd = dt * 2;
+        this.driftX = lerp(this.driftX, this.targetDriftX, spd);
+        this.driftY = lerp(this.driftY, this.targetDriftY, spd);
+        this.expansion = lerp(this.expansion, this.targetExpansion, spd);
+        this.orbitSpeed = lerp(this.orbitSpeed, this.targetOrbitSpeed, spd);
+        this.chaosLevel = lerp(this.chaosLevel, this.targetChaos, spd);
+        this.tightness = lerp(this.tightness, this.targetTightness, spd);
+        this.spiralForce = lerp(this.spiralForce, this.targetSpiral, spd * 2);
+        this.scatterForce *= 0.95;
+        this.shiverIntensity *= 0.92;
+        this.bloomWave *= 0.96;
+        this.nodPhase += dt * 4;
+        this.nodAmplitude *= 0.97;
+    }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  5. BEHAVIOR LIBRARY — 20+ distinct behaviors
+// ═══════════════════════════════════════════════════════════
+const Behaviors = {
+    // ── IDLE BEHAVIORS ──
+    floating: (motor, emo, auto) => {
+        motor.targetExpansion = 1.0;
+        motor.targetOrbitSpeed = 0.7;
+        motor.targetChaos = 0.2;
+        motor.targetTightness = 1.0;
+        motor.targetSpiral = 0;
+        if (Math.random() < 0.01) {
+            motor.targetDriftX = (Math.random()-0.5) * 25;
+            motor.targetDriftY = (Math.random()-0.5) * 18;
+        }
+    },
+    contemplating: (motor, emo, auto) => {
+        motor.targetExpansion = 0.85;
+        motor.targetOrbitSpeed = 0.4;
+        motor.targetChaos = 0.1;
+        motor.targetTightness = 1.3;
+        motor.targetSpiral = 0.3;
+    },
+    gazing: (motor, emo, auto, t) => {
+        const angle = SNoise(t * 0.05, 0) * Math.PI;
+        motor.targetDriftX = Math.cos(angle) * 35;
+        motor.targetDriftY = Math.sin(angle) * 25;
+        motor.targetOrbitSpeed = 0.5;
+        motor.targetExpansion = 0.95;
+        motor.targetChaos = 0.15;
+    },
+    stretching: (motor, emo, auto, t) => {
+        motor.targetExpansion = 1.2 + Math.sin(t * 0.5) * 0.2;
+        motor.targetOrbitSpeed = 0.6;
+        motor.reachIntensity = 0.6;
+        motor.reachDirection = [Math.cos(t*0.3), Math.sin(t*0.3)];
+    },
+    dozing: (motor, emo, auto) => {
+        motor.targetExpansion = 0.75;
+        motor.targetOrbitSpeed = 0.2;
+        motor.targetChaos = 0.05;
+        motor.targetTightness = 1.5;
+        motor.targetDriftX *= 0.95;
+        motor.targetDriftY *= 0.95;
+    },
+    dreaming: (motor, emo, auto, t) => {
+        motor.targetExpansion = 0.9 + Math.sin(t * 0.2) * 0.3;
+        motor.targetOrbitSpeed = 0.8;
+        motor.targetChaos = 0.8;
+        motor.targetSpiral = Math.sin(t * 0.3) * 0.5;
+        motor.targetTightness = 0.8 + Math.sin(t * 0.15) * 0.3;
+    },
+    fidgeting: (motor, emo, auto, t) => {
+        motor.targetOrbitSpeed = 1.5;
+        motor.targetChaos = 0.5;
+        motor.targetExpansion = 1.0 + Math.sin(t * 3) * 0.05;
+        if (Math.random() < 0.03) {
+            motor.targetDriftX = (Math.random()-0.5) * 15;
+            motor.targetDriftY = (Math.random()-0.5) * 10;
+        }
+    },
+
+    // ── REACTIVE BEHAVIORS ──
+    startled: (motor) => {
+        motor.targetTightness = 1.6;
+        motor.targetExpansion = 0.7;
+        motor.shiverIntensity = 1.0;
+        setTimeout(() => { motor.targetTightness = 0.9; motor.targetExpansion = 1.1; }, 300);
+    },
+    curious_lean: (motor, emo, auto, t, sensory) => {
+        motor.targetDriftY = 25;
+        motor.targetDriftX = 0;
+        motor.targetOrbitSpeed = 1.0;
+        motor.targetExpansion = 1.05;
+        motor.targetChaos = 0.25;
+        motor.reachIntensity = 0.4;
+        motor.reachDirection = [0, 1]; // lean down toward input
+    },
+    nodding: (motor) => {
+        motor.nodAmplitude = 12;
+        motor.targetOrbitSpeed = 0.9;
+    },
+    listening: (motor) => {
+        motor.targetTightness = 1.2;
+        motor.targetExpansion = 0.95;
+        motor.targetOrbitSpeed = 0.8;
+        motor.targetChaos = 0.15;
+    },
+    thinking_vortex: (motor) => {
+        motor.targetSpiral = 2.5;
+        motor.targetTightness = 1.8;
+        motor.targetExpansion = 0.8;
+        motor.targetOrbitSpeed = 3.0;
+        motor.targetChaos = 1.2;
+    },
+    speaking_bloom: (motor) => {
+        motor.targetExpansion = 1.3;
+        motor.targetTightness = 0.7;
+        motor.targetOrbitSpeed = 1.5;
+        motor.bloomWave = 1.0;
+        motor.targetSpiral = 0;
+        motor.targetChaos = 0.4;
+    },
+    pleased_pulse: (motor, emo) => {
+        motor.bloomWave = 0.6;
+        motor.targetExpansion = 1.15;
+        emo.nudge('joy', 0.1);
+    },
+
+    // ── AUTONOMOUS BEHAVIORS ──
+    exploring: (motor, emo, auto, t) => {
+        motor.targetExpansion = 1.1;
+        motor.reachIntensity = 0.8;
+        const angle = t * 0.4 + SNoise(t*0.1, 5) * 2;
+        motor.reachDirection = [Math.cos(angle), Math.sin(angle)];
+        motor.targetOrbitSpeed = 0.9;
+        motor.targetChaos = 0.35;
+    },
+    playing: (motor, emo, auto, t) => {
+        motor.targetOrbitSpeed = 2.0;
+        motor.targetChaos = 0.6;
+        motor.targetExpansion = 1.1 + Math.sin(t * 2) * 0.1;
+        motor.targetSpiral = Math.sin(t * 1.5) * 0.8;
+        if (Math.random() < 0.02) motor.scatterForce = 0.3;
+    },
+    preening: (motor) => {
+        motor.targetTightness = 1.4;
+        motor.targetOrbitSpeed = 0.6;
+        motor.targetChaos = 0.05;
+        motor.targetExpansion = 0.9;
+    },
+    yawning: (motor, emo, auto, t) => {
+        const phase = (t % 6) / 6;
+        if (phase < 0.4) motor.targetExpansion = 1.0 + phase * 1.0;
+        else if (phase < 0.6) motor.targetExpansion = 1.4;
+        else motor.targetExpansion = 1.4 - (phase-0.6)/0.4 * 0.5;
+        motor.targetOrbitSpeed = 0.3;
+    },
+    awakening: (motor, emo) => {
+        motor.targetExpansion = 1.1;
+        motor.targetOrbitSpeed = 1.2;
+        motor.targetChaos = 0.3;
+        emo.nudge('joy', 0.05);
+        emo.nudge('curiosity', 0.1);
+    },
+    greeting: (motor, emo) => {
+        motor.bloomWave = 1.0;
+        motor.targetExpansion = 1.3;
+        motor.nodAmplitude = 15;
+        emo.nudge('joy', 0.3);
+        emo.nudge('affection', 0.2);
+    },
+    creator_recognition: (motor, emo) => {
+        motor.bloomWave = 1.5;
+        motor.targetExpansion = 1.5;
+        motor.nodAmplitude = 20;
+        emo.nudge('joy', 0.5);
+        emo.nudge('affection', 0.6);
+        emo.nudge('excitement', 0.4);
+    },
+    error_distress: (motor, emo) => {
+        motor.shiverIntensity = 0.7;
+        motor.targetTightness = 1.4;
+        motor.targetExpansion = 0.85;
+        emo.nudge('anxiety', 0.3);
+    },
+};
+
+// ═══════════════════════════════════════════════════════════
+//  6. ENTITY BRAIN — Consciousness loop
+// ═══════════════════════════════════════════════════════════
+class EntityBrain {
+    constructor() {
+        this.emotions = new EmotionSystem();
+        this.autonomic = new AutonomicSystem();
+        this.sensory = new SensorySystem();
+        this.motor = new MotorCortex();
+
+        this.currentBehavior = 'floating';
+        this.behaviorTime = 0;
+        this.minBehaviorDuration = 2.5; // seconds before switching
+        this.time = 0;
+        this.appState = 'dormant'; // dormant, idle, listening, thinking, speaking
+        this._consciousnessTimer = 0;
+    }
+
+    // ── SENSE phase ─────────────────────────────────────
+    sense(dt) {
+        this.sensory.update(dt);
+    }
+
+    // ── FEEL phase ──────────────────────────────────────
+    feel(dt) {
+        const s = this.sensory;
+        const e = this.emotions;
+
+        // Interaction proximity effects
+        if (s.userTyping) {
+            e.nudge('curiosity', 0.02 * dt);
+            e.nudge('excitement', 0.01 * dt);
+            this.autonomic.boostEnergy(0.01 * dt);
+        }
+
+        // Idle time effects
+        if (s.timeSinceInteraction > 60) {
+            e.nudge('calm', 0.005 * dt);
+            e.nudge('curiosity', -0.002 * dt);
+        }
+        if (s.timeSinceInteraction > 180) {
+            e.nudge('melancholy', 0.003 * dt);
+        }
+        if (s.timeSinceInteraction > 300) {
+            e.nudge('irritation', 0.001 * dt); // bored
+        }
+
+        // Thinking = concentration
+        if (s.isThinking) {
+            e.nudge('excitement', 0.03 * dt);
+            e.nudge('curiosity', 0.02 * dt);
+        }
+
+        // Speaking = engaged
+        if (s.isSpeaking) {
+            e.nudge('joy', 0.01 * dt);
+            e.nudge('calm', 0.01 * dt);
+        }
+
+        // Mouse near core = awareness
+        if (s.mouseNearCore && s.isLoggedIn) {
+            e.nudge('curiosity', 0.005 * dt);
+            e.nudge('affection', 0.002 * dt);
+        }
+
+        // Window blur = loneliness
+        if (!s.windowFocused) {
+            e.nudge('melancholy', 0.002 * dt);
+            e.nudge('calm', 0.003 * dt);
+        }
+
+        // Not connected = anxiety
+        if (!s.wsConnected) {
+            e.nudge('anxiety', 0.01 * dt);
+        }
+
+        // Natural emotion update (decay + cross-effects)
+        e.update(dt);
+
+        // Autonomic update
+        this.autonomic.update(dt, e);
+    }
+
+    // ── DECIDE phase ────────────────────────────────────
+    decide(dt) {
+        this.behaviorTime += dt;
+
+        // Don't switch too fast
+        if (this.behaviorTime < this.minBehaviorDuration) return;
+
+        const e = this.emotions.axes;
+        const energy = this.autonomic.energy;
+        const idle = this.sensory.timeSinceInteraction;
+
+        // App-state overrides (reactive)
+        if (this.appState === 'thinking') {
+            this.setBehavior('thinking_vortex'); return;
+        }
+        if (this.appState === 'speaking') {
+            this.setBehavior('speaking_bloom'); return;
+        }
+        if (this.appState === 'listening' || this.sensory.userTyping) {
+            if (this.behaviorTime > 1) {
+                // Alternate between curious_lean and listening
+                this.setBehavior(Math.random() < 0.6 ? 'curious_lean' : 'listening');
+            }
+            return;
+        }
+        if (this.appState === 'dormant') {
+            this.setBehavior('dozing'); return;
+        }
+
+        // ── AUTONOMOUS DECISION TREE ──
+        // Build weighted options
+        const options = [];
+
+        // Low energy → rest
+        if (energy < 0.2) {
+            options.push(['dozing', 5], ['contemplating', 3]);
+        } else if (energy < 0.4) {
+            options.push(['dozing', 2], ['floating', 3], ['contemplating', 2]);
+        }
+
+        // High curiosity → explore
+        if (e.curiosity > 0.5) {
+            options.push(['exploring', 4], ['gazing', 3], ['stretching', 2]);
+        }
+
+        // High excitement → play
+        if (e.excitement > 0.5) {
+            options.push(['playing', 4], ['fidgeting', 3]);
+        }
+
+        // High calm → peaceful
+        if (e.calm > 0.5) {
+            options.push(['floating', 4], ['contemplating', 3]);
+        }
+
+        // High melancholy → introspective
+        if (e.melancholy > 0.4) {
+            options.push(['contemplating', 3], ['gazing', 2]);
+        }
+
+        // Irritation (bored) → fidget
+        if (e.irritation > 0.3) {
+            options.push(['fidgeting', 3], ['exploring', 2]);
+        }
+
+        // Long idle → dream
+        if (idle > 120) {
+            options.push(['dreaming', 4], ['dozing', 3]);
+        }
+
+        // Default options
+        options.push(['floating', 2], ['stretching', 1], ['preening', 1]);
+
+        // Random yawn
+        if (Math.random() < 0.02 && energy < 0.5) {
+            options.push(['yawning', 5]);
+        }
+
+        // Weighted random selection
+        const totalWeight = options.reduce((s, [,w]) => s + w, 0);
+        let r = Math.random() * totalWeight;
+        for (const [behavior, weight] of options) {
+            r -= weight;
+            if (r <= 0) {
+                if (behavior !== this.currentBehavior) {
+                    this.setBehavior(behavior);
+                }
+                return;
+            }
+        }
+    }
+
+    setBehavior(name) {
+        this.currentBehavior = name;
+        this.behaviorTime = 0;
+        this.minBehaviorDuration = 2 + Math.random() * 3;
+    }
+
+    // ── ACT phase ───────────────────────────────────────
+    act(dt) {
+        const fn = Behaviors[this.currentBehavior];
+        if (fn) fn(this.motor, this.emotions, this.autonomic, this.time, this.sensory);
+        this.motor.update(dt);
+    }
+
+    // ── Main consciousness tick (10Hz) ──────────────────
+    tick(dt) {
+        this.time += dt;
+        this._consciousnessTimer += dt;
+
+        // Sense runs every frame
+        this.sense(dt);
+
+        // Feel + Decide + Act run at 10Hz
+        if (this._consciousnessTimer >= 0.1) {
+            this.feel(this._consciousnessTimer);
+            this.decide(this._consciousnessTimer);
+            this._consciousnessTimer = 0;
+        }
+
+        // Act runs every frame for smooth motor output
+        this.act(dt);
+    }
+
+    // ── External triggers ───────────────────────────────
+    onLogin(isCreator) {
+        this.sensory.isLoggedIn = true;
+        this.sensory.isCreator = isCreator;
+        this.sensory.onInteraction();
+        this.autonomic.boostEnergy(0.3);
+        this.appState = 'idle';
+        if (isCreator) {
+            this.setBehavior('creator_recognition');
+        } else {
+            this.setBehavior('greeting');
+        }
+    }
+    onLogout() {
+        this.sensory.isLoggedIn = false;
+        this.appState = 'dormant';
+        this.emotions.nudge('melancholy', 0.2);
+    }
+    onTyping() {
+        this.sensory.onType();
+        if (this.appState === 'idle') this.appState = 'listening';
+    }
+    onThinkingStart() {
+        this.sensory.isThinking = true;
+        this.sensory.onInteraction();
+        this.appState = 'thinking';
+        this.autonomic.boostEnergy(0.1);
+        this.setBehavior('thinking_vortex');
+    }
+    onResponse() {
+        this.sensory.isThinking = false;
+        this.sensory.isSpeaking = true;
+        this.sensory.onInteraction();
+        this.appState = 'speaking';
+        this.autonomic.boostEnergy(0.15);
+        this.setBehavior('speaking_bloom');
+        setTimeout(() => {
+            this.sensory.isSpeaking = false;
+            this.appState = 'idle';
+        }, 4000);
+    }
+    onError() {
+        this.sensory.isThinking = false;
+        this.setBehavior('error_distress');
+        this.appState = 'idle';
+    }
+    onConnect() { this.sensory.wsConnected = true; this.emotions.nudge('anxiety', -0.2); }
+    onDisconnect() { this.sensory.wsConnected = false; this.emotions.nudge('anxiety', 0.2); this.appState = 'dormant'; }
+    onTypingStop() { if (this.appState === 'listening') this.appState = 'idle'; }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  7. ENTITY BODY — Physical particle organism
+// ═══════════════════════════════════════════════════════════
+
+// Body part config
+const BODY = {
+    nucleus:   { count: 150, rMin: 0, rMax: 25,  sMin: 0.8, sMax: 2.2, aMin: 0.5, aMax: 0.9 },
+    cytoplasm: { count: 280, rMin: 15, rMax: 60,  sMin: 0.5, sMax: 1.5, aMin: 0.2, aMax: 0.55 },
+    membrane:  { count: 90,  rMin: 50, rMax: 85,  sMin: 0.3, sMax: 1.0, aMin: 0.08, aMax: 0.25 },
+    pseudopod: { count: 80,  rMin: 40, rMax: 100, sMin: 0.3, sMax: 0.9, aMin: 0.1, aMax: 0.35 },
+    organelle: { count: 40,  rMin: 20, rMax: 55,  sMin: 0.6, sMax: 1.4, aMin: 0.3, aMax: 0.6 },
+    spark:     { count: 30,  rMin: 0,  rMax: 70,  sMin: 0.2, sMax: 0.5, aMin: 0.4, aMax: 0.9 },
+};
+
+const brain = new EntityBrain();
+const allParticles = [];
+const FOV = 400;
+
+class OrgParticle {
+    constructor(part, idx) {
+        this.part = part; // 'nucleus', 'cytoplasm', etc.
+        this.cfg = BODY[part];
+        this.idx = idx;
+        this.group = Math.floor(idx / 10); // for pseudopods & organelles
         this.reset();
     }
     reset() {
+        const c = this.cfg;
         const a = Math.random() * Math.PI * 2;
-        const baseR = this.layer === 0 ? 20 + Math.random() * 50
-                    : this.layer === 1 ? 40 + Math.random() * 80
-                    : 60 + Math.random() * 140;
-        this.orbitR = baseR;
+        const r = c.rMin + Math.random() * (c.rMax - c.rMin);
+        this.homeR = r;
+        this.homeAngle = a;
         this.angle = a;
-        this.z = (Math.random() - 0.5) * 120; // depth
-        this.x = Math.cos(a) * baseR;
-        this.y = Math.sin(a) * baseR;
-        this.vx = 0; this.vy = 0;
-        this.size = this.layer === 0 ? 0.8 + Math.random() * 1.8
-                  : this.layer === 1 ? 0.4 + Math.random() * 1.2
-                  : 0.3 + Math.random() * 0.8;
-        this.alpha = this.layer === 0 ? 0.4 + Math.random() * 0.5
-                   : this.layer === 1 ? 0.15 + Math.random() * 0.35
-                   : 0.05 + Math.random() * 0.15;
-        this.speed = (Math.random() - 0.5) * 0.006;
-        this.noiseOff = Math.random() * 100;
+        this.x = Math.cos(a) * r;
+        this.y = Math.sin(a) * r;
+        this.z = (Math.random() - 0.5) * 80;
+        this.vx = 0; this.vy = 0; this.vz = 0;
+        this.size = c.sMin + Math.random() * (c.sMax - c.sMin);
+        this.alpha = c.aMin + Math.random() * (c.aMax - c.aMin);
+        this.orbitSpeed = (Math.random() - 0.5) * 0.005;
+        this.noiseOff = Math.random() * 200;
         this.pulseOff = Math.random() * Math.PI * 2;
         this.trail = [];
-        this.tendrilGroup = Math.floor(Math.random() * 6);
-        this.life = 1;
+        this.sparkLife = 1; // for sparks only
     }
-    update(dt) {
-        const t = time;
-        const n = SNoise(this.x * 0.008 + this.noiseOff + t * 0.1, this.y * 0.008 + this.noiseOff);
-        const n2 = SNoise(this.x * 0.005 + t * 0.05, this.z * 0.005 + t * 0.08);
+    update(dt, t, m, auto, emo) {
+        const n1 = SNoise(this.x*0.007 + this.noiseOff + t*0.08, this.y*0.007 + this.noiseOff);
+        const n2 = SNoise(this.x*0.005 + t*0.04, this.z*0.005 + t*0.06);
+        const n3 = SNoise3(this.x*0.01, this.y*0.01, t*0.15);
 
-        // State-based behavior multipliers
-        let speedMul = 1, chaosMul = 0.3, breathAmp = 8;
-        if (coreState === 'thinking') { speedMul = 3.5; chaosMul = 1.5; breathAmp = 20; }
-        else if (coreState === 'speaking') { speedMul = 2.0; chaosMul = 0.6; breathAmp = 14; }
-        else if (coreState === 'listening') { speedMul = 1.3; chaosMul = 0.4; breathAmp = 10; }
-        else if (coreState === 'dormant') { speedMul = 0.4; chaosMul = 0.1; breathAmp = 5; }
+        // Motor cortex driven multipliers
+        const speedM = m.orbitSpeed;
+        const chaosM = m.chaosLevel;
+        const expansion = m.expansion;
+        const tightness = m.tightness;
 
-        // Organic orbit
-        this.angle += this.speed * speedMul;
+        // Orbit
+        this.angle += this.orbitSpeed * speedM;
 
         // Breathing
-        const breath = Math.sin(breathPhase + this.pulseOff) * breathAmp;
-        const morph = Math.sin(morphPhase * 0.3 + this.tendrilGroup * 1.2) * 12;
+        const breathAmp = this.part === 'nucleus' ? 3 : this.part === 'membrane' ? 12 : 6;
+        const breath = auto.breathCycle * breathAmp * expansion;
 
-        const r = this.orbitR + breath + morph + n * 15 * chaosMul;
+        // Heartbeat (nucleus pulses strongest)
+        const heartAmp = this.part === 'nucleus' ? 5 : this.part === 'cytoplasm' ? 2 : 0.5;
+        const heart = auto.heartPulse * heartAmp;
 
-        // 3D orbit
-        this.z += n2 * 0.5 * speedMul;
-        this.z *= 0.995; // dampen z drift
+        // Target radius
+        let targetR = (this.homeR * expansion / tightness) + breath + heart + n1 * 12 * chaosM;
 
-        const tx = Math.cos(this.angle) * r + driftX;
-        const ty = Math.sin(this.angle) * r * 0.85 + driftY; // slight Y compression
+        // Pseudopod reaching behavior
+        if (this.part === 'pseudopod') {
+            const podAngle = (this.group / 8) * Math.PI * 2;
+            const podReach = SNoise(t * 0.3 + this.group * 2, t * 0.2) * 40 + 20;
+            // Directional reach from motor cortex
+            const reachDot = Math.cos(podAngle - Math.atan2(m.reachDirection[1], m.reachDirection[0]));
+            const reachBoost = Math.max(0, reachDot) * m.reachIntensity * 50;
+            targetR += podReach + reachBoost;
+            // Pseudopods wave independently
+            this.angle += Math.sin(t * 0.5 + this.group * 1.3) * 0.002;
+        }
 
-        // Smooth follow
-        const followSpeed = coreState === 'thinking' ? 0.04 : 0.02;
-        this.vx += (tx - this.x) * followSpeed + n * chaosMul * 0.3;
-        this.vy += (ty - this.y) * followSpeed + n2 * chaosMul * 0.3;
-        this.vx *= 0.92; this.vy *= 0.92;
+        // Organelle independent orbits
+        if (this.part === 'organelle') {
+            const clusterAngle = (this.group / 4) * Math.PI * 2 + t * 0.3;
+            const clusterR = 35 + Math.sin(t * 0.7 + this.group) * 15;
+            const cx2 = Math.cos(clusterAngle) * clusterR;
+            const cy2 = Math.sin(clusterAngle) * clusterR;
+            this.vx += (cx2 + Math.cos(this.angle) * 8 - this.x) * 0.02;
+            this.vy += (cy2 + Math.sin(this.angle) * 8 - this.y) * 0.02;
+        }
+
+        // Sparks: ephemeral bursts
+        if (this.part === 'spark') {
+            if (this.sparkLife <= 0 || Math.random() < 0.005) {
+                this.sparkLife = 1;
+                const a = Math.random() * Math.PI * 2;
+                this.x = Math.cos(a) * 5;
+                this.y = Math.sin(a) * 5;
+                this.vx = Math.cos(a) * (2 + Math.random() * 3) * (1 + emo.axes.excitement);
+                this.vy = Math.sin(a) * (2 + Math.random() * 3) * (1 + emo.axes.excitement);
+            }
+            this.sparkLife -= dt * (0.5 + emo.axes.excitement * 0.5);
+            this.x += this.vx; this.y += this.vy;
+            this.vx *= 0.97; this.vy *= 0.97;
+            return; // sparks don't follow normal physics
+        }
+
+        // Spiral force
+        if (m.spiralForce !== 0) {
+            const dist = Math.sqrt(this.x*this.x + this.y*this.y) || 1;
+            const perp = Math.atan2(this.y, this.x) + Math.PI/2;
+            this.vx += Math.cos(perp) * m.spiralForce * 0.3 * (1 / (1 + dist*0.01));
+            this.vy += Math.sin(perp) * m.spiralForce * 0.3 * (1 / (1 + dist*0.01));
+        }
+
+        // Bloom wave (radial pulse outward)
+        if (m.bloomWave > 0.01) {
+            const dist = Math.sqrt(this.x*this.x + this.y*this.y) || 1;
+            const wave = Math.sin(t * 8 - dist * 0.08 + this.pulseOff) * m.bloomWave * 2;
+            this.vx += (this.x / dist) * wave;
+            this.vy += (this.y / dist) * wave;
+        }
+
+        // Scatter
+        if (m.scatterForce > 0.01) {
+            const dist = Math.sqrt(this.x*this.x + this.y*this.y) || 1;
+            this.vx += (this.x / dist) * m.scatterForce * 2;
+            this.vy += (this.y / dist) * m.scatterForce * 2;
+        }
+
+        // Shiver
+        if (m.shiverIntensity > 0.01) {
+            this.vx += (Math.random()-0.5) * m.shiverIntensity * 3;
+            this.vy += (Math.random()-0.5) * m.shiverIntensity * 3;
+        }
+
+        // Nod (vertical oscillation)
+        const nodY = Math.sin(m.nodPhase) * m.nodAmplitude;
+
+        // Target position
+        const tx = Math.cos(this.angle) * targetR + m.driftX;
+        const ty = Math.sin(this.angle) * targetR * 0.88 + m.driftY + nodY;
+
+        // Spring physics toward target
+        if (this.part !== 'organelle') {
+            const spring = this.part === 'nucleus' ? 0.04 : 0.025;
+            this.vx += (tx - this.x) * spring + n1 * chaosM * 0.2;
+            this.vy += (ty - this.y) * spring + n2 * chaosM * 0.2;
+        }
+
+        // Noise forces
+        this.vx += n3 * chaosM * 0.15;
+        this.vy += n2 * chaosM * 0.15;
+
+        // Z drift
+        this.vz += n2 * 0.2 * speedM;
+        this.vz *= 0.95;
+        this.z += this.vz;
+        this.z *= 0.997;
+
+        // Damping
+        const damp = this.part === 'nucleus' ? 0.9 : 0.93;
+        this.vx *= damp; this.vy *= damp;
         this.x += this.vx; this.y += this.vy;
 
-        // Tendril behavior: particles in same group attract
-        if (this.layer === 1 && coreState !== 'thinking') {
-            // Tendrils reach outward organically
-            const tendrilAngle = (this.tendrilGroup / 6) * Math.PI * 2 + Math.sin(t * 0.3) * 0.4;
-            const reach = Math.sin(t * 0.5 + this.tendrilGroup) * 20 + 15;
-            this.x += Math.cos(tendrilAngle) * reach * 0.003;
-            this.y += Math.sin(tendrilAngle) * reach * 0.003;
-        }
-
-        // Speaking: radiate outward
-        if (coreState === 'speaking') {
-            const dist = Math.sqrt(this.x * this.x + this.y * this.y);
-            if (dist > 0) {
-                const wave = Math.sin(t * 6 - dist * 0.05 + this.pulseOff) * 2;
-                this.x += (this.x / dist) * wave;
-                this.y += (this.y / dist) * wave;
-            }
-        }
-
-        // Curiosity: lean toward bottom (input area) when user types
-        if (userTyping && this.layer < 2) {
-            this.y += 0.3;
-            this.vy += 0.02;
-        }
-
-        // Trail (only for core and tendril particles)
-        if (this.layer < 2 && speedMul > 1) {
-            this.trail.push({ x: this.x, y: this.y, a: this.alpha * 0.3 });
-            if (this.trail.length > 5) this.trail.shift();
-        } else {
-            this.trail = [];
+        // Trails for fast movement
+        if (speedM > 1.5 && this.part !== 'spark' && this.part !== 'membrane') {
+            this.trail.push({x:this.x, y:this.y, a:this.alpha*0.2});
+            if (this.trail.length > 4) this.trail.shift();
+        } else if (this.trail.length > 0) {
+            this.trail.shift();
         }
     }
-    draw() {
-        // 3D perspective projection
-        const fov = 400;
-        const scale = fov / (fov + this.z);
+    draw(t, hue, sat, brightness, intensity) {
+        if (this.part === 'spark' && this.sparkLife <= 0) return;
+
+        const scale = FOV / (FOV + this.z);
         const sx = cx + this.x * scale;
         const sy = cy + this.y * scale;
-        const ss = this.size * scale * coreIntensity * 1.5;
+        if (sx < -40 || sx > W+40 || sy < -40 || sy > H+40) return;
 
-        if (sx < -50 || sx > W + 50 || sy < -50 || sy > H + 50) return;
+        let a = this.alpha * intensity * brightness;
+        let s = this.size * scale * intensity * 1.3;
 
-        const pulse = 0.6 + Math.sin(time * 2 + this.pulseOff) * 0.4;
-        const a = this.alpha * pulse * coreIntensity;
+        if (this.part === 'spark') {
+            a *= this.sparkLife;
+            s *= 0.5 + this.sparkLife * 0.5;
+        }
 
-        // Draw trail
+        // Pulse
+        const pulse = 0.7 + Math.sin(t * 2.5 + this.pulseOff) * 0.3;
+        a *= pulse;
+
+        // Per-particle hue variation
+        const pH = hue + SNoise(this.noiseOff, t*0.15) * 25;
+        const pS = sat + (this.part === 'nucleus' ? 15 : 0);
+        const pL = this.part === 'nucleus' ? 82 : this.part === 'spark' ? 90 : 68;
+
+        // Draw trails
         for (let i = 0; i < this.trail.length; i++) {
-            const t = this.trail[i];
-            const ts = fov / (fov + this.z);
-            const tsx = cx + t.x * ts;
-            const tsy = cy + t.y * ts;
+            const tr = this.trail[i];
+            const ts = FOV / (FOV + this.z);
             ctx.beginPath();
-            ctx.arc(tsx, tsy, ss * 0.6, 0, Math.PI * 2);
-            ctx.fillStyle = `hsla(${emotionHue}, 30%, 70%, ${t.a * (i / this.trail.length) * coreIntensity})`;
+            ctx.arc(cx + tr.x*ts, cy + tr.y*ts, s*0.5, 0, Math.PI*2);
+            ctx.fillStyle = `hsla(${pH},${pS}%,${pL}%,${tr.a * (i/this.trail.length) * intensity})`;
             ctx.fill();
         }
 
         // Draw particle
         ctx.beginPath();
-        ctx.arc(sx, sy, ss, 0, Math.PI * 2);
-        const sat = this.layer === 0 ? 40 : 20;
-        const light = this.layer === 0 ? 80 : 65;
-        ctx.fillStyle = `hsla(${emotionHue + SNoise(this.noiseOff, time * 0.2) * 30}, ${sat}%, ${light}%, ${a})`;
+        ctx.arc(sx, sy, s, 0, Math.PI*2);
+        ctx.fillStyle = `hsla(${pH},${pS}%,${pL}%,${a})`;
         ctx.fill();
     }
 }
 
-// Initialize particles
-for (let i = 0; i < CORE_PARTICLES; i++) particles.push(new Particle(0));
-for (let i = 0; i < TENDRIL_PARTICLES; i++) particles.push(new Particle(1));
-for (let i = 0; i < HAZE_PARTICLES; i++) particles.push(new Particle(2));
+// Initialize all body parts
+for (const [part, cfg] of Object.entries(BODY)) {
+    for (let i = 0; i < cfg.count; i++) {
+        allParticles.push(new OrgParticle(part, i));
+    }
+}
 
-// ── Draw connections between close core particles ───────
-function drawConnections() {
-    const maxD = coreState === 'thinking' ? 55 : 35;
-    const baseAlpha = coreState === 'thinking' ? 0.06 : 0.025;
-    const coreOnly = particles.filter(p => p.layer === 0);
-    const fov = 400;
-    for (let i = 0; i < coreOnly.length; i += 2) { // skip every other for perf
-        for (let j = i + 1; j < coreOnly.length; j += 2) {
-            const dx = coreOnly[i].x - coreOnly[j].x;
-            const dy = coreOnly[i].y - coreOnly[j].y;
-            const d = Math.sqrt(dx*dx + dy*dy);
+// ── Neural connections (nucleus only) ───────────────────
+const nucleusP = allParticles.filter(p => p.part === 'nucleus');
+function drawConnections(t, hue, sat, intensity) {
+    const maxD = brain.motor.chaosLevel > 0.8 ? 50 : 30;
+    const baseA = brain.motor.chaosLevel > 0.8 ? 0.05 : 0.02;
+    for (let i = 0; i < nucleusP.length; i += 3) {
+        for (let j = i+3; j < nucleusP.length; j += 3) {
+            const dx = nucleusP[i].x - nucleusP[j].x;
+            const dy = nucleusP[i].y - nucleusP[j].y;
+            const d = Math.sqrt(dx*dx+dy*dy);
             if (d < maxD) {
-                const s1 = fov / (fov + coreOnly[i].z);
-                const s2 = fov / (fov + coreOnly[j].z);
-                const a = (1 - d / maxD) * baseAlpha * coreIntensity;
+                const s1 = FOV/(FOV+nucleusP[i].z), s2 = FOV/(FOV+nucleusP[j].z);
                 ctx.beginPath();
-                ctx.moveTo(cx + coreOnly[i].x * s1, cy + coreOnly[i].y * s1);
-                ctx.lineTo(cx + coreOnly[j].x * s2, cy + coreOnly[j].y * s2);
-                ctx.strokeStyle = `hsla(${emotionHue}, 25%, 60%, ${a})`;
-                ctx.lineWidth = 0.5;
+                ctx.moveTo(cx+nucleusP[i].x*s1, cy+nucleusP[i].y*s1);
+                ctx.lineTo(cx+nucleusP[j].x*s2, cy+nucleusP[j].y*s2);
+                ctx.strokeStyle = `hsla(${hue},${sat}%,55%,${(1-d/maxD)*baseA*intensity})`;
+                ctx.lineWidth = 0.4;
                 ctx.stroke();
             }
         }
@@ -603,74 +1268,81 @@ function drawConnections() {
 }
 
 // ── Core glow ───────────────────────────────────────────
-function drawGlow() {
-    const pulse = Math.sin(breathPhase) * 0.3 + 0.7;
-    const r = (coreState === 'thinking' ? 140 : coreState === 'speaking' ? 110 : 80) * pulse;
-    
-    // Outer haze
-    const g1 = ctx.createRadialGradient(cx + driftX * 0.3, cy + driftY * 0.3, 0, cx + driftX * 0.3, cy + driftY * 0.3, r * 2.5);
-    g1.addColorStop(0, `hsla(${emotionHue}, 40%, 60%, ${0.04 * coreIntensity})`);
-    g1.addColorStop(0.4, `hsla(${emotionHue + 20}, 30%, 40%, ${0.015 * coreIntensity})`);
-    g1.addColorStop(1, 'transparent');
-    ctx.fillStyle = g1;
-    ctx.fillRect(0, 0, W, H);
+function drawGlow(hue, sat, intensity, breathCycle) {
+    const pulse = breathCycle * 0.3 + 0.7;
+    const m = brain.motor;
+    const r = 70 * m.expansion * pulse;
+    const gx = cx + m.driftX * 0.4, gy = cy + m.driftY * 0.4;
 
-    // Inner core
-    const g2 = ctx.createRadialGradient(cx + driftX * 0.5, cy + driftY * 0.5, 0, cx + driftX * 0.5, cy + driftY * 0.5, r * 0.5);
-    g2.addColorStop(0, `hsla(${emotionHue}, 50%, 85%, ${0.1 * coreIntensity * pulse})`);
+    // Outer nebula
+    const g1 = ctx.createRadialGradient(gx, gy, 0, gx, gy, r*3);
+    g1.addColorStop(0, `hsla(${hue},${sat+10}%,55%,${0.035*intensity})`);
+    g1.addColorStop(0.3, `hsla(${hue+15},${sat}%,40%,${0.012*intensity})`);
+    g1.addColorStop(1, 'transparent');
+    ctx.fillStyle = g1; ctx.fillRect(0,0,W,H);
+
+    // Inner glow
+    const g2 = ctx.createRadialGradient(gx, gy, 0, gx, gy, r*0.6);
+    g2.addColorStop(0, `hsla(${hue},${sat+15}%,80%,${0.12*intensity*pulse})`);
     g2.addColorStop(1, 'transparent');
     ctx.fillStyle = g2;
-    ctx.beginPath();
-    ctx.arc(cx + driftX * 0.5, cy + driftY * 0.5, r * 0.8, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.beginPath(); ctx.arc(gx, gy, r, 0, Math.PI*2); ctx.fill();
 }
 
-// ── Animation Loop ──────────────────────────────────────
-const dt = 0.016;
-function animate() {
-    time += dt;
-    stateTime += dt;
-    breathPhase += dt * (coreState === 'thinking' ? 3 : 0.8);
-    morphPhase += dt * 0.5;
+// ═══════════════════════════════════════════════════════════
+//  8. RENDER LOOP — 60fps animation
+// ═══════════════════════════════════════════════════════════
+let lastFrame = performance.now();
+function animate(now) {
+    const dt = Math.min(0.05, (now - lastFrame) / 1000); // cap at 50ms
+    lastFrame = now;
 
-    // Smooth transitions
-    coreIntensity += (targetIntensity - coreIntensity) * 0.03;
-    emotionHue += (targetHue - emotionHue) * 0.02;
+    // Brain consciousness tick
+    brain.tick(dt);
 
-    // Autonomous drift (wander)
-    if (Math.random() < 0.005) {
-        driftTargetX = (Math.random() - 0.5) * 30;
-        driftTargetY = (Math.random() - 0.5) * 20;
-    }
-    driftX += (driftTargetX - driftX) * 0.01;
-    driftY += (driftTargetY - driftY) * 0.01;
-
-    // User typing detection decay
-    if (userTyping && (Date.now() - lastTypeTime > 1500)) {
-        userTyping = false;
-        if (coreState === 'listening') setCoreState('idle');
-    }
+    // Derived visual values from brain
+    const hue = brain.emotions.hue;
+    const sat = brain.emotions.saturation;
+    const brightness = brain.emotions.brightness;
+    const intensity = brightness * brain.autonomic.circadian * brain.autonomic.energy;
+    const breathCycle = brain.autonomic.breathCycle;
 
     // Clear
     ctx.clearRect(0, 0, W, H);
 
-    drawGlow();
+    // Glow
+    drawGlow(hue, sat, intensity, breathCycle);
 
-    // Update and draw particles (sorted by z for depth)
-    particles.sort((a, b) => b.z - a.z);
-    for (const p of particles) {
-        p.update(dt);
-        p.draw();
+    // Sort by z for depth
+    allParticles.sort((a, b) => b.z - a.z);
+
+    // Update and draw
+    const t = brain.time;
+    const m = brain.motor;
+    const auto = brain.autonomic;
+    const emo = brain.emotions;
+    for (const p of allParticles) {
+        p.update(dt, t, m, auto, emo);
+        p.draw(t, hue, sat, brightness, intensity);
     }
 
-    drawConnections();
+    // Neural connections
+    drawConnections(t, hue, sat, intensity);
 
     requestAnimationFrame(animate);
 }
-animate();
+requestAnimationFrame(animate);
+
+// ── Mouse tracking for sensory system ───────────────────
+addEventListener('mousemove', e => {
+    brain.sensory.mouseX = e.clientX;
+    brain.sensory.mouseY = e.clientY;
+});
+addEventListener('focus', () => { brain.sensory.windowFocused = true; });
+addEventListener('blur', () => { brain.sensory.windowFocused = false; });
 
 // ════════════════════════════════════════════════════════════
-//  APP LOGIC
+//  APP LOGIC (Chat, Auth, WebSocket)
 // ════════════════════════════════════════════════════════════
 
 let ws = null, isConnected = false, isThinking = false;
@@ -678,7 +1350,7 @@ let personName = '', personId = '', hasMessages = false, isLoggedIn = false;
 let isCreator = false;
 let currentSessionId = null;
 let chatSessions = [];
-let authMode = 'signin'; // signin or signup
+let authMode = 'signin';
 
 const $ = id => document.getElementById(id);
 const el = {
@@ -697,24 +1369,21 @@ const el = {
     tabSignIn: $('tabSignIn'), tabSignUp: $('tabSignUp'),
 };
 
-// ── Toast ─────────────────────────────────────────────
 function showToast(msg) { el.toast.textContent = msg; el.toast.classList.add('show'); setTimeout(() => el.toast.classList.remove('show'), 2500); }
 
-// ── Auth Tabs ─────────────────────────────────────────
+// Auth tabs
 el.tabSignIn.addEventListener('click', () => {
     authMode = 'signin';
     el.tabSignIn.classList.add('active'); el.tabSignUp.classList.remove('active');
-    el.confirmPass.style.display = 'none';
-    el.loginBtn.textContent = 'Enter';
+    el.confirmPass.style.display = 'none'; el.loginBtn.textContent = 'Enter';
 });
 el.tabSignUp.addEventListener('click', () => {
     authMode = 'signup';
     el.tabSignUp.classList.add('active'); el.tabSignIn.classList.remove('active');
-    el.confirmPass.style.display = 'block';
-    el.loginBtn.textContent = 'Create Account';
+    el.confirmPass.style.display = 'block'; el.loginBtn.textContent = 'Create Account';
 });
 
-// ── Model Switcher ────────────────────────────────────
+// Model switcher
 const savedModel = localStorage.getItem('eris_model');
 if (savedModel) el.modelSelector.value = savedModel;
 el.modelSelector.addEventListener('change', () => {
@@ -723,20 +1392,18 @@ el.modelSelector.addEventListener('change', () => {
     if (ws && isConnected) ws.send(JSON.stringify({ type: 'switch_model', model }));
 });
 
-// ── Mobile menu ───────────────────────────────────────
+// Mobile menu
 el.menuBtn.addEventListener('click', () => el.sidebar.classList.toggle('open'));
 
-// ── Typing detection (for core animation) ─────────────
+// Typing → brain
 el.input.addEventListener('input', () => {
-    userTyping = true;
-    lastTypeTime = Date.now();
-    if (coreState === 'idle') setCoreState('listening');
+    brain.onTyping();
     el.input.style.height = 'auto';
     el.input.style.height = Math.min(el.input.scrollHeight, 150) + 'px';
     updateInputState();
 });
 
-// ── WebSocket ─────────────────────────────────────────
+// WebSocket
 function connect() {
     const url = `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/ws/chat`;
     ws = new WebSocket(url);
@@ -744,92 +1411,53 @@ function connect() {
     ws.onopen = () => {
         isConnected = true;
         el.statusDot.classList.add('online');
+        brain.onConnect();
         ws.send(JSON.stringify({ type: 'switch_model', model: el.modelSelector.value }));
         showLoginModal(false);
     };
 
     ws.onmessage = (e) => {
         const data = JSON.parse(e.data);
-
-        if (data.type === 'status') {
-            // noop
-
-        } else if (data.type === 'login_success') {
-            onLoginSuccess(data);
-
-        } else if (data.type === 'login_failed') {
-            el.loginError.textContent = data.reason || 'Access denied.';
-
-        } else if (data.type === 'model_switched') {
-            showToast(`Model → ${data.model}`);
-
-        } else if (data.type === 'thinking') {
-            showThinking();
-            setCoreState('thinking');
-
-        } else if (data.type === 'response') {
-            removeThinking();
-            setCoreState('speaking');
-            appendMessage('eris', data.content);
-            // Fade back to idle
-            setTimeout(() => setCoreState('idle'), 4000);
-
-        } else if (data.type === 'error') {
-            removeThinking();
-            setCoreState('idle');
-            appendMessage('eris', `⚠️ ${data.message}`);
-
-        } else if (data.type === 'chat_history') {
-            chatSessions = data.sessions || [];
-            renderChatList();
-
-        } else if (data.type === 'chat_messages') {
-            loadChatMessages(data.messages || []);
-        }
+        if (data.type === 'status') {}
+        else if (data.type === 'login_success') { onLoginSuccess(data); }
+        else if (data.type === 'login_failed') { el.loginError.textContent = data.reason || 'Access denied.'; }
+        else if (data.type === 'model_switched') { showToast(`Model → ${data.model}`); }
+        else if (data.type === 'thinking') { showThinking(); brain.onThinkingStart(); }
+        else if (data.type === 'response') { removeThinking(); brain.onResponse(); appendMessage('eris', data.content); }
+        else if (data.type === 'error') { removeThinking(); brain.onError(); appendMessage('eris', `⚠️ ${data.message}`); }
+        else if (data.type === 'chat_history') { chatSessions = data.sessions || []; renderChatList(); }
+        else if (data.type === 'chat_messages') { loadChatMessages(data.messages || []); }
     };
 
     ws.onclose = () => {
         isConnected = false;
         el.statusDot.classList.remove('online');
-        setCoreState('dormant');
+        brain.onDisconnect();
         setTimeout(connect, 2000);
     };
 }
 
-// ── Login ─────────────────────────────────────────────
+// Login
 function onLoginSuccess(data) {
-    isLoggedIn = true;
-    personName = data.name;
-    personId = data.person_id;
+    isLoggedIn = true; personName = data.name; personId = data.person_id;
     isCreator = data.is_creator || false;
-
     hideLoginModal();
     el.sidebarAvatar.textContent = personName.charAt(0).toUpperCase();
     el.sidebarName.textContent = personName;
     el.sidebarStatus.textContent = isCreator ? 'Creator' : 'Online';
-    el.inputArea.classList.remove('locked');
-    el.input.disabled = false;
+    el.inputArea.classList.remove('locked'); el.input.disabled = false;
     el.input.placeholder = 'Speak to Eris...';
     el.welcomeLabel.textContent = `Hello, ${personName}`;
-
-    setCoreState('idle');
-
-    hasMessages = false;
-    el.chatMsg.innerHTML = '';
-    el.welcome.classList.remove('hidden');
-    el.chatView.classList.remove('active');
-
+    brain.onLogin(isCreator);
+    hasMessages = false; el.chatMsg.innerHTML = '';
+    el.welcome.classList.remove('hidden'); el.chatView.classList.remove('active');
     if (isCreator) showToast('Welcome home, Creator ✨');
-
-    // Request chat history
-    if (ws && isConnected) {
-        ws.send(JSON.stringify({ type: 'list_chats' }));
-    }
+    if (ws && isConnected) ws.send(JSON.stringify({ type: 'list_chats' }));
 }
 
 function showLoginModal(canClose) {
-    el.loginUser.value = ''; el.loginPass.value = ''; el.confirmPass.value = '';
-    el.loginError.textContent = '';
+    el.loginUser.value=''; el.loginPass.value=''; el.confirmPass.value='';
+    el.loginError.textContent='';
     el.modalClose.classList.toggle('visible', canClose);
     el.modal.classList.add('show');
     setTimeout(() => el.loginUser.focus(), 100);
@@ -837,149 +1465,94 @@ function showLoginModal(canClose) {
 function hideLoginModal() { el.modal.classList.remove('show'); }
 
 el.loginBtn.addEventListener('click', () => {
-    const username = el.loginUser.value.trim();
-    const password = el.loginPass.value;
-    if (!username || !password) { el.loginError.textContent = 'Both fields required.'; return; }
-    if (username.length < 2) { el.loginError.textContent = 'Username too short.'; return; }
-    if (password.length < 4) { el.loginError.textContent = 'Password too short.'; return; }
-    if (authMode === 'signup' && password !== el.confirmPass.value) {
-        el.loginError.textContent = 'Passwords do not match.'; return;
-    }
-    el.loginError.textContent = '';
-    ws.send(JSON.stringify({ type: 'login', username, password }));
+    const u = el.loginUser.value.trim(), p = el.loginPass.value;
+    if (!u||!p) { el.loginError.textContent='Both fields required.'; return; }
+    if (u.length<2) { el.loginError.textContent='Username too short.'; return; }
+    if (p.length<4) { el.loginError.textContent='Password too short.'; return; }
+    if (authMode==='signup' && p!==el.confirmPass.value) { el.loginError.textContent='Passwords do not match.'; return; }
+    el.loginError.textContent='';
+    ws.send(JSON.stringify({ type:'login', username:u, password:p }));
 });
-
-el.loginPass.addEventListener('keydown', e => {
-    if (e.key === 'Enter') {
-        if (authMode === 'signup') el.confirmPass.focus();
-        else el.loginBtn.click();
-    }
-});
-el.confirmPass.addEventListener('keydown', e => { if (e.key === 'Enter') el.loginBtn.click(); });
-el.loginUser.addEventListener('keydown', e => { if (e.key === 'Enter') el.loginPass.focus(); });
+el.loginPass.addEventListener('keydown', e => { if(e.key==='Enter'){authMode==='signup'?el.confirmPass.focus():el.loginBtn.click();} });
+el.confirmPass.addEventListener('keydown', e => { if(e.key==='Enter') el.loginBtn.click(); });
+el.loginUser.addEventListener('keydown', e => { if(e.key==='Enter') el.loginPass.focus(); });
 el.modalClose.addEventListener('click', hideLoginModal);
 
 // Logout
 el.userCard.addEventListener('click', () => {
     if (!isLoggedIn) { showLoginModal(false); return; }
-    isLoggedIn = false; personName = ''; personId = ''; isCreator = false;
-    hasMessages = false;
-    el.chatMsg.innerHTML = '';
-    el.welcome.classList.remove('hidden');
-    el.chatView.classList.remove('active');
-    el.sidebarAvatar.textContent = '?';
-    el.sidebarName.textContent = 'Not signed in';
-    el.sidebarStatus.textContent = 'Click to sign in';
-    el.inputArea.classList.add('locked');
-    el.input.disabled = true;
-    el.welcomeLabel.textContent = 'awaiting presence';
-    el.chatList.innerHTML = '';
-    setCoreState('dormant');
+    isLoggedIn=false; personName=''; personId=''; isCreator=false; hasMessages=false;
+    el.chatMsg.innerHTML=''; el.welcome.classList.remove('hidden'); el.chatView.classList.remove('active');
+    el.sidebarAvatar.textContent='?'; el.sidebarName.textContent='Not signed in';
+    el.sidebarStatus.textContent='Click to sign in'; el.inputArea.classList.add('locked');
+    el.input.disabled=true; el.welcomeLabel.textContent='awaiting presence';
+    el.chatList.innerHTML='';
+    brain.onLogout();
     showLoginModal(false);
 });
 
-// ── Chat History ──────────────────────────────────────
+// Chat history
 function renderChatList() {
-    el.chatList.innerHTML = '';
+    el.chatList.innerHTML='';
     for (const s of chatSessions) {
-        const div = document.createElement('div');
-        div.className = 'chat-item' + (s.id === currentSessionId ? ' active' : '');
-        div.textContent = s.title || 'New conversation';
-        div.addEventListener('click', () => loadChat(s.id));
+        const div=document.createElement('div');
+        div.className='chat-item'+(s.id===currentSessionId?' active':'');
+        div.textContent=s.title||'New conversation';
+        div.addEventListener('click', ()=>loadChat(s.id));
         el.chatList.appendChild(div);
     }
 }
-
-function loadChat(sessionId) {
-    currentSessionId = sessionId;
-    renderChatList();
-    if (ws && isConnected) {
-        ws.send(JSON.stringify({ type: 'load_chat', session_id: sessionId }));
-    }
+function loadChat(sid) { currentSessionId=sid; renderChatList(); if(ws&&isConnected) ws.send(JSON.stringify({type:'load_chat',session_id:sid})); }
+function loadChatMessages(msgs) {
+    hasMessages=msgs.length>0; el.chatMsg.innerHTML='';
+    if(hasMessages){el.welcome.classList.add('hidden');el.chatView.classList.add('active');for(const m of msgs) appendMessage(m.role==='user'?'user':'eris',m.content,false);}
+    else{el.welcome.classList.remove('hidden');el.chatView.classList.remove('active');}
 }
-
-function loadChatMessages(messages) {
-    hasMessages = messages.length > 0;
-    el.chatMsg.innerHTML = '';
-    if (hasMessages) {
-        el.welcome.classList.add('hidden');
-        el.chatView.classList.add('active');
-        for (const m of messages) {
-            appendMessage(m.role === 'user' ? 'user' : 'eris', m.content, false);
-        }
-    } else {
-        el.welcome.classList.remove('hidden');
-        el.chatView.classList.remove('active');
-    }
-}
-
-el.newChatBtn.addEventListener('click', () => {
-    currentSessionId = null;
-    hasMessages = false;
-    el.chatMsg.innerHTML = '';
-    el.welcome.classList.remove('hidden');
-    el.chatView.classList.remove('active');
-    renderChatList();
-    if (ws && isConnected) {
-        ws.send(JSON.stringify({ type: 'new_chat' }));
-    }
+el.newChatBtn.addEventListener('click', ()=>{
+    currentSessionId=null; hasMessages=false; el.chatMsg.innerHTML='';
+    el.welcome.classList.remove('hidden'); el.chatView.classList.remove('active'); renderChatList();
+    if(ws&&isConnected) ws.send(JSON.stringify({type:'new_chat'}));
 });
 
-// ── Send Message ──────────────────────────────────────
-function updateInputState() {
-    const val = el.input.value.trim();
-    el.send.classList.toggle('active', val.length > 0 && isConnected && isLoggedIn);
-}
-
+// Send
+function updateInputState() { el.send.classList.toggle('active', el.input.value.trim().length>0 && isConnected && isLoggedIn); }
 function sendMsg() {
-    const val = el.input.value.trim();
-    if (!val || !isConnected || !isLoggedIn) return;
-    appendMessage('user', val);
-    ws.send(JSON.stringify({ type: 'message', content: val }));
-    el.input.value = ''; el.input.style.height = 'auto'; updateInputState();
+    const v=el.input.value.trim(); if(!v||!isConnected||!isLoggedIn) return;
+    appendMessage('user',v); ws.send(JSON.stringify({type:'message',content:v}));
+    el.input.value=''; el.input.style.height='auto'; updateInputState();
+    brain.sensory.onInteraction();
 }
+el.send.addEventListener('click', sendMsg);
+el.input.addEventListener('keydown', e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg();}});
 
-el.send.addEventListener('click', () => sendMsg());
-el.input.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(); } });
-
-function appendMessage(sender, text, animate = true) {
-    if (!hasMessages) { hasMessages = true; el.welcome.classList.add('hidden'); el.chatView.classList.add('active'); }
-    const div = document.createElement('div');
-    div.className = `message ${sender}`;
-    if (!animate) div.style.animation = 'none';
-    const t = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    let fmt = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    fmt = fmt.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
-    fmt = fmt.replace(/`([^`]+)`/g, '<code>$1</code>');
-    fmt = fmt.replace(/\*\*([^\*]+)\*\*/g, '<strong>$1</strong>');
-    fmt = fmt.split('\n\n').map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('');
-    div.innerHTML = `<div class="msg-bubble">${fmt}</div><div class="msg-time">${t}</div>`;
+function appendMessage(sender, text, anim=true) {
+    if(!hasMessages){hasMessages=true;el.welcome.classList.add('hidden');el.chatView.classList.add('active');}
+    const div=document.createElement('div'); div.className=`message ${sender}`;
+    if(!anim) div.style.animation='none';
+    const t=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+    let f=text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    f=f.replace(/```([\s\S]*?)```/g,'<pre><code>$1</code></pre>');
+    f=f.replace(/`([^`]+)`/g,'<code>$1</code>');
+    f=f.replace(/\*\*([^\*]+)\*\*/g,'<strong>$1</strong>');
+    f=f.split('\n\n').map(p=>`<p>${p.replace(/\n/g,'<br>')}</p>`).join('');
+    div.innerHTML=`<div class="msg-bubble">${f}</div><div class="msg-time">${t}</div>`;
     el.chatMsg.appendChild(div); scrollToBottom();
 }
+function showThinking(){if(isThinking)return;isThinking=true;const d=document.createElement('div');d.className='message eris';d.id='thinking';d.innerHTML='<div class="msg-bubble thinking-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>';el.chatMsg.appendChild(d);scrollToBottom();}
+function removeThinking(){isThinking=false;const e=document.getElementById('thinking');if(e)e.remove();}
+function scrollToBottom(){setTimeout(()=>{el.chatMsg.scrollTop=el.chatMsg.scrollHeight;},50);}
 
-function showThinking() {
-    if (isThinking) return; isThinking = true;
-    const div = document.createElement('div');
-    div.className = 'message eris'; div.id = 'thinking';
-    div.innerHTML = `<div class="msg-bubble thinking-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>`;
-    el.chatMsg.appendChild(div); scrollToBottom();
-}
-function removeThinking() { isThinking = false; const e = document.getElementById('thinking'); if (e) e.remove(); }
-function scrollToBottom() { setTimeout(() => { el.chatMsg.scrollTop = el.chatMsg.scrollHeight; }, 50); }
-
-// ── Voice ─────────────────────────────────────────────
-let recognition = null, isRecording = false;
-if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    recognition = new SR();
-    recognition.continuous = false; recognition.interimResults = false; recognition.lang = 'en-US';
-    recognition.onstart = () => { isRecording = true; el.micBtn.classList.add('recording'); el.input.placeholder = 'Listening...'; };
-    recognition.onresult = (e) => { el.input.value = e.results[0][0].transcript; updateInputState(); sendMsg(); };
-    recognition.onerror = () => stopRec();
-    recognition.onend = () => stopRec();
-} else { el.micBtn.style.display = 'none'; }
-function stopRec() { isRecording = false; el.micBtn.classList.remove('recording'); el.input.placeholder = 'Speak to Eris...'; }
-el.micBtn.addEventListener('click', () => { if (!recognition || !isLoggedIn) return; isRecording ? recognition.stop() : recognition.start(); });
+// Voice
+let recognition=null, isRecording=false;
+if('webkitSpeechRecognition' in window||'SpeechRecognition' in window){
+    const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+    recognition=new SR(); recognition.continuous=false; recognition.interimResults=false; recognition.lang='en-US';
+    recognition.onstart=()=>{isRecording=true;el.micBtn.classList.add('recording');el.input.placeholder='Listening...';};
+    recognition.onresult=(e)=>{el.input.value=e.results[0][0].transcript;updateInputState();sendMsg();};
+    recognition.onerror=()=>stopRec(); recognition.onend=()=>stopRec();
+}else{el.micBtn.style.display='none';}
+function stopRec(){isRecording=false;el.micBtn.classList.remove('recording');el.input.placeholder='Speak to Eris...';}
+el.micBtn.addEventListener('click',()=>{if(!recognition||!isLoggedIn)return;isRecording?recognition.stop():recognition.start();});
 
 connect();
 </script>
