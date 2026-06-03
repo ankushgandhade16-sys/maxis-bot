@@ -1294,7 +1294,8 @@ function drawGlow(hue, sat, intensity, breathCycle) {
 // ═══════════════════════════════════════════════════════════
 let lastFrame = performance.now();
 function animate(now) {
-    const dt = Math.min(0.05, (now - lastFrame) / 1000); // cap at 50ms
+    if (!now) now = performance.now();
+    const dt = Math.min(0.05, (now - lastFrame) / 1000) || 0.016; // cap at 50ms, fallback 16ms
     lastFrame = now;
 
     // Brain consciousness tick
@@ -1304,7 +1305,7 @@ function animate(now) {
     const hue = brain.emotions.hue;
     const sat = brain.emotions.saturation;
     const brightness = brain.emotions.brightness;
-    const intensity = brightness * brain.autonomic.circadian * brain.autonomic.energy;
+    const intensity = brightness * Math.max(0.3, brain.autonomic.circadian) * Math.max(0.3, brain.autonomic.energy);
     const breathCycle = brain.autonomic.breathCycle;
 
     // Clear

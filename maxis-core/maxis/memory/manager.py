@@ -111,7 +111,14 @@ class MemoryManager:
                         "%b %d at %I:%M %p",
                         time.localtime(ep["metadata"].get("timestamp", 0)),
                     )
-                    who = ep["metadata"].get("person_id", "unknown")[:8]
+                    
+                    who_id = ep["metadata"].get("person_id")
+                    who = "unknown"
+                    if who_id:
+                        p = await self.persons.get_person(who_id)
+                        if p:
+                            who = p.get("name", "unknown")
+                    
                     ep_lines.append(f"[{ts} | user:{who}] {ep['content'][:300]}")
                 header = "### All Users' Conversations (Creator Access)" if is_creator else "### General Knowledge (shared context)"
                 sections.append(header + "\n" + "\n".join(ep_lines))
