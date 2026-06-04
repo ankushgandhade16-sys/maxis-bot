@@ -341,7 +341,7 @@
     </div>
 
     <!-- Main -->
-    <div class="main-panel">
+    <div class="main-panel" id="mainPanel">
         <div class="topbar">
             <div class="topbar-left">
                 <button class="menu-btn" id="menuBtn">
@@ -1443,7 +1443,7 @@ const el = {
     newChatBtn: $('newChatBtn'), chatList: $('chatList'),
     tabSignIn: $('tabSignIn'), tabSignUp: $('tabSignUp'),
     userDropdown: $('userDropdown'), signOutBtn: $('signOutBtn'),
-    cancelDropdownBtn: $('cancelDropdownBtn'),
+    cancelDropdownBtn: $('cancelDropdownBtn'), mainPanel: $('mainPanel'),
 };
 
 function showToast(msg) { el.toast.textContent = msg; el.toast.classList.add('show'); setTimeout(() => el.toast.classList.remove('show'), 2500); }
