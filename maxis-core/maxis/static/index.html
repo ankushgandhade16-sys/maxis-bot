@@ -418,7 +418,7 @@ function resize() {
 }
 addEventListener('resize', resize); resize();
 // Re-center when sidebar toggles
-const _origToggle = Element.prototype.classList.toggle;
+
 setInterval(resize, 500); // lightweight check for sidebar changes
 
 // ── Simplex Noise ────────────────────────────────────────
