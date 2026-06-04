@@ -37,7 +37,7 @@
         }
 
         /* ── Layout ───────────────────────────────────────── */
-        .shell { display: flex; height: 100vh; position: relative; z-index: 1; }
+        .shell { display: flex; height: 100dvh; position: relative; z-index: 1; }
 
         /* ── Sidebar ──────────────────────────────────────── */
         .sidebar {
@@ -263,12 +263,13 @@
 
         /* ── Responsive ───────────────────────────────────── */
         @media (max-width: 768px) {
-            .sidebar { position: absolute; height: 100%; z-index: 10; margin-left: -260px; opacity: 0; pointer-events: none; }
+            .sidebar { position: absolute; height: 100%; z-index: 100; margin-left: -260px; opacity: 0; pointer-events: none; }
             .sidebar.open { margin-left: 0; opacity: 1; pointer-events: auto; }
+            .mobile-close-btn { display: block !important; margin-right: auto; margin-left: 10px; }
             .message { max-width: 92%; }
             .topbar { padding: 8px 12px; }
             .topbar-center { font-size: 11px; letter-spacing: 1.5px; }
-            .input-area { padding: 8px 12px 12px; }
+            .input-area { padding: 8px 12px 12px; padding-bottom: max(12px, env(safe-area-inset-bottom)); }
             .input-wrap { padding: 6px 10px; border-radius: 12px; }
             #messageInput { font-size: 15px; }
             .msg-bubble { padding: 10px 14px; font-size: 14px; line-height: 1.55; }
@@ -312,6 +313,7 @@
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <span class="sidebar-logo">Eris</span>
+            <button class="menu-btn mobile-close-btn" id="mobileCloseBtn" style="display: none;" title="Close Menu">✕</button>
             <button class="new-chat-btn" id="newChatBtn">+ New</button>
         </div>
         <div class="chat-list" id="chatList">
@@ -1256,7 +1258,8 @@ class OrgParticle {
     draw(t, hue, sat, brightness, intensity) {
         if (this.part === 'spark' && this.sparkLife <= 0) return;
 
-        const scale = FOV / (FOV + this.z);
+        const zDist = Math.max(10, FOV + this.z);
+        const scale = FOV / zDist;
         const sx = cx + this.x * scale;
         const sy = cy + this.y * scale;
         if (sx < -40 || sx > W+40 || sy < -40 || sy > H+40) return;
@@ -1436,7 +1439,7 @@ const el = {
     sidebarAvatar: $('sidebarAvatar'), sidebarName: $('sidebarName'),
     sidebarStatus: $('sidebarStatus'), userCard: $('userCard'),
     modalClose: $('modalClose'), topbarLabel: $('topbarLabel'),
-    sidebar: $('sidebar'), menuBtn: $('menuBtn'),
+    sidebar: $('sidebar'), menuBtn: $('menuBtn'), mobileCloseBtn: $('mobileCloseBtn'),
     newChatBtn: $('newChatBtn'), chatList: $('chatList'),
     tabSignIn: $('tabSignIn'), tabSignUp: $('tabSignUp'),
     userDropdown: $('userDropdown'), signOutBtn: $('signOutBtn'),
@@ -1477,6 +1480,12 @@ function toggleSidebar() {
     }
 }
 el.menuBtn.addEventListener('click', toggleSidebar);
+if (el.mobileCloseBtn) el.mobileCloseBtn.addEventListener('click', () => { el.sidebar.classList.remove('open'); });
+el.mainPanel.addEventListener('click', (e) => {
+    if (window.innerWidth <= 768 && el.sidebar.classList.contains('open')) {
+        el.sidebar.classList.remove('open');
+    }
+});
 // Restore sidebar state
 if (localStorage.getItem('eris_sidebar') === 'collapsed' && window.innerWidth > 768) {
     el.sidebar.classList.add('collapsed');
@@ -1612,7 +1621,12 @@ function renderChatList() {
         el.chatList.appendChild(div);
     }
 }
-function loadChat(sid) { currentSessionId=sid; renderChatList(); if(ws&&isConnected) ws.send(JSON.stringify({type:'load_chat',session_id:sid})); }
+function loadChat(sid) { 
+    currentSessionId=sid; 
+    renderChatList(); 
+    if (window.innerWidth <= 768) el.sidebar.classList.remove('open');
+    if(ws&&isConnected) ws.send(JSON.stringify({type:'load_chat',session_id:sid})); 
+}
 function loadChatMessages(msgs) {
     hasMessages=msgs.length>0; el.chatMsg.innerHTML='';
     if(hasMessages){el.welcome.classList.add('hidden');el.chatView.classList.add('active');for(const m of msgs) appendMessage(m.role==='user'?'user':'eris',m.content,false);}
