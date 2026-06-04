@@ -1507,7 +1507,10 @@ function connect() {
         const data = JSON.parse(e.data);
         if (data.type === 'status') {}
         else if (data.type === 'login_success') { onLoginSuccess(data); }
-        else if (data.type === 'login_failed') { el.loginError.textContent = data.reason || 'Access denied.'; }
+        else if (data.type === 'login_failed') { 
+            el.loginError.textContent = data.reason || 'Access denied.'; 
+            el.loginBtn.textContent = authMode === 'signup' ? 'Create Account' : 'Enter';
+        }
         else if (data.type === 'model_switched') { showToast(`Model → ${data.model}`); }
         else if (data.type === 'thinking') { showThinking(); brain.onThinkingStart(); }
         else if (data.type === 'response') { removeThinking(); brain.onResponse(); appendMessage('eris', data.content); speakText(data.content); }
@@ -1557,7 +1560,14 @@ el.loginBtn.addEventListener('click', () => {
     if (u.length<2) { el.loginError.textContent='Username too short.'; return; }
     if (p.length<4) { el.loginError.textContent='Password too short.'; return; }
     if (authMode==='signup' && p!==el.confirmPass.value) { el.loginError.textContent='Passwords do not match.'; return; }
+    
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+        el.loginError.textContent='Server is waking up... Please wait a few seconds and try again.';
+        return;
+    }
+    
     el.loginError.textContent='';
+    el.loginBtn.textContent = 'Verifying...';
     ws.send(JSON.stringify({ type:'login', username:u, password:p }));
 });
 el.loginPass.addEventListener('keydown', e => { if(e.key==='Enter'){authMode==='signup'?el.confirmPass.focus():el.loginBtn.click();} });
