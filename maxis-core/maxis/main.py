@@ -132,6 +132,16 @@ async def root():
     }
 
 
+@app.post("/api/admin/clear-conversations")
+async def clear_conversations():
+    """Clear all chat conversations for a fresh release. Creator only."""
+    try:
+        orchestrator.chat_history.clear_all_conversations()
+        return {"status": "ok", "message": "All conversations cleared."}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
 # ── Direct execution ────────────────────────────────────────────────────────
 
 if __name__ == "__main__":

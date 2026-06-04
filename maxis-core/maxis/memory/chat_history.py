@@ -198,3 +198,11 @@ class ChatHistoryStore:
                 }
                 for m in reversed(messages)
             ]
+
+    def clear_all_conversations(self):
+        """Delete ALL chat sessions and messages. Used for clean slate releases."""
+        with self._Session() as db:
+            db.query(ChatMessage).delete()
+            db.query(ChatSession).delete()
+            db.commit()
+        logger.info("All chat conversations cleared.")
