@@ -46,9 +46,9 @@
             border-right: 1px solid var(--border);
             display: flex; flex-direction: column;
             backdrop-filter: blur(20px);
-            transition: transform 0.3s;
+            transition: margin-left 0.3s ease, opacity 0.3s ease;
         }
-        .sidebar.collapsed { transform: translateX(-260px); position: absolute; height: 100%; z-index: 10; }
+        .sidebar.collapsed { margin-left: -260px; opacity: 0; pointer-events: none; }
         .sidebar-header {
             padding: 16px;
             border-bottom: 1px solid var(--border);
@@ -109,7 +109,7 @@
         }
         .topbar-left { display: flex; align-items: center; gap: 12px; }
         .menu-btn {
-            display: none; background: none; border: none;
+            background: none; border: none;
             color: var(--text-dim); cursor: pointer; padding: 4px;
         }
         .status-dot { width: 6px; height: 6px; border-radius: 50%; background: #333; transition: all 0.3s; }
@@ -263,11 +263,30 @@
 
         /* ── Responsive ───────────────────────────────────── */
         @media (max-width: 768px) {
-            .sidebar { transform: translateX(-260px); position: absolute; height: 100%; z-index: 10; }
-            .sidebar.open { transform: translateX(0); }
-            .menu-btn { display: block; }
+            .sidebar { position: absolute; height: 100%; z-index: 10; margin-left: -260px; opacity: 0; pointer-events: none; }
+            .sidebar.open { margin-left: 0; opacity: 1; pointer-events: auto; }
             .message { max-width: 88%; }
         }
+
+        /* ── User Dropdown ────────────────────────────────── */
+        .user-dropdown {
+            position: absolute; bottom: 60px; left: 12px; right: 12px;
+            background: var(--surface-2); border: 1px solid var(--border-l);
+            border-radius: 10px; padding: 6px; display: none;
+            z-index: 20; animation: dropIn 0.15s ease-out;
+        }
+        .user-dropdown.show { display: block; }
+        @keyframes dropIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+        .dropdown-item {
+            display: flex; align-items: center; gap: 8px;
+            padding: 10px 12px; border-radius: 6px; cursor: pointer;
+            font-size: 12px; color: var(--text-dim);
+            transition: all 0.15s; border: none; background: none;
+            width: 100%; text-align: left; font-family: 'Inter', sans-serif;
+        }
+        .dropdown-item:hover { background: var(--surface-3); color: var(--text); }
+        .dropdown-item.danger { color: #f87171; }
+        .dropdown-item.danger:hover { background: rgba(248,113,113,0.1); color: #fca5a5; }
     </style>
 </head>
 <body>
@@ -284,7 +303,17 @@
         <div class="chat-list" id="chatList">
             <!-- populated by JS -->
         </div>
-        <div class="sidebar-footer">
+        <div class="sidebar-footer" style="position:relative;">
+            <div class="user-dropdown" id="userDropdown">
+                <button class="dropdown-item danger" id="signOutBtn">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                    Sign Out
+                </button>
+                <button class="dropdown-item" id="cancelDropdownBtn">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    Cancel
+                </button>
+            </div>
             <div class="user-card" id="userCard">
                 <div class="user-avatar" id="sidebarAvatar">?</div>
                 <div class="user-info">
@@ -444,22 +473,27 @@ class EmotionSystem {
         }
         return name;
     }
-    // Get blended HSL color from emotions
-    get hue() {
+    // Get iridescent cycling hue — Gemini-style rainbow shimmer
+    hueAt(t) {
+        // Continuously cycling rainbow base (full 360° rotation over ~24s)
+        const rainbowBase = (t * 15) % 360;
+        // Emotion tints the rainbow — dominant emotion pulls the hue
         const map = { joy:50, curiosity:175, anxiety:350, calm:200,
                       excitement:310, melancholy:230, affection:35, irritation:10 };
-        let hue = 0, total = 0;
+        let emotionHue = 0, total = 0;
         for (const [k,v] of Object.entries(this.axes)) {
-            hue += map[k] * v; total += v;
+            emotionHue += map[k] * v; total += v;
         }
-        return total > 0 ? hue / total : 200;
+        const emotionTint = total > 0 ? emotionHue / total : 200;
+        // Blend: 60% rainbow cycle + 40% emotion tint
+        return (rainbowBase * 0.6 + emotionTint * 0.4) % 360;
     }
     get saturation() {
-        const intensity = this.axes.excitement + this.axes.joy + this.axes.affection;
-        return 15 + Math.min(50, intensity * 20);
+        const intensity = this.axes.excitement + this.axes.joy + this.axes.affection + this.axes.curiosity;
+        return 55 + Math.min(40, intensity * 15);
     }
     get brightness() {
-        return 0.4 + (this.axes.joy + this.axes.excitement) * 0.25 - this.axes.melancholy * 0.15;
+        return 0.7 + (this.axes.joy + this.axes.excitement) * 0.2 - this.axes.melancholy * 0.08;
     }
 }
 
@@ -489,7 +523,7 @@ class AutonomicSystem {
 
         // Energy: slow drain, restored by interaction
         this.energy -= 0.001 * dt;
-        this.energy = Math.max(0.05, Math.min(1, this.energy));
+        this.energy = Math.max(0.4, Math.min(1, this.energy));
 
         // Circadian rhythm based on time of day
         const hour = new Date().getHours();
@@ -599,16 +633,18 @@ class MotorCortex {
 // ═══════════════════════════════════════════════════════════
 const Behaviors = {
     // ── IDLE BEHAVIORS ──
-    floating: (motor, emo, auto) => {
-        motor.targetExpansion = 1.0;
-        motor.targetOrbitSpeed = 0.7;
-        motor.targetChaos = 0.2;
+    floating: (motor, emo, auto, t) => {
+        motor.targetExpansion = 1.0 + Math.sin(t * 0.4) * 0.08;
+        motor.targetOrbitSpeed = 0.9;
+        motor.targetChaos = 0.3;
         motor.targetTightness = 1.0;
-        motor.targetSpiral = 0;
-        if (Math.random() < 0.01) {
-            motor.targetDriftX = (Math.random()-0.5) * 25;
-            motor.targetDriftY = (Math.random()-0.5) * 18;
+        motor.targetSpiral = Math.sin(t * 0.2) * 0.15;
+        if (Math.random() < 0.015) {
+            motor.targetDriftX = (Math.random()-0.5) * 30;
+            motor.targetDriftY = (Math.random()-0.5) * 22;
         }
+        // Gentle bloom pulses
+        if (Math.random() < 0.005) motor.bloomWave = 0.3;
     },
     contemplating: (motor, emo, auto) => {
         motor.targetExpansion = 0.85;
@@ -1026,12 +1062,12 @@ class EntityBrain {
 
 // Body part config
 const BODY = {
-    nucleus:   { count: 150, rMin: 0, rMax: 25,  sMin: 0.8, sMax: 2.2, aMin: 0.5, aMax: 0.9 },
-    cytoplasm: { count: 280, rMin: 15, rMax: 60,  sMin: 0.5, sMax: 1.5, aMin: 0.2, aMax: 0.55 },
-    membrane:  { count: 90,  rMin: 50, rMax: 85,  sMin: 0.3, sMax: 1.0, aMin: 0.08, aMax: 0.25 },
-    pseudopod: { count: 80,  rMin: 40, rMax: 100, sMin: 0.3, sMax: 0.9, aMin: 0.1, aMax: 0.35 },
-    organelle: { count: 40,  rMin: 20, rMax: 55,  sMin: 0.6, sMax: 1.4, aMin: 0.3, aMax: 0.6 },
-    spark:     { count: 30,  rMin: 0,  rMax: 70,  sMin: 0.2, sMax: 0.5, aMin: 0.4, aMax: 0.9 },
+    nucleus:   { count: 200, rMin: 0, rMax: 28,  sMin: 1.0, sMax: 2.8, aMin: 0.6, aMax: 1.0 },
+    cytoplasm: { count: 320, rMin: 15, rMax: 65,  sMin: 0.6, sMax: 1.8, aMin: 0.3, aMax: 0.7 },
+    membrane:  { count: 110, rMin: 50, rMax: 90,  sMin: 0.4, sMax: 1.2, aMin: 0.15, aMax: 0.4 },
+    pseudopod: { count: 90,  rMin: 40, rMax: 110, sMin: 0.4, sMax: 1.1, aMin: 0.15, aMax: 0.45 },
+    organelle: { count: 50,  rMin: 20, rMax: 55,  sMin: 0.7, sMax: 1.6, aMin: 0.4, aMax: 0.75 },
+    spark:     { count: 40,  rMin: 0,  rMax: 80,  sMin: 0.3, sMax: 0.7, aMin: 0.5, aMax: 1.0 },
 };
 
 const brain = new EntityBrain();
@@ -1214,10 +1250,10 @@ class OrgParticle {
         const pulse = 0.7 + Math.sin(t * 2.5 + this.pulseOff) * 0.3;
         a *= pulse;
 
-        // Per-particle hue variation
-        const pH = hue + SNoise(this.noiseOff, t*0.15) * 25;
-        const pS = sat + (this.part === 'nucleus' ? 15 : 0);
-        const pL = this.part === 'nucleus' ? 82 : this.part === 'spark' ? 90 : 68;
+        // Per-particle hue variation — iridescent shimmer
+        const pH = hue + SNoise(this.noiseOff, t*0.15) * 45 + this.idx * 0.3;
+        const pS = sat + (this.part === 'nucleus' ? 20 : 5);
+        const pL = this.part === 'nucleus' ? 88 : this.part === 'spark' ? 95 : 75;
 
         // Draw trails
         for (let i = 0; i < this.trail.length; i++) {
@@ -1247,8 +1283,8 @@ for (const [part, cfg] of Object.entries(BODY)) {
 // ── Neural connections (nucleus only) ───────────────────
 const nucleusP = allParticles.filter(p => p.part === 'nucleus');
 function drawConnections(t, hue, sat, intensity) {
-    const maxD = brain.motor.chaosLevel > 0.8 ? 50 : 30;
-    const baseA = brain.motor.chaosLevel > 0.8 ? 0.05 : 0.02;
+    const maxD = brain.motor.chaosLevel > 0.8 ? 60 : 40;
+    const baseA = brain.motor.chaosLevel > 0.8 ? 0.12 : 0.06;
     for (let i = 0; i < nucleusP.length; i += 3) {
         for (let j = i+3; j < nucleusP.length; j += 3) {
             const dx = nucleusP[i].x - nucleusP[j].x;
@@ -1256,11 +1292,12 @@ function drawConnections(t, hue, sat, intensity) {
             const d = Math.sqrt(dx*dx+dy*dy);
             if (d < maxD) {
                 const s1 = FOV/(FOV+nucleusP[i].z), s2 = FOV/(FOV+nucleusP[j].z);
+                const connHue = hue + (i + j) * 0.5; // slight per-connection hue shift
                 ctx.beginPath();
                 ctx.moveTo(cx+nucleusP[i].x*s1, cy+nucleusP[i].y*s1);
                 ctx.lineTo(cx+nucleusP[j].x*s2, cy+nucleusP[j].y*s2);
-                ctx.strokeStyle = `hsla(${hue},${sat}%,55%,${(1-d/maxD)*baseA*intensity})`;
-                ctx.lineWidth = 0.4;
+                ctx.strokeStyle = `hsla(${connHue},${sat+10}%,65%,${(1-d/maxD)*baseA*intensity})`;
+                ctx.lineWidth = 0.6;
                 ctx.stroke();
             }
         }
@@ -1271,24 +1308,30 @@ function drawConnections(t, hue, sat, intensity) {
 function drawGlow(hue, sat, intensity, breathCycle) {
     const pulse = breathCycle * 0.3 + 0.7;
     const m = brain.motor;
-    const r = 70 * m.expansion * pulse;
+    const r = 120 * m.expansion * pulse;
     const gx = cx + m.driftX * 0.4, gy = cy + m.driftY * 0.4;
 
-    // Outer nebula
-    const g1 = ctx.createRadialGradient(gx, gy, 0, gx, gy, r*3);
-    const alphaOut1 = Math.max(0.15, 0.035 * intensity);
-    const alphaOut2 = Math.max(0.05, 0.012 * intensity);
-    g1.addColorStop(0, `hsla(${hue},${sat+10}%,55%,${alphaOut1})`);
-    g1.addColorStop(0.3, `hsla(${hue+15},${sat}%,40%,${alphaOut2})`);
+    // Layer 1: Wide outer nebula — primary hue
+    const g1 = ctx.createRadialGradient(gx, gy, 0, gx, gy, r * 4);
+    g1.addColorStop(0, `hsla(${hue},${sat+15}%,60%,${Math.max(0.18, 0.06 * intensity)})`);
+    g1.addColorStop(0.25, `hsla(${hue+20},${sat+10}%,45%,${Math.max(0.08, 0.025 * intensity)})`);
+    g1.addColorStop(0.6, `hsla(${hue+40},${sat}%,35%,${Math.max(0.03, 0.008 * intensity)})`);
     g1.addColorStop(1, 'transparent');
     ctx.fillStyle = g1; ctx.fillRect(0,0,W,H);
 
-    // Inner glow
-    const g2 = ctx.createRadialGradient(gx, gy, 0, gx, gy, r*0.6);
-    const alphaIn = Math.max(0.3, 0.12 * intensity * pulse);
-    g2.addColorStop(0, `hsla(${hue},${sat+15}%,80%,${alphaIn})`);
+    // Layer 2: Secondary hue ring — offset by 90° for iridescence
+    const g2 = ctx.createRadialGradient(gx, gy, r * 0.3, gx, gy, r * 2.5);
+    g2.addColorStop(0, `hsla(${hue+90},${sat+20}%,55%,${Math.max(0.12, 0.04 * intensity * pulse)})`);
+    g2.addColorStop(0.5, `hsla(${hue+120},${sat+10}%,40%,${Math.max(0.04, 0.015 * intensity)})`);
     g2.addColorStop(1, 'transparent');
-    ctx.fillStyle = g2;
+    ctx.fillStyle = g2; ctx.fillRect(0,0,W,H);
+
+    // Layer 3: Hot inner core glow
+    const g3 = ctx.createRadialGradient(gx, gy, 0, gx, gy, r * 0.7);
+    g3.addColorStop(0, `hsla(${hue},${sat+20}%,88%,${Math.max(0.4, 0.2 * intensity * pulse)})`);
+    g3.addColorStop(0.4, `hsla(${hue+30},${sat+15}%,70%,${Math.max(0.15, 0.06 * intensity)})`);
+    g3.addColorStop(1, 'transparent');
+    ctx.fillStyle = g3;
     ctx.beginPath(); ctx.arc(gx, gy, r, 0, Math.PI*2); ctx.fill();
 }
 
@@ -1307,10 +1350,10 @@ function animate(now) {
     brain.tick(dt);
 
     // Derived visual values from brain
-    const hue = brain.emotions.hue;
+    const hue = brain.emotions.hueAt(brain.time);
     const sat = brain.emotions.saturation;
     const brightness = brain.emotions.brightness;
-    const intensity = brightness * Math.max(0.3, brain.autonomic.circadian) * Math.max(0.3, brain.autonomic.energy);
+    const intensity = Math.max(0.6, brightness * Math.max(0.5, brain.autonomic.circadian) * Math.max(0.5, brain.autonomic.energy));
     const breathCycle = brain.autonomic.breathCycle;
 
     // Clear
@@ -1373,6 +1416,8 @@ const el = {
     sidebar: $('sidebar'), menuBtn: $('menuBtn'),
     newChatBtn: $('newChatBtn'), chatList: $('chatList'),
     tabSignIn: $('tabSignIn'), tabSignUp: $('tabSignUp'),
+    userDropdown: $('userDropdown'), signOutBtn: $('signOutBtn'),
+    cancelDropdownBtn: $('cancelDropdownBtn'),
 };
 
 function showToast(msg) { el.toast.textContent = msg; el.toast.classList.add('show'); setTimeout(() => el.toast.classList.remove('show'), 2500); }
@@ -1398,8 +1443,21 @@ el.modelSelector.addEventListener('change', () => {
     if (ws && isConnected) ws.send(JSON.stringify({ type: 'switch_model', model }));
 });
 
-// Mobile menu
-el.menuBtn.addEventListener('click', () => el.sidebar.classList.toggle('open'));
+// Sidebar toggle — works on all screen sizes
+function toggleSidebar() {
+    const isMobile = window.innerWidth <= 768;
+    if (isMobile) {
+        el.sidebar.classList.toggle('open');
+    } else {
+        el.sidebar.classList.toggle('collapsed');
+        localStorage.setItem('eris_sidebar', el.sidebar.classList.contains('collapsed') ? 'collapsed' : 'open');
+    }
+}
+el.menuBtn.addEventListener('click', toggleSidebar);
+// Restore sidebar state
+if (localStorage.getItem('eris_sidebar') === 'collapsed' && window.innerWidth > 768) {
+    el.sidebar.classList.add('collapsed');
+}
 
 // Typing → brain
 el.input.addEventListener('input', () => {
@@ -1484,9 +1542,16 @@ el.confirmPass.addEventListener('keydown', e => { if(e.key==='Enter') el.loginBt
 el.loginUser.addEventListener('keydown', e => { if(e.key==='Enter') el.loginPass.focus(); });
 el.modalClose.addEventListener('click', hideLoginModal);
 
-// Logout
+// User card → dropdown (not instant logout)
 el.userCard.addEventListener('click', () => {
     if (!isLoggedIn) { showLoginModal(false); return; }
+    el.userDropdown.classList.toggle('show');
+});
+el.cancelDropdownBtn.addEventListener('click', () => {
+    el.userDropdown.classList.remove('show');
+});
+el.signOutBtn.addEventListener('click', () => {
+    el.userDropdown.classList.remove('show');
     isLoggedIn=false; personName=''; personId=''; isCreator=false; hasMessages=false;
     el.chatMsg.innerHTML=''; el.welcome.classList.remove('hidden'); el.chatView.classList.remove('active');
     el.sidebarAvatar.textContent='?'; el.sidebarName.textContent='Not signed in';
@@ -1495,6 +1560,12 @@ el.userCard.addEventListener('click', () => {
     el.chatList.innerHTML='';
     brain.onLogout();
     showLoginModal(false);
+});
+// Click outside dropdown to close
+document.addEventListener('click', (e) => {
+    if (!el.userDropdown.contains(e.target) && !el.userCard.contains(e.target)) {
+        el.userDropdown.classList.remove('show');
+    }
 });
 
 // Chat history

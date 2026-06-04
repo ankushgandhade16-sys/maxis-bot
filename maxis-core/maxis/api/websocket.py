@@ -123,13 +123,8 @@ async def websocket_chat_handler(websocket: WebSocket, orchestrator):
                         "is_creator": is_creator,
                     })
 
-                    # Auto-create a new chat session
-                    try:
-                        current_chat_session_id = orchestrator.chat_history.create_session(
-                            person_id=session_person_id,
-                        )
-                    except Exception as e:
-                        logger.warning(f"Failed to create chat session: {e}")
+                    # Don't auto-create a session on login — create lazily on first message
+                    # This prevents empty "New conversation" spam on reconnects
 
                     # Send chat history
                     try:
@@ -164,6 +159,15 @@ async def websocket_chat_handler(websocket: WebSocket, orchestrator):
                         "message": "Please log in first.",
                     })
                     continue
+
+                # Lazily create a chat session on first message if none exists
+                if not current_chat_session_id:
+                    try:
+                        current_chat_session_id = orchestrator.chat_history.create_session(
+                            person_id=session_person_id,
+                        )
+                    except Exception as e:
+                        logger.warning(f"Failed to create chat session: {e}")
 
                 # Store user message in chat history
                 if current_chat_session_id:
