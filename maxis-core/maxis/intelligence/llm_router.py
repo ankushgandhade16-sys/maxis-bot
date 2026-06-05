@@ -162,7 +162,8 @@ class LLMRouter:
             else:
                 return "I'm having trouble connecting to my language models right now. Neither local nor cloud are available."
         except Exception as e:
-            logger.error(f"LLM generation failed on {tier}: {e}")
+            error_str = str(e)
+            logger.error(f"LLM generation failed on {tier} (model={self._active_cloud_model}): {error_str}")
             try:
                 if tier == ModelTier.LOCAL and self._cloud_available:
                     return await self._generate_gemini(full_messages, temperature)
@@ -171,8 +172,10 @@ class LLMRouter:
             except Exception as e2:
                 logger.error(f"Fallback also failed: {e2}")
 
-            if "503" in str(e) or "429" in str(e):
+            if "503" in error_str or "429" in error_str or "RESOURCE_EXHAUSTED" in error_str:
                 return "*Sigh* The cloud servers are completely jammed up right now and my brain is lagging hard. Can you give me like ten seconds and ask that again?"
+            elif "404" in error_str or "not found" in error_str.lower() or "deprecated" in error_str.lower():
+                return f"*Confused buzzing* The model I was using seems to have been retired... Let the creator know to check the model settings. (Error: {error_str[:120]})"
             else:
                 return f"*Glitches slightly* Whoa, something just short-circuited in my core processing... give me a second and try again?"
 

@@ -352,8 +352,8 @@
             </div>
             <div class="topbar-right">
                 <select class="model-select" id="modelSelector">
-                    <option value="gemini-2.0-flash">⚡ Eris Swift</option>
-                    <option value="gemini-2.5-flash" selected>🧠 Eris Pro</option>
+                    <option value="gemini-2.5-flash">⚡ Eris Swift</option>
+                    <option value="gemini-3.5-flash" selected>🧠 Eris Pro</option>
                 </select>
             </div>
         </div>
@@ -1462,7 +1462,16 @@ el.tabSignUp.addEventListener('click', () => {
 
 // Model switcher
 const savedModel = localStorage.getItem('eris_model');
-if (savedModel) el.modelSelector.value = savedModel;
+if (savedModel) {
+    // Only apply saved model if it still exists in the dropdown
+    const validModels = [...el.modelSelector.options].map(o => o.value);
+    if (validModels.includes(savedModel)) {
+        el.modelSelector.value = savedModel;
+    } else {
+        // Clear stale/deprecated model selection
+        localStorage.removeItem('eris_model');
+    }
+}
 el.modelSelector.addEventListener('change', () => {
     const model = el.modelSelector.value;
     localStorage.setItem('eris_model', model);
