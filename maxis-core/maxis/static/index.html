@@ -8,8 +8,6 @@
     <!-- External Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.5/dist/purify.min.js"></script>
-    <!-- Face API for Vision -->
-    <script defer src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
     <style>
@@ -318,7 +316,7 @@
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <span class="sidebar-logo">Eris</span>
-            <button class="menu-btn mobile-close-btn" id="mobileCloseBtn" style="opacity: 0;" title="Close Menu"><video id="webcam" autoplay muted playsinline style="position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none;"></video>✕</button>
+            <button class="menu-btn mobile-close-btn" id="mobileCloseBtn" style="opacity: 0;" title="Close Menu">✕</button>
             <button class="new-chat-btn" id="newChatBtn">+ New</button>
         </div>
         <div class="chat-list" id="chatList">
@@ -1738,61 +1736,6 @@ function playBase64Audio(base64) {
     currentAudio = new Audio(audioUrl);
     currentAudio.play().catch(e => console.error("Audio playback failed:", e));
 }
-
-// ==========================================
-// Phase 3: Vision System (Face Recognition)
-// ==========================================
-let visionEnabled = false;
-let faceCheckInterval = null;
-
-async function initVision() {
-    try {
-        // Load face-api models from github pages
-        const MODEL_URL = 'https://vladmandic.github.io/face-api/model/';
-        await Promise.all([
-            faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-            faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-            faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
-        ]);
-
-        console.log("Vision models loaded.");
-        
-        // Start webcam
-        const video = document.getElementById('webcam');
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-        video.srcObject = stream;
-
-        video.onloadedmetadata = () => {
-            visionEnabled = true;
-            // Every 2.5 seconds, check for a face
-            faceCheckInterval = setInterval(processFrame, 2500);
-        };
-    } catch (e) {
-        console.warn("Vision system initialization failed (no camera access or models failed to load):", e);
-    }
-}
-
-async function processFrame() {
-    if (!visionEnabled || !isConnected) return;
-    const video = document.getElementById('webcam');
-    
-    // Detect single face with descriptors
-    const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
-    
-    if (detection) {
-        // Send the descriptor to backend
-        const embedding = Array.from(detection.descriptor);
-        ws.send(JSON.stringify({
-            type: 'face_embedding',
-            embedding: embedding
-        }));
-    }
-}
-
-// Start vision system
-window.addEventListener('load', () => {
-    initVision();
-});
 
 connect();
 </script>

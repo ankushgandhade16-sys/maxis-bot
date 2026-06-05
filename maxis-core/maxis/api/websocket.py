@@ -276,45 +276,6 @@ async def websocket_chat_handler(websocket: WebSocket, orchestrator):
                 except Exception as e:
                     logger.warning(f"Failed to create new chat: {e}")
 
-            elif msg_type == "face_embedding":
-                embedding = data.get("embedding")
-                if not embedding:
-                    continue
-
-                match = await orchestrator.vision.match_face(embedding)
-
-                if match:
-                    if not session_person_id:
-                        # Auto-login!
-                        session_person_id = match["id"]
-                        session_is_creator = match.get("is_primary_user", False)
-                        
-                        await manager.send_json(websocket, {
-                            "type": "login_success",
-                            "person_id": match["id"],
-                            "name": match["name"],
-                            "is_creator": session_is_creator,
-                            "auto_login": True,
-                        })
-                        
-                        # Send chat history
-                        try:
-                            if session_is_creator:
-                                sessions = orchestrator.chat_history.get_all_sessions()
-                            else:
-                                sessions = orchestrator.chat_history.get_sessions(session_person_id)
-                            await manager.send_json(websocket, {
-                                "type": "chat_history",
-                                "sessions": sessions,
-                            })
-                        except Exception as e:
-                            logger.warning(f"Failed to send chat history: {e}")
-                else:
-                    # Not recognized. If currently logged in, enroll this face!
-                    if session_person_id:
-                        # Enroll new face or update existing
-                        await orchestrator.vision.enroll_face(session_person_id, embedding)
-
             elif msg_type == "status":
                 await manager.send_json(websocket, {
                     "type": "status",
