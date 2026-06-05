@@ -1531,7 +1531,16 @@ function connect() {
         }
         else if (data.type === 'model_switched') { showToast(`Model → ${data.model}`); }
         else if (data.type === 'thinking') { showThinking(); brain.onThinkingStart(); }
-        else if (data.type === 'response') { removeThinking(); brain.onResponse(); appendMessage('eris', data.content); speakText(data.content); }
+        else if (data.type === 'response') { 
+            removeThinking(); 
+            brain.onResponse(); 
+            appendMessage('eris', data.content); 
+            if (data.audio_base64 && ttsEnabled) {
+                playBase64Audio(data.audio_base64);
+            } else {
+                speakText(data.content); 
+            }
+        }
         else if (data.type === 'error') { removeThinking(); brain.onError(); appendMessage('eris', `⚠️ ${data.message}`); }
         else if (data.type === 'chat_history') { chatSessions = data.sessions || []; renderChatList(); }
         else if (data.type === 'chat_messages') { loadChatMessages(data.messages || []); }
@@ -1700,6 +1709,7 @@ function speakText(text) {
                     .trim();
     if (!clean) return;
     // Cancel any ongoing speech
+    if (currentAudio) currentAudio.pause();
     speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(clean);
     utterance.rate = 1.0;
@@ -1713,6 +1723,16 @@ function speakText(text) {
 }
 // Load voices (they load async in some browsers)
 if ('speechSynthesis' in window) speechSynthesis.onvoiceschanged = () => {};
+
+// Server-provided Audio (Base64 MP3)
+let currentAudio = null;
+function playBase64Audio(base64) {
+    if (currentAudio) currentAudio.pause();
+    if ('speechSynthesis' in window) speechSynthesis.cancel();
+    const audioUrl = `data:audio/mp3;base64,${base64}`;
+    currentAudio = new Audio(audioUrl);
+    currentAudio.play().catch(e => console.error("Audio playback failed:", e));
+}
 
 connect();
 </script>

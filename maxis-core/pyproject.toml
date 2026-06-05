@@ -25,7 +25,8 @@ dependencies = [
     "pinecone>=5.0.0",
     "google-genai>=0.2.0",
 
-    # === Voice (Phase 2 — installed now for dependency resolution) ===
+    # === Voice (Phase 2) ===
+    "edge-tts>=6.1.12",
     # "faster-whisper>=1.1.0",
     # "kokoro>=0.3.0",
     # "silero-vad>=5.1",

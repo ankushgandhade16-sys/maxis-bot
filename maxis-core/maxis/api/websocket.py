@@ -15,6 +15,8 @@ from typing import Optional
 from fastapi import WebSocket, WebSocketDisconnect
 from loguru import logger
 
+from maxis.voice.tts import generate_speech_base64
+
 
 class ConnectionManager:
     """Manages active WebSocket connections."""
@@ -206,11 +208,17 @@ async def websocket_chat_handler(websocket: WebSocket, orchestrator):
                         except Exception as e:
                             logger.warning(f"Failed to store eris response: {e}")
 
+                    # Generate TTS if it's a voice message (or we could do it always if TTS is enabled on client,
+                    # but let's do it always and let the client decide whether to play it)
+                    emotion = orchestrator.emotional_state.summary()
+                    audio_base64 = await generate_speech_base64(response, emotion)
+
                     await manager.send_json(websocket, {
                         "type": "response",
                         "content": response,
-                        "emotional_state": orchestrator.emotional_state.summary(),
+                        "emotional_state": emotion,
                         "timestamp": time.time(),
+                        "audio_base64": audio_base64,
                     })
 
                 except Exception as e:
