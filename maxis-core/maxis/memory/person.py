@@ -338,6 +338,19 @@ class PersonMemory:
 
         self._cache.pop(person_id, None)
 
+    async def update_face_embedding(self, person_id: str, embedding: list[float]):
+        """Update a person's face embedding."""
+        if not self._initialized:
+            await self.initialize()
+
+        with self._session_factory() as session:
+            profile = session.query(PersonProfile).filter_by(id=person_id).first()
+            if profile:
+                profile.face_embedding_json = json.dumps(embedding)
+                session.commit()
+
+        self._cache.pop(person_id, None)
+
     async def get_context_for_person(self, person_id: str) -> str:
         """
         Build a context string about a person for injection into the system prompt.

@@ -27,6 +27,7 @@ from maxis.intelligence.llm_router import LLMRouter
 from maxis.memory.manager import MemoryManager
 from maxis.memory.compression import MemoryCompressor
 from maxis.memory.chat_history import ChatHistoryStore
+from maxis.vision.face_recognition import FaceRecognitionManager
 
 
 class Orchestrator:
@@ -42,6 +43,7 @@ class Orchestrator:
         self.emotional_state = EmotionalState()
         self.compressor: Optional[MemoryCompressor] = None
         self.chat_history = ChatHistoryStore()
+        self.vision = FaceRecognitionManager(self)
 
         # Per-user working memory isolation
         self._working_memories: dict[str, 'WorkingMemory'] = {}
