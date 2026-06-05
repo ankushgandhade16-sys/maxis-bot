@@ -11,20 +11,16 @@ import json
 from loguru import logger
 import numpy as np
 
-# Threshold for cosine similarity to consider a match.
-# MediaPipe embeddings are 128-dimensional.
-# Similarity > 0.6 is generally a good match, but we can tune it.
+# Threshold for euclidean distance to consider a match.
+# MediaPipe/face-api.js embeddings are 128-dimensional.
+# Distance < 0.65 is generally a good match.
 MATCH_THRESHOLD = 0.65
 
-def cosine_similarity(v1: list[float], v2: list[float]) -> float:
-    """Calculate cosine similarity between two vectors."""
+def euclidean_distance(v1: list[float], v2: list[float]) -> float:
+    """Calculate euclidean distance between two vectors."""
     a = np.array(v1)
     b = np.array(v2)
-    norm_a = np.linalg.norm(a)
-    norm_b = np.linalg.norm(b)
-    if norm_a == 0 or norm_b == 0:
-        return 0.0
-    return float(np.dot(a, b) / (norm_a * norm_b))
+    return float(np.linalg.norm(a - b))
 
 class FaceRecognitionManager:
     def __init__(self, orchestrator):
@@ -38,23 +34,23 @@ class FaceRecognitionManager:
         persons = await self.orchestrator.memory.persons.get_all_persons()
         
         best_match = None
-        best_score = -1.0
+        best_score = float('inf')
         
         for p_info in persons:
             person = await self.orchestrator.memory.persons.get_person(p_info["id"])
             if not person or not person.get("face_embedding"):
                 continue
                 
-            score = cosine_similarity(embedding, person["face_embedding"])
-            if score > best_score:
-                best_score = score
+            distance = euclidean_distance(embedding, person["face_embedding"])
+            if distance < best_score:
+                best_score = distance
                 best_match = person
                 
-        if best_match and best_score >= MATCH_THRESHOLD:
-            logger.info(f"Face matched: {best_match['name']} (score={best_score:.2f})")
+        if best_match and best_score <= MATCH_THRESHOLD:
+            logger.info(f"Face matched: {best_match['name']} (distance={best_score:.2f})")
             return best_match
             
-        logger.debug(f"No face match. Best score: {best_score:.2f}")
+        logger.debug(f"No face match. Best distance: {best_score:.2f}")
         return None
 
     async def enroll_face(self, person_id: str, embedding: list[float]):
