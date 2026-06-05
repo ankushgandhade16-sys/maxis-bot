@@ -9,7 +9,14 @@ then injected into her working context as background knowledge.
 from __future__ import annotations
 
 import time
+from datetime import datetime, timezone, timedelta
 from typing import Optional
+
+# IST timezone offset (UTC+5:30)
+_IST = timezone(timedelta(hours=5, minutes=30))
+def _to_ist(epoch: float) -> time.struct_time:
+    """Convert UTC epoch to IST struct_time."""
+    return datetime.fromtimestamp(epoch, tz=_IST).timetuple()
 
 from loguru import logger
 
@@ -92,7 +99,7 @@ class MemoryManager:
                     for ep in user_episodes:
                         ts = time.strftime(
                             "%b %d at %I:%M %p",
-                            time.localtime(ep["metadata"].get("timestamp", 0)),
+                            _to_ist(ep["metadata"].get("timestamp", 0)),
                         )
                         ep_lines.append(f"[{ts}] {ep['content'][:200]}")
                     sections.append("### Your Past Interactions (private)\n" + "\n".join(ep_lines))
@@ -108,7 +115,7 @@ class MemoryManager:
                         for m in recent_all:
                             ts = time.strftime(
                                 "%I:%M %p",
-                                time.localtime(m.get("timestamp", 0)),
+                                _to_ist(m.get("timestamp", 0)),
                             )
                             who_id = m.get("person_id")
                             who = "unknown"
@@ -137,7 +144,7 @@ class MemoryManager:
                     for ep in common_episodes:
                         ts = time.strftime(
                             "%b %d at %I:%M %p",
-                            time.localtime(ep["metadata"].get("timestamp", 0)),
+                            _to_ist(ep["metadata"].get("timestamp", 0)),
                         )
                         
                         who_id = ep["metadata"].get("person_id")

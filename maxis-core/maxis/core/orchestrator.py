@@ -15,7 +15,7 @@ visual event — flows through here. The orchestrator coordinates:
 from __future__ import annotations
 
 import time
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 from loguru import logger
@@ -133,9 +133,10 @@ class Orchestrator:
             person_context = await self.memory.persons.get_context_for_person(active_person)
 
         # ── 4. Build time context ────────────────────────────────────────
-        now = datetime.now()
+        IST = timezone(timedelta(hours=5, minutes=30))
+        now = datetime.now(IST)
         time_context = (
-            f"Current time: {now.strftime('%A, %B %d, %Y at %I:%M %p')}. "
+            f"Current time: {now.strftime('%A, %B %d, %Y at %I:%M %p')} IST. "
             f"Session has been active for {(time.time() - self._session_start) / 60:.0f} minutes."
         )
 
