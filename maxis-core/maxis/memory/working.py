@@ -25,7 +25,7 @@ class Turn:
     def to_message(self) -> dict:
         """Convert to LLM message format."""
         msg = {"role": self.role, "content": self.content}
-        if "image_base64" in self.metadata:
+        if self.metadata.get("image_base64"):
             msg["image_base64"] = self.metadata["image_base64"]
         return msg
 
