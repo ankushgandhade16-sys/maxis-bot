@@ -385,7 +385,15 @@
                 <div class="chat-messages" id="creatorFeed" style="flex:1;"></div>
             </div>
             <div class="input-area locked" id="inputArea">
+                <div id="imagePreviewContainer" style="display:none; padding: 8px 16px; border-bottom: 1px solid var(--border);">
+                    <img id="imagePreview" src="" style="max-height: 60px; border-radius: 4px; border: 1px solid var(--border);">
+                    <button id="removeImageBtn" style="background: none; border: none; color: #f87171; cursor: pointer; margin-left: 8px; vertical-align: top; font-size: 14px;">✕</button>
+                </div>
                 <div class="input-wrap">
+                    <button class="input-btn" id="attachBtn" title="Attach Image">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                    </button>
+                    <input type="file" id="fileInput" accept="image/*" style="display: none;">
                     <textarea id="messageInput" rows="1" placeholder="Speak to Eris..." disabled></textarea>
                     <button class="input-btn" id="muteBtn" title="Toggle Voice">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
@@ -2007,11 +2015,48 @@ el.creatorPortalBtn.addEventListener('click', () => {
     if (window.innerWidth <= 768) el.sidebar.classList.remove('open');
 });
 
+// Image Attachment
+let attachedImageBase64 = null;
+document.getElementById('attachBtn').addEventListener('click', () => { if(isLoggedIn) document.getElementById('fileInput').click(); });
+document.getElementById('fileInput').addEventListener('change', function() {
+    const file = this.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            attachedImageBase64 = e.target.result.split(',')[1];
+            document.getElementById('imagePreview').src = e.target.result;
+            document.getElementById('imagePreviewContainer').style.display = 'block';
+            updateInputState();
+        };
+        reader.readAsDataURL(file);
+    }
+});
+document.getElementById('removeImageBtn').addEventListener('click', () => {
+    attachedImageBase64 = null;
+    document.getElementById('fileInput').value = '';
+    document.getElementById('imagePreviewContainer').style.display = 'none';
+    updateInputState();
+});
+
 // Send
-function updateInputState() { el.send.classList.toggle('active', el.input.value.trim().length>0 && isConnected && isLoggedIn); }
+function updateInputState() { el.send.classList.toggle('active', (el.input.value.trim().length>0 || attachedImageBase64) && isConnected && isLoggedIn); }
 function sendMsg(isVoice = false) {
-    const v=el.input.value.trim(); if(!v||!isConnected||!isLoggedIn) return;
-    appendMessage('user',v); ws.send(JSON.stringify({type:'message',content:v, is_voice:isVoice}));
+    const v=el.input.value.trim(); if((!v && !attachedImageBase64)||!isConnected||!isLoggedIn) return;
+    
+    // Add image preview to user message if present
+    let msgContent = v;
+    if (attachedImageBase64) {
+        msgContent += `<br><img src="data:image/jpeg;base64,${attachedImageBase64}" style="max-height: 200px; border-radius: 6px; margin-top: 8px;">`;
+    }
+    appendMessage('user', msgContent); 
+    
+    const payload = {type:'message',content:v, is_voice:isVoice};
+    if (attachedImageBase64) {
+        payload.image_base64 = attachedImageBase64;
+        document.getElementById('removeImageBtn').click();
+    }
+    ws.send(JSON.stringify(payload));
+    
     el.input.value=''; el.input.style.height='auto'; updateInputState();
     brain.sensory.onInteraction();
 }
@@ -2036,17 +2081,59 @@ function showThinking(){if(isThinking)return;isThinking=true;const d=document.cr
 function removeThinking(){isThinking=false;const e=document.getElementById('thinking');if(e)e.remove();}
 function scrollToBottom(){setTimeout(()=>{el.chatMsg.scrollTop=el.chatMsg.scrollHeight;},50);}
 
-// Voice Input (STT)
-let recognition=null, isRecording=false;
-if('webkitSpeechRecognition' in window||'SpeechRecognition' in window){
-    const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-    recognition=new SR(); recognition.continuous=false; recognition.interimResults=false; recognition.lang='en-US';
-    recognition.onstart=()=>{isRecording=true;el.micBtn.classList.add('recording');el.input.placeholder='Listening...';};
-    recognition.onresult=(e)=>{el.input.value=e.results[0][0].transcript;updateInputState();sendMsg(true);};
-    recognition.onerror=()=>stopRec(); recognition.onend=()=>stopRec();
-}else{el.micBtn.style.display='none';}
-function stopRec(){isRecording=false;el.micBtn.classList.remove('recording');el.input.placeholder='Speak to Eris...';}
-el.micBtn.addEventListener('click',()=>{if(!recognition||!isLoggedIn)return;isRecording?recognition.stop():recognition.start();});
+// Voice Input (Audio Recording -> Backend STT)
+let mediaRecorder = null;
+let audioChunks = [];
+let isRecording = false;
+
+if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    el.micBtn.addEventListener('click', async () => {
+        if (!isLoggedIn) return;
+        if (isRecording && mediaRecorder) {
+            mediaRecorder.stop();
+        } else {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+                mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+                mediaRecorder.onstop = () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    const reader = new FileReader();
+                    reader.readAsDataURL(audioBlob);
+                    reader.onloadend = () => {
+                        const base64Audio = reader.result.split(',')[1];
+                        appendMessage('user', '🎙️ (Audio snippet)');
+                        ws.send(JSON.stringify({
+                            type: 'message',
+                            content: '',
+                            audio_base64: base64Audio,
+                            is_voice: true
+                        }));
+                        brain.sensory.onInteraction();
+                    };
+                    stream.getTracks().forEach(track => track.stop());
+                    stopRec();
+                };
+                mediaRecorder.start();
+                isRecording = true;
+                el.micBtn.classList.add('recording');
+                el.input.placeholder = 'Recording audio... (Click mic to send)';
+            } catch (err) {
+                console.error("Error accessing microphone:", err);
+                showToast("Microphone access denied.");
+            }
+        }
+    });
+} else {
+    el.micBtn.style.display = 'none';
+}
+
+function stopRec() {
+    isRecording = false;
+    el.micBtn.classList.remove('recording');
+    el.input.placeholder = 'Speak to Eris...';
+}
 
 // Voice Output (TTS) — Eris speaks her responses
 let ttsEnabled = localStorage.getItem('eris_tts') !== 'off';

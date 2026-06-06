@@ -108,6 +108,8 @@ class Orchestrator:
         person_id: str | None = None,
         is_voice: bool = False,
         is_creator: bool = False,
+        audio_base64: str | None = None,
+        image_base64: str | None = None,
     ) -> tuple[str, str | None, str | None]:
         """
         Process a text message through the full pipeline.
@@ -127,8 +129,18 @@ class Orchestrator:
         
         working = self._working_memories.get(active_person, self.memory.working)
 
+        # ── Transcribe audio if present ─────────────────────────────────
+        if audio_base64:
+            try:
+                # Transcribe using LLM Router's method
+                transcription = await self.llm.transcribe_audio(audio_base64)
+                message = transcription
+            except Exception as e:
+                logger.error(f"Transcription failed: {e}")
+                message = "(Audio transcription failed)"
+
         # ── 2. Add to working memory ────────────────────────────────────
-        working.add_user_message(message, active_person)
+        working.add_turn("user", message, active_person, image_base64=image_base64)
 
         # ── 2. Retrieve relevant memories ────────────────────────────────
         memory_context = await self.memory.recall(
@@ -165,6 +177,7 @@ class Orchestrator:
         MAX_TOOL_LOOPS = 3
         loop_count = 0
         response = ""
+        generated_images = []
         
         while loop_count < MAX_TOOL_LOOPS:
             loop_count += 1
@@ -203,6 +216,15 @@ class Orchestrator:
                         tool_result = "Screenshot attached. Please describe it or answer the user's question about it."
                     else:
                         tool_result = "Failed to capture screenshot."
+                elif tool_name == "generate_image":
+                    try:
+                        img_base64 = await self.llm.generate_image(tool_args)
+                        tool_result = f"Image generated successfully."
+                        img_html = f"<img src=\"data:image/jpeg;base64,{img_base64}\" style=\"max-height: 300px; border-radius: 8px; margin-top: 8px;\">"
+                        generated_images.append(img_html)
+                    except Exception as e:
+                        logger.error(f"Image generation failed: {e}")
+                        tool_result = f"Failed to generate image: {e}"
                 else:
                     tool_result = f"Unknown tool: {tool_name}"
                 
@@ -232,6 +254,10 @@ class Orchestrator:
         if gesture_match:
             gesture_directive = gesture_match.group(1).strip()
             response = re.sub(r"<gesture>.*?</gesture>", "", response, flags=re.IGNORECASE).strip()
+
+        # Attach any generated images to the final response
+        for img in generated_images:
+            response += f"\n<br>{img}"
 
         # ── 7. Add response to working memory ───────────────────────────
         working.add_assistant_message(response)

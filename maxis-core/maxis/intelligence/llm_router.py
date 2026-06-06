@@ -283,6 +283,63 @@ class LLMRouter:
             
         return data["choices"][0]["message"]["content"]
 
+    async def transcribe_audio(self, audio_base64: str) -> str:
+        """Transcribe base64 webm/mp3 audio using OpenRouter MAI-Transcribe."""
+        if not self._openrouter_client:
+            raise ValueError("OpenRouter client not initialized.")
+            
+        payload = {
+            "model": "microsoft/mai-transcribe-1.5",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": "Transcribe this audio."},
+                        {"type": "audio_url", "audio_url": {"url": f"data:audio/webm;base64,{audio_base64}"}}
+                    ]
+                }
+            ],
+            "temperature": 0.1,
+            "stream": False,
+        }
+        
+        logger.debug("Transcribing audio via OpenRouter...")
+        resp = await self._openrouter_client.post("/chat/completions", json=payload)
+        resp.raise_for_status()
+        
+        data = resp.json()
+        if "usage" in data:
+            await self._token_budget.record_usage("openrouter", data["usage"].get("total_tokens", 0))
+            
+        return data["choices"][0]["message"]["content"]
+
+    async def generate_image(self, prompt: str) -> str:
+        """Generate an image base64 using OpenRouter Riverflow."""
+        if not self._openrouter_client:
+            raise ValueError("OpenRouter client not initialized.")
+            
+        payload = {
+            "model": "sourceful/riverflow-v2.5-pro",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            "temperature": 0.7,
+            "stream": False,
+        }
+        
+        logger.debug(f"Generating image via OpenRouter: {prompt}...")
+        resp = await self._openrouter_client.post("/chat/completions", json=payload)
+        resp.raise_for_status()
+        
+        data = resp.json()
+        if "usage" in data:
+            await self._token_budget.record_usage("openrouter", data["usage"].get("total_tokens", 0))
+            
+        return data["choices"][0]["message"]["content"]
+
     async def _generate_gemini(
         self,
         messages: list[dict],

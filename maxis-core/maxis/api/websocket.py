@@ -153,8 +153,10 @@ async def websocket_chat_handler(websocket: WebSocket, orchestrator):
             elif msg_type == "message":
                 content = data.get("content", "").strip()
                 is_voice = data.get("is_voice", False)
+                audio_base64 = data.get("audio_base64")
+                image_base64 = data.get("image_base64")
 
-                if not content:
+                if not content and not audio_base64:
                     continue
 
                 if not session_person_id:
@@ -197,6 +199,8 @@ async def websocket_chat_handler(websocket: WebSocket, orchestrator):
                         person_id=session_person_id,
                         is_voice=is_voice,
                         is_creator=session_is_creator,
+                        audio_base64=audio_base64,
+                        image_base64=image_base64,
                     )
 
                     # Store assistant response in chat history
