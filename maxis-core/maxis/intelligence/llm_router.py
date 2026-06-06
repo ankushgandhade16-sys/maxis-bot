@@ -289,7 +289,7 @@ class LLMRouter:
             raise ValueError("OpenRouter client not initialized.")
             
         payload = {
-            "model": "microsoft/mai-transcribe-1.5",
+            "model": "openai/gpt-audio",
             "messages": [
                 {
                     "role": "user",
@@ -319,7 +319,7 @@ class LLMRouter:
             raise ValueError("OpenRouter client not initialized.")
             
         payload = {
-            "model": "sourceful/riverflow-v2.5-pro",
+            "model": "openai/gpt-5-image",
             "messages": [
                 {
                     "role": "user",
