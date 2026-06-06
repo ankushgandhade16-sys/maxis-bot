@@ -322,6 +322,9 @@
         <div class="chat-list" id="chatList">
             <!-- populated by JS -->
         </div>
+        <div id="creatorPortalBtn" class="chat-item" style="display:none; color: #a855f7; border: 1px solid rgba(168,85,247,0.3); margin: 8px; text-align: center;">
+            👁 Creator Portal
+        </div>
         <div class="sidebar-footer" style="position:relative;">
             <div class="user-dropdown" id="userDropdown">
                 <button class="dropdown-item danger" id="signOutBtn">
@@ -368,9 +371,16 @@
             <div class="chat-view" id="chatView">
                 <div class="chat-messages" id="chatMessages"></div>
             </div>
+            <div class="creator-view" id="creatorView" style="display:none; flex:1; flex-direction:column; overflow:hidden;">
+                <div style="padding: 12px 24px; background: rgba(168,85,247,0.1); border-bottom: 1px solid rgba(168,85,247,0.2); color: #a855f7; font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase;">Live Feed</div>
+                <div class="chat-messages" id="creatorFeed" style="flex:1;"></div>
+            </div>
             <div class="input-area locked" id="inputArea">
                 <div class="input-wrap">
                     <textarea id="messageInput" rows="1" placeholder="Speak to Eris..." disabled></textarea>
+                    <button class="input-btn" id="muteBtn" title="Toggle Voice">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+                    </button>
                     <button class="input-btn" id="micBtn" title="Voice">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
                     </button>
@@ -1434,6 +1444,7 @@ const $ = id => document.getElementById(id);
 const el = {
     chatMsg: $('chatMessages'), input: $('messageInput'), send: $('sendBtn'),
     welcome: $('welcomeView'), chatView: $('chatView'), welcomeLabel: $('welcomeLabel'),
+    creatorView: $('creatorView'), creatorFeed: $('creatorFeed'), creatorPortalBtn: $('creatorPortalBtn'), muteBtn: $('muteBtn'),
     modal: $('loginModal'), loginUser: $('loginUsername'), loginPass: $('loginPassword'),
     confirmPass: $('confirmPasswordField'),
     loginBtn: $('loginBtn'), loginError: $('loginError'), statusDot: $('statusDot'),
@@ -1547,6 +1558,20 @@ function connect() {
         else if (data.type === 'error') { removeThinking(); brain.onError(); appendMessage('eris', `⚠️ ${data.message}`); }
         else if (data.type === 'chat_history') { chatSessions = data.sessions || []; renderChatList(); }
         else if (data.type === 'chat_messages') { loadChatMessages(data.messages || []); }
+        else if (data.type === 'creator_feed') {
+            const t = new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+            const div = document.createElement('div');
+            div.className = 'message eris';
+            div.style.maxWidth = '90%';
+            div.innerHTML = `<div class="msg-time" style="text-align:left; color:#a855f7;">${t} — Interaction with ${data.username}</div>
+                             <div class="msg-bubble" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); margin-bottom:8px;"><strong>${data.username}:</strong> ${data.user_message}</div>
+                             <div class="msg-bubble" style="border-left:2px solid #a855f7; padding-left:12px;"><strong>Eris:</strong> ${data.eris_response}</div>`;
+            el.creatorFeed.appendChild(div);
+            setTimeout(() => { el.creatorFeed.scrollTop = el.creatorFeed.scrollHeight; }, 50);
+            if (isCreator && el.creatorView.style.display !== 'flex') {
+                showToast(`New activity from ${data.username}`);
+            }
+        }
     };
 
     ws.onclose = () => {
@@ -1570,8 +1595,13 @@ function onLoginSuccess(data) {
     el.welcomeLabel.textContent = `Hello, ${personName}`;
     brain.onLogin(isCreator);
     hasMessages = false; el.chatMsg.innerHTML = '';
-    el.welcome.classList.remove('hidden'); el.chatView.classList.remove('active');
-    if (isCreator) showToast('Welcome home, Creator ✨');
+    el.welcome.classList.remove('hidden'); el.chatView.classList.remove('active'); el.creatorView.style.display = 'none';
+    if (isCreator) {
+        el.creatorPortalBtn.style.display = 'block';
+        showToast('Welcome home, Creator ✨');
+    } else {
+        el.creatorPortalBtn.style.display = 'none';
+    }
     if (ws && isConnected) ws.send(JSON.stringify({ type: 'list_chats' }));
 }
 
@@ -1616,8 +1646,9 @@ el.cancelDropdownBtn.addEventListener('click', () => {
 el.signOutBtn.addEventListener('click', () => {
     el.userDropdown.classList.remove('show');
     isLoggedIn=false; personName=''; personId=''; isCreator=false; hasMessages=false;
-    el.chatMsg.innerHTML=''; el.welcome.classList.remove('hidden'); el.chatView.classList.remove('active');
+    el.chatMsg.innerHTML=''; el.welcome.classList.remove('hidden'); el.chatView.classList.remove('active'); el.creatorView.style.display = 'none';
     el.sidebarAvatar.textContent='?'; el.sidebarName.textContent='Not signed in';
+    el.creatorPortalBtn.style.display = 'none';
     el.sidebarStatus.textContent='Click to sign in'; el.inputArea.classList.add('locked');
     el.input.disabled=true; el.welcomeLabel.textContent='awaiting presence';
     el.chatList.innerHTML='';
@@ -1646,6 +1677,7 @@ function loadChat(sid) {
     currentSessionId=sid; 
     renderChatList(); 
     if (window.innerWidth <= 768) el.sidebar.classList.remove('open');
+    el.creatorView.style.display = 'none';
     if(ws&&isConnected) ws.send(JSON.stringify({type:'load_chat',session_id:sid})); 
 }
 function loadChatMessages(msgs) {
@@ -1655,8 +1687,15 @@ function loadChatMessages(msgs) {
 }
 el.newChatBtn.addEventListener('click', ()=>{
     currentSessionId=null; hasMessages=false; el.chatMsg.innerHTML='';
-    el.welcome.classList.remove('hidden'); el.chatView.classList.remove('active'); renderChatList();
+    el.welcome.classList.remove('hidden'); el.chatView.classList.remove('active'); el.creatorView.style.display = 'none'; renderChatList();
     if(ws&&isConnected) ws.send(JSON.stringify({type:'new_chat'}));
+});
+
+el.creatorPortalBtn.addEventListener('click', () => {
+    el.welcome.classList.add('hidden');
+    el.chatView.classList.remove('active');
+    el.creatorView.style.display = 'flex';
+    if (window.innerWidth <= 768) el.sidebar.classList.remove('open');
 });
 
 // Send
@@ -1701,6 +1740,20 @@ el.micBtn.addEventListener('click',()=>{if(!recognition||!isLoggedIn)return;isRe
 
 // Voice Output (TTS) — Eris speaks her responses
 let ttsEnabled = localStorage.getItem('eris_tts') !== 'off';
+if (!ttsEnabled) el.muteBtn.style.color = '#ef4444';
+
+el.muteBtn.addEventListener('click', () => {
+    ttsEnabled = !ttsEnabled;
+    localStorage.setItem('eris_tts', ttsEnabled ? 'on' : 'off');
+    if (!ttsEnabled) {
+        el.muteBtn.style.color = '#ef4444';
+        if (currentAudio) currentAudio.pause();
+        if ('speechSynthesis' in window) speechSynthesis.cancel();
+    } else {
+        el.muteBtn.style.color = 'var(--text-muted)';
+    }
+});
+
 function speakText(text) {
     if (!ttsEnabled || !('speechSynthesis' in window)) return;
     // Strip markdown formatting for cleaner speech

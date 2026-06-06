@@ -24,7 +24,10 @@ class Turn:
 
     def to_message(self) -> dict:
         """Convert to LLM message format."""
-        return {"role": self.role, "content": self.content}
+        msg = {"role": self.role, "content": self.content}
+        if "image_base64" in self.metadata:
+            msg["image_base64"] = self.metadata["image_base64"]
+        return msg
 
     def token_estimate(self) -> int:
         """Rough token count estimate (~4 chars per token for English)."""

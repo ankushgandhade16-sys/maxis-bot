@@ -36,8 +36,10 @@ dependencies = [
     # "opencv-python>=4.10.0",
     # "ultralytics>=8.3.0",
 
-    # === System Monitoring ===
+    # === System Monitoring & OS Access (Phase 5) ===
     "psutil>=6.1.0",
+    "mss>=9.0.0",
+    "Pillow>=10.0.0",
 
     # === Utilities ===
     "httpx>=0.27.0",

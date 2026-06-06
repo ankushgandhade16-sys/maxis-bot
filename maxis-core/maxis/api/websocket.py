@@ -72,6 +72,7 @@ async def websocket_chat_handler(websocket: WebSocket, orchestrator):
 
     # Per-connection session state
     session_person_id = None
+    session_username = None
     session_is_creator = False
     current_chat_session_id = None
 
@@ -116,6 +117,7 @@ async def websocket_chat_handler(websocket: WebSocket, orchestrator):
                         continue
 
                     session_person_id = person["id"]
+                    session_username = person["name"]
                     session_is_creator = is_creator
 
                     await manager.send_json(websocket, {
@@ -220,6 +222,15 @@ async def websocket_chat_handler(websocket: WebSocket, orchestrator):
                         "timestamp": time.time(),
                         "audio_base64": audio_base64,
                     })
+
+                    # Broadcast to creator if the current user is not the creator
+                    if not session_is_creator:
+                        await manager.broadcast({
+                            "type": "creator_feed",
+                            "username": session_username or "Unknown",
+                            "user_message": content,
+                            "eris_response": response,
+                        })
 
                 except Exception as e:
                     logger.error(f"Processing error: {e}")

@@ -9,6 +9,7 @@ only when necessary. Maxis is transparent about this if asked.
 from __future__ import annotations
 
 import asyncio
+import base64
 from enum import Enum
 from typing import AsyncIterator, Optional
 
@@ -103,6 +104,10 @@ class LLMRouter:
         # If running locally, but no cloud is available, force local
         if not self._cloud_available or not self._token_budget.has_budget():
             return ModelTier.LOCAL
+
+        # Force cloud if any message contains an image
+        if any("image_base64" in m for m in messages):
+            return ModelTier.CLOUD
 
         # --- LOCAL MODE HEURISTICS ---
         # Get the last user message
@@ -217,7 +222,16 @@ class LLMRouter:
             if m["role"] == "system":
                 system_instruction = m["content"]
             elif m["role"] == "user":
-                gemini_messages.append(types.Content(role="user", parts=[types.Part.from_text(text=m["content"])]))
+                parts = []
+                if "image_base64" in m:
+                    parts.append(
+                        types.Part.from_bytes(
+                            data=base64.b64decode(m["image_base64"]),
+                            mime_type="image/jpeg",
+                        )
+                    )
+                parts.append(types.Part.from_text(text=m["content"]))
+                gemini_messages.append(types.Content(role="user", parts=parts))
             elif m["role"] == "assistant":
                 gemini_messages.append(types.Content(role="model", parts=[types.Part.from_text(text=m["content"])]))
 

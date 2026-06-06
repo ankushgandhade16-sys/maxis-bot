@@ -21,7 +21,10 @@ from typing import Optional
 from loguru import logger
 
 import json
+import re
 from maxis.config import get_config, DATA_DIR
+from maxis.system.os_tools import get_system_stats, execute_command, fetch_url
+from maxis.system.screen import capture_screen_base64
 from maxis.core.identity import build_system_prompt
 from maxis.emotion.state import EmotionalState
 from maxis.emotion.engine import EmotionEngine
@@ -158,12 +161,63 @@ class Orchestrator:
         if is_voice:
             system_prompt += "\n\n[SYSTEM DIRECTIVE]: The user just spoke to you via microphone instead of typing. Keep your response conversational, natural, and relatively brief so it sounds good when read aloud."
 
-        # ── 6. Generate response ─────────────────────────────────────────
-        messages = working.get_messages()
-        response = await self.llm.generate(
-            messages=messages,
-            system_prompt=system_prompt,
-        )
+        # ── 6. Generate response (Tool Loop) ─────────────────────────────────────────
+        MAX_TOOL_LOOPS = 3
+        loop_count = 0
+        response = ""
+        
+        while loop_count < MAX_TOOL_LOOPS:
+            loop_count += 1
+            messages = working.get_messages()
+            response = await self.llm.generate(
+                messages=messages,
+                system_prompt=system_prompt,
+            )
+            
+            # Check for tool call
+            tool_match = re.search(r"<tool>(.*?)</tool>", response, re.IGNORECASE)
+            if tool_match:
+                tool_str = tool_match.group(1).strip()
+                parts = tool_str.split("|", 1)
+                tool_name = parts[0].strip()
+                tool_args = parts[1].strip() if len(parts) > 1 else ""
+                
+                logger.info(f"Tool called: {tool_name} with args: {tool_args}")
+                
+                # Add the assistant's intermediate step
+                working.add_assistant_message(response)
+                
+                tool_result = ""
+                image_data = None
+                
+                if tool_name == "get_system_stats":
+                    stats = get_system_stats()
+                    tool_result = json.dumps(stats)
+                elif tool_name == "execute_command":
+                    tool_result = execute_command(tool_args)
+                elif tool_name == "fetch_url":
+                    tool_result = fetch_url(tool_args)
+                elif tool_name == "take_screenshot":
+                    image_data = capture_screen_base64()
+                    if image_data:
+                        tool_result = "Screenshot attached. Please describe it or answer the user's question about it."
+                    else:
+                        tool_result = "Failed to capture screenshot."
+                else:
+                    tool_result = f"Unknown tool: {tool_name}"
+                
+                # Provide the tool result back to the LLM
+                tool_msg = f"[System Tool Result]: {tool_result}"
+                if image_data:
+                    working.add_turn("user", tool_msg, image_base64=image_data)
+                else:
+                    working.add_turn("user", tool_msg)
+                
+                # Loop continues to let her synthesize the final answer
+                continue
+                
+            # If no tool was called, we're done
+            break
 
         # ── 7. Add response to working memory ───────────────────────────
         working.add_assistant_message(response)

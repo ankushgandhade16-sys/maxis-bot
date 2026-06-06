@@ -41,3 +41,6 @@ maxis_config.yaml
 *.onnx
 *.gguf
 *.bin
+
+# Node
+node_modules/
