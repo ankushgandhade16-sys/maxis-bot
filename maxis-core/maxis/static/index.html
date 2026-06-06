@@ -672,6 +672,107 @@ class MotorCortex {
 }
 
 // ═══════════════════════════════════════════════════════════
+//  4.5. ARM SKELETON — Inverse Kinematics for Gestures
+// ═══════════════════════════════════════════════════════════
+class ArmSkeleton {
+    constructor() {
+        this.L1 = 120; // Upper arm length
+        this.L2 = 120; // Lower arm length
+        this.L3 = 40;  // Hand/palm length
+        
+        // Target properties
+        this.targetX = 0;
+        this.targetY = 0;
+        this.reachWeight = 0; // 0 to 1, fades the IK in/out
+        this.gestureName = null;
+
+        // Calculated joints (relative to cx, cy)
+        this.shoulder = {x: 0, y: 0};
+        this.elbow = {x: 0, y: 0};
+        this.wrist = {x: 0, y: 0};
+        this.fingertips = [
+            {x:0, y:0}, {x:0, y:0}, {x:0, y:0}, {x:0, y:0}, {x:0, y:0}
+        ];
+    }
+    
+    update(t) {
+        if (this.reachWeight < 0.01) return;
+        
+        let tx = this.targetX;
+        let ty = this.targetY;
+        
+        // Add some breathing/sway to the target for life-like movement
+        tx += Math.sin(t) * 10;
+        ty += Math.cos(t * 1.3) * 10;
+        
+        let d = Math.sqrt(tx*tx + ty*ty);
+        const maxReach = this.L1 + this.L2;
+        if (d > maxReach) {
+            tx = (tx / d) * maxReach * 0.99;
+            ty = (ty / d) * maxReach * 0.99;
+            d = maxReach * 0.99;
+        }
+        if (d < 0.1) d = 0.1;
+        
+        // Inverse Kinematics (Law of Cosines)
+        const a = this.L1;
+        const b = this.L2;
+        
+        const targetAngle = Math.atan2(ty, tx);
+        
+        let cosQ1 = (a*a + d*d - b*b) / (2 * a * d);
+        cosQ1 = Math.max(-1, Math.min(1, cosQ1)); 
+        const q1 = Math.acos(cosQ1);
+        
+        const shoulderAngle = targetAngle + q1;
+        
+        this.elbow.x = Math.cos(shoulderAngle) * this.L1;
+        this.elbow.y = Math.sin(shoulderAngle) * this.L1;
+        
+        this.wrist.x = tx;
+        this.wrist.y = ty;
+        
+        let handAngle = Math.atan2(this.wrist.y - this.elbow.y, this.wrist.x - this.elbow.x);
+        
+        // Modify hand angle based on gesture
+        if (this.gestureName === 'wave') {
+            handAngle = -Math.PI/2 + Math.sin(t * 10) * 0.5;
+        } else if (this.gestureName === 'think') {
+            handAngle = -Math.PI/2;
+        } else if (this.gestureName === 'point') {
+            // hand remains straight relative to lower arm
+        }
+
+        const palmX = this.wrist.x + Math.cos(handAngle) * this.L3;
+        const palmY = this.wrist.y + Math.sin(handAngle) * this.L3;
+
+        // Fingers
+        for(let i=0; i<5; i++) {
+            let spread = (i - 2) * 0.2; 
+            let fLength = 40;
+            
+            if (this.gestureName === 'point') {
+                if (i === 1) { // index finger points
+                    spread = 0; fLength = 50;
+                } else { // others curl
+                    spread = (i-2)*0.1;
+                    fLength = 10; 
+                }
+            } else if (this.gestureName === 'think') {
+                if (i === 0 || i === 1) { // thumb and index rest on "chin"
+                    spread = (i-0.5)*0.3; fLength = 30;
+                } else {
+                    fLength = 10;
+                }
+            }
+            
+            this.fingertips[i].x = palmX + Math.cos(handAngle + spread) * fLength;
+            this.fingertips[i].y = palmY + Math.sin(handAngle + spread) * fLength;
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════
 //  5. BEHAVIOR LIBRARY — 20+ distinct behaviors
 // ═══════════════════════════════════════════════════════════
 const Behaviors = {
@@ -735,6 +836,36 @@ const Behaviors = {
     },
 
     // ── REACTIVE BEHAVIORS ──
+    shape_cloud: (motor) => {
+        motor.targetShapeWeight = 1.0;
+        motor.shapeName = 'cloud';
+    },
+
+    // ── GESTURE BEHAVIORS ──
+    gesture_wave: (motor, emo, auto, t, sensory) => {
+        motor.targetShapeWeight = 1.0;
+        motor.shapeName = 'gesture_wave';
+        skeleton.gestureName = 'wave';
+        skeleton.reachWeight = motor.shapeWeight;
+        skeleton.targetX = sensory.mouseX ? (sensory.mouseX - cx) : 100;
+        skeleton.targetY = sensory.mouseY ? (sensory.mouseY - cy) : -50;
+    },
+    gesture_point: (motor, emo, auto, t, sensory) => {
+        motor.targetShapeWeight = 1.0;
+        motor.shapeName = 'gesture_point';
+        skeleton.gestureName = 'point';
+        skeleton.reachWeight = motor.shapeWeight;
+        skeleton.targetX = sensory.mouseX ? (sensory.mouseX - cx) : 100;
+        skeleton.targetY = sensory.mouseY ? (sensory.mouseY - cy) : 0;
+    },
+    gesture_think: (motor, emo, auto, t, sensory) => {
+        motor.targetShapeWeight = 1.0;
+        motor.shapeName = 'gesture_think';
+        skeleton.gestureName = 'think';
+        skeleton.reachWeight = motor.shapeWeight;
+        skeleton.targetX = 0;
+        skeleton.targetY = 80;
+    },
     startled: (motor) => {
         motor.targetTightness = 1.6;
         motor.targetExpansion = 0.7;
@@ -1070,6 +1201,7 @@ class EntityBrain {
 
         // Act runs every frame for smooth motor output
         this.act(dt);
+        skeleton.update(this.time);
     }
 
     // ── External triggers ───────────────────────────────
@@ -1101,27 +1233,32 @@ class EntityBrain {
         this.autonomic.boostEnergy(0.1);
         this.setBehavior('thinking_vortex');
     }
-    onResponse(visual_directive) {
+    onResponse(visual_directive, gesture_directive) {
         this.sensory.isThinking = false;
         this.sensory.isSpeaking = true;
         this.sensory.onInteraction();
         this.appState = 'speaking';
         this.visualDirective = visual_directive;
+        this.gestureDirective = gesture_directive;
         this.autonomic.boostEnergy(0.15);
         
         if (visual_directive === 'clock') this.setBehavior('shape_clock');
         else if (visual_directive === 'cloud') this.setBehavior('shape_cloud');
         else if (visual_directive === 'heart') this.setBehavior('shape_heart');
+        else if (gesture_directive === 'wave') this.setBehavior('gesture_wave');
+        else if (gesture_directive === 'point') this.setBehavior('gesture_point');
+        else if (gesture_directive === 'think') this.setBehavior('gesture_think');
         else this.setBehavior('speaking_bloom');
 
         setTimeout(() => {
             this.sensory.isSpeaking = false;
             this.visualDirective = null;
+            this.gestureDirective = null;
             if (this.appState === 'speaking') {
                 this.motor.targetShapeWeight = 0; // fade shape out
                 this.appState = 'idle';
             }
-        }, 5000); // shape stays for 5 seconds
+        }, 5000); // shape/gesture stays for 5 seconds
     }
     onError() {
         this.sensory.isThinking = false;
@@ -1148,6 +1285,7 @@ const BODY = {
 };
 
 const brain = new EntityBrain();
+const skeleton = new ArmSkeleton();
 const allParticles = [];
 const FOV = 400;
 
@@ -1347,6 +1485,36 @@ class OrgParticle {
                 const beat = 1 + auto.heartPulse * 0.15;
                 sx *= beat; sy *= beat;
                 sy -= 20;
+            } else if (m.shapeName && m.shapeName.startsWith('gesture_')) {
+                let targetPos = {x:0, y:0};
+                if (norm < 0.4) { // Upper arm
+                    const local = norm / 0.4;
+                    targetPos.x = skeleton.shoulder.x * (1-local) + skeleton.elbow.x * local;
+                    targetPos.y = skeleton.shoulder.y * (1-local) + skeleton.elbow.y * local;
+                } else if (norm < 0.7) { // Lower arm
+                    const local = (norm - 0.4) / 0.3;
+                    targetPos.x = skeleton.elbow.x * (1-local) + skeleton.wrist.x * local;
+                    targetPos.y = skeleton.elbow.y * (1-local) + skeleton.wrist.y * local;
+                } else if (norm < 0.8) { // Palm
+                    const local = (norm - 0.7) / 0.1;
+                    const palmCenterX = skeleton.wrist.x + (skeleton.fingertips[2].x - skeleton.wrist.x) * 0.3;
+                    const palmCenterY = skeleton.wrist.y + (skeleton.fingertips[2].y - skeleton.wrist.y) * 0.3;
+                    const a = local * Math.PI * 2 * 3;
+                    const r = Math.random() * 20;
+                    targetPos.x = palmCenterX + Math.cos(a)*r;
+                    targetPos.y = palmCenterY + Math.sin(a)*r;
+                } else { // Fingers
+                    const local = (norm - 0.8) / 0.2; // 0 to 1
+                    const fIdx = Math.floor(local * 5); // 0 to 4
+                    const fLocal = (local * 5) - fIdx;
+                    const pX = skeleton.wrist.x + (skeleton.fingertips[fIdx].x - skeleton.wrist.x) * 0.2;
+                    const pY = skeleton.wrist.y + (skeleton.fingertips[fIdx].y - skeleton.wrist.y) * 0.2;
+                    targetPos.x = pX * (1-fLocal) + skeleton.fingertips[fIdx].x * fLocal;
+                    targetPos.y = pY * (1-fLocal) + skeleton.fingertips[fIdx].y * fLocal;
+                }
+                // Add noise for flesh thickness
+                sx = targetPos.x + (Math.random()-0.5) * 15;
+                sy = targetPos.y + (Math.random()-0.5) * 15;
             }
 
             const shapeSpring = 0.1 * m.shapeWeight;
@@ -1676,7 +1844,7 @@ function connect() {
         else if (data.type === 'thinking') { showThinking(); brain.onThinkingStart(); }
         else if (data.type === 'response') { 
             removeThinking(); 
-            brain.onResponse(data.visual_directive); 
+            brain.onResponse(data.visual_directive, data.gesture_directive); 
             appendMessage('eris', data.content); 
             if (data.audio_base64 && ttsEnabled) {
                 playBase64Audio(data.audio_base64);
