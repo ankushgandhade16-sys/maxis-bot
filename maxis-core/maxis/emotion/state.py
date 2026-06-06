@@ -100,6 +100,23 @@ class EmotionalState:
             "curiosity": self.curiosity,
         }
 
+    def apply_delta(self, dimension: str, delta: float, min_val: float = 0.0, max_val: float = 1.0):
+        """Apply a delta to a specific dimension, clamped to bounds."""
+        if hasattr(self, dimension):
+            current = getattr(self, dimension)
+            new_val = max(min_val, min(max_val, current + delta))
+            setattr(self, dimension, new_val)
+
+    def drift_towards_baseline(self, baseline: dict[str, float], amount: float):
+        """Slowly move all dimensions towards their baseline value."""
+        for dim, base_val in baseline.items():
+            if hasattr(self, dim):
+                current = getattr(self, dim)
+                if current > base_val:
+                    setattr(self, dim, max(base_val, current - amount))
+                elif current < base_val:
+                    setattr(self, dim, min(base_val, current + amount))
+
     @classmethod
     def from_dict(cls, data: dict) -> EmotionalState:
         """Deserialize from storage."""

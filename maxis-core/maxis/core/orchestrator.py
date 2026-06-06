@@ -20,9 +20,11 @@ from typing import Optional
 
 from loguru import logger
 
-from maxis.config import get_config
+import json
+from maxis.config import get_config, DATA_DIR
 from maxis.core.identity import build_system_prompt
 from maxis.emotion.state import EmotionalState
+from maxis.emotion.engine import EmotionEngine
 from maxis.intelligence.llm_router import LLMRouter
 from maxis.memory.manager import MemoryManager
 from maxis.memory.compression import MemoryCompressor
@@ -40,6 +42,7 @@ class Orchestrator:
         self.memory = MemoryManager()
         self.llm = LLMRouter()
         self.emotional_state = EmotionalState()
+        self.emotion_engine: Optional[EmotionEngine] = None
         self.compressor: Optional[MemoryCompressor] = None
         self.chat_history = ChatHistoryStore()
 
@@ -68,6 +71,10 @@ class Orchestrator:
 
         # Initialize LLM
         await self.llm.initialize()
+
+        # Initialize Emotion Engine
+        self.emotion_engine = EmotionEngine(self.llm, self.memory)
+        await self.emotion_engine.initialize()
 
         # Load previous emotional state if it exists
         await self._load_emotional_state()
@@ -168,11 +175,17 @@ class Orchestrator:
             person_id=active_person,
         )
 
-        # ── 9. Update emotional state (stub for Phase 1) ────────────────
-        # Phase 4 will add the causal reasoning engine here
-        self.emotional_state.cognitive_engagement = min(
-            1.0, self.emotional_state.cognitive_engagement + 0.05
-        )
+        # ── 9. Update emotional state ────────────────
+        if self.emotion_engine:
+            # We don't await this to block the response return, but since we need it in the background, 
+            # we will just await it here for simplicity. (Phase 5 could make this an async task).
+            await self.emotion_engine.evaluate_interaction(
+                state=self.emotional_state,
+                user_message=message,
+                assistant_response=response,
+                person_id=active_person,
+            )
+            await self._save_emotional_state()
 
         elapsed = time.time() - start_time
         logger.info(f"Response generated in {elapsed:.2f}s ({len(response)} chars)")
@@ -253,14 +266,27 @@ class Orchestrator:
 
     async def _load_emotional_state(self):
         """Load the last saved emotional state."""
-        # For Phase 1, start with defaults
-        # Phase 4 will persist and restore state
-        self.emotional_state = EmotionalState()
+        state_file = DATA_DIR / "emotional_state.json"
+        if state_file.exists():
+            try:
+                with open(state_file, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                self.emotional_state = EmotionalState.from_dict(data)
+                logger.info("Restored previous emotional state.")
+            except Exception as e:
+                logger.error(f"Failed to load emotional state: {e}")
+                self.emotional_state = EmotionalState()
+        else:
+            self.emotional_state = EmotionalState()
 
     async def _save_emotional_state(self):
         """Save current emotional state for persistence."""
-        # Phase 4 implementation
-        pass
+        state_file = DATA_DIR / "emotional_state.json"
+        try:
+            with open(state_file, "w", encoding="utf-8") as f:
+                json.dump(self.emotional_state.to_dict(), f, indent=2)
+        except Exception as e:
+            logger.error(f"Failed to save emotional state: {e}")
 
     def get_status(self) -> dict:
         """Get full system status."""
