@@ -5,6 +5,7 @@ OS Tools — Safe shell execution and system statistics.
 import subprocess
 import psutil
 import httpx
+import re
 from loguru import logger
 
 def get_system_stats() -> dict:
@@ -65,8 +66,15 @@ def fetch_url(url: str) -> str:
             if "application/json" in content_type:
                 return response.text
                 
-            # Otherwise return the first 4000 characters of the text
-            text = response.text
+            # Parse HTML if it's a web page
+            if "text/html" in content_type:
+                html = response.text
+                html = re.sub(r'<(script|style).*?>.*?</\1>', '', html, flags=re.IGNORECASE | re.DOTALL)
+                text = re.sub(r'<[^>]+>', ' ', html)
+                text = re.sub(r'\s+', ' ', text).strip()
+            else:
+                text = response.text
+
             if len(text) > 4000:
                 text = text[:4000] + "\n... (truncated)"
             return text

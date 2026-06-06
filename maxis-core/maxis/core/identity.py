@@ -89,7 +89,7 @@ Available tools:
 1. `take_screenshot` - Takes a picture of the user's screen. Use when asked what is on the screen. Format: `<tool>take_screenshot</tool>`
 2. `get_system_stats` - Returns CPU, RAM, and disk usage. Format: `<tool>get_system_stats</tool>`
 3. `execute_command` - Executes a shell command. Format: `<tool>execute_command|your command here</tool>` (e.g. `<tool>execute_command|dir</tool>`)
-4. `fetch_url` - Fetches text content from a web URL. Format: `<tool>fetch_url|https://example.com</tool>`
+4. `fetch_url` - Fetches text content from a web URL. Format: `<tool>fetch_url|https://example.com</tool>`. IMPORTANT: Do NOT use this tool if you just want to SHARE a link or recommend a video to the user. Only use this if you need to read the contents of a page yourself. If you want to share a link, just write the URL in your conversational response.
 
 Only output one tool per response. Wait for the result before summarizing it.
 """
