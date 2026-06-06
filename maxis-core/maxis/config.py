@@ -133,6 +133,14 @@ class GeminiConfig(BaseSettings):
     max_daily_tokens: int = 1_000_000
 
 
+class OpenRouterConfig(BaseSettings):
+    """Configuration for OpenRouter API."""
+    api_key: str = Field(default="", description="OpenRouter API key")
+    base_url: str = "https://openrouter.ai/api/v1"
+    temperature: float = 0.7
+    max_daily_tokens: int = 1_000_000
+
+
 class CloudConfig(BaseSettings):
     """Cloud infrastructure settings (Supabase & Pinecone)."""
     database_url: str = Field(default="", description="PostgreSQL connection string")
@@ -145,6 +153,7 @@ class MaxisConfig(BaseSettings):
     ollama: OllamaConfig = OllamaConfig()
     groq: GroqConfig = GroqConfig()
     gemini: GeminiConfig = GeminiConfig()
+    openrouter: OpenRouterConfig = OpenRouterConfig()
     memory: MemoryConfig = MemoryConfig()
     voice: VoiceConfig = VoiceConfig()
     vision: VisionConfig = VisionConfig()

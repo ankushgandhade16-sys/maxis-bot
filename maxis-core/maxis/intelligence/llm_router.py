@@ -42,6 +42,7 @@ class LLMRouter:
         self._token_budget = TokenBudget()
         self._ollama_client: Optional[httpx.AsyncClient] = None
         self._gemini_client: Optional[genai.Client] = None
+        self._openrouter_client: Optional[httpx.AsyncClient] = None
         self._ollama_available = False
         self._cloud_available = False
         self._active_cloud_model: str = self._config.gemini.model
@@ -60,6 +61,19 @@ class LLMRouter:
                 self._cloud_available = True
             except Exception as e:
                 logger.error(f"Failed to initialize Gemini API: {e}")
+
+        # Initialize OpenRouter API
+        if self._config.openrouter.api_key:
+            self._openrouter_client = httpx.AsyncClient(
+                base_url=self._config.openrouter.base_url,
+                headers={
+                    "Authorization": f"Bearer {self._config.openrouter.api_key}",
+                    "HTTP-Referer": "https://github.com/ankushgandhade16-sys/maxis-bot",
+                    "X-Title": "Eris UI"
+                },
+                timeout=120.0,
+            )
+            self._cloud_available = True
 
         # Check Ollama availability
         await self._check_ollama()
@@ -159,11 +173,11 @@ class LLMRouter:
             if tier == ModelTier.LOCAL and self._ollama_available:
                 return await self._generate_ollama(full_messages, temperature)
             elif tier == ModelTier.CLOUD and self._cloud_available:
-                return await self._generate_gemini(full_messages, temperature)
+                return await self._generate_cloud(full_messages, temperature)
             elif self._ollama_available:
                 return await self._generate_ollama(full_messages, temperature)
             elif self._cloud_available:
-                return await self._generate_gemini(full_messages, temperature)
+                return await self._generate_cloud(full_messages, temperature)
             else:
                 return "I'm having trouble connecting to my language models right now. Neither local nor cloud are available."
         except Exception as e:
@@ -171,7 +185,7 @@ class LLMRouter:
             logger.error(f"LLM generation failed on {tier} (model={self._active_cloud_model}): {error_str}")
             try:
                 if tier == ModelTier.LOCAL and self._cloud_available:
-                    return await self._generate_gemini(full_messages, temperature)
+                    return await self._generate_cloud(full_messages, temperature)
                 elif tier == ModelTier.CLOUD and self._ollama_available:
                     return await self._generate_ollama(full_messages, temperature)
             except Exception as e2:
@@ -206,6 +220,68 @@ class LLMRouter:
         resp = await self._ollama_client.post("/api/chat", json=payload)
         resp.raise_for_status()
         return resp.json().get("message", {}).get("content", "")
+
+    async def _generate_cloud(
+        self,
+        messages: list[dict],
+        temperature: float | None = None,
+    ) -> str:
+        """Route to appropriate cloud API based on the active model name."""
+        if self._active_cloud_model.startswith("gemini"):
+            if not self._gemini_client:
+                raise ValueError("Gemini client not initialized")
+            return await self._generate_gemini(messages, temperature)
+        else:
+            if not self._openrouter_client:
+                raise ValueError("OpenRouter client not initialized (check API key)")
+            return await self._generate_openrouter(messages, temperature)
+
+    async def _generate_openrouter(
+        self,
+        messages: list[dict],
+        temperature: float | None = None,
+    ) -> str:
+        """Generate via OpenRouter API using OpenAI compatible schema."""
+        config = self._config.openrouter
+        
+        # Remove image base64 handling for openrouter for now (or convert to openai vision format if needed)
+        clean_messages = []
+        for m in messages:
+            content = m["content"]
+            if "image_base64" in m:
+                # Basic OpenAI vision format
+                content = [
+                    {"type": "text", "text": m["content"]},
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{m['image_base64']}"}}
+                ]
+            clean_messages.append({"role": m["role"], "content": content})
+
+        payload = {
+            "model": self._active_cloud_model,
+            "messages": clean_messages,
+            "temperature": temperature or config.temperature,
+            "stream": False,
+        }
+
+        logger.debug(f"Generating via OpenRouter ({self._active_cloud_model})...")
+        
+        resp = await self._openrouter_client.post("/chat/completions", json=payload)
+        
+        if resp.status_code != 200:
+            error_data = resp.text
+            try:
+                error_data = resp.json()
+            except:
+                pass
+            raise Exception(f"OpenRouter API error: {resp.status_code} - {error_data}")
+            
+        data = resp.json()
+        
+        if "usage" in data:
+            total_tokens = data["usage"].get("total_tokens", 0)
+            await self._token_budget.record_usage("openrouter", total_tokens)
+            
+        return data["choices"][0]["message"]["content"]
 
     async def _generate_gemini(
         self,
@@ -292,4 +368,6 @@ class LLMRouter:
         """Clean up HTTP clients."""
         if self._ollama_client:
             await self._ollama_client.aclose()
+        if self._openrouter_client:
+            await self._openrouter_client.aclose()
         await self._token_budget.save()
