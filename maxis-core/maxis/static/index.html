@@ -1718,6 +1718,7 @@ function appendMessage(sender, text, anim=true) {
     f=f.replace(/```([\s\S]*?)```/g,'<pre><code>$1</code></pre>');
     f=f.replace(/`([^`]+)`/g,'<code>$1</code>');
     f=f.replace(/\*\*([^\*]+)\*\*/g,'<strong>$1</strong>');
+    f=f.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" style="color:#a855f7; text-decoration:underline;">$1</a>');
     f=f.split('\n\n').map(p=>`<p>${p.replace(/\n/g,'<br>')}</p>`).join('');
     div.innerHTML=`<div class="msg-bubble">${f}</div><div class="msg-time">${t}</div>`;
     el.chatMsg.appendChild(div); scrollToBottom();
