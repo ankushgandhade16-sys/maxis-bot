@@ -648,6 +648,9 @@ class MotorCortex {
         this.nodPhase = 0;
         this.shiverIntensity = 0;
         this.bloomWave = 0;      // radial wave strength
+        this.shapeName = null;
+        this.shapeWeight = 0;
+        this.targetShapeWeight = 0;
     }
     update(dt) {
         const lerp = (a,b,t) => a + (b-a) * Math.min(1, t);
@@ -664,6 +667,7 @@ class MotorCortex {
         this.bloomWave *= 0.96;
         this.nodPhase += dt * 4;
         this.nodAmplitude *= 0.97;
+        this.shapeWeight = lerp(this.shapeWeight, this.targetShapeWeight, spd);
     }
 }
 
@@ -770,6 +774,27 @@ const Behaviors = {
         motor.bloomWave = 1.0;
         motor.targetSpiral = 0;
         motor.targetChaos = 0.4;
+    },
+    shape_clock: (motor) => {
+        motor.shapeName = 'clock';
+        motor.targetShapeWeight = 1.0;
+        motor.targetExpansion = 1.0;
+        motor.targetOrbitSpeed = 0.5;
+        motor.targetTightness = 1.0;
+    },
+    shape_cloud: (motor) => {
+        motor.shapeName = 'cloud';
+        motor.targetShapeWeight = 1.0;
+        motor.targetExpansion = 1.2;
+        motor.targetOrbitSpeed = 0.3;
+        motor.targetChaos = 0.1;
+    },
+    shape_heart: (motor) => {
+        motor.shapeName = 'heart';
+        motor.targetShapeWeight = 1.0;
+        motor.targetExpansion = 1.1;
+        motor.targetTightness = 1.2;
+        motor.targetOrbitSpeed = 0.4;
     },
     pleased_pulse: (motor, emo) => {
         motor.bloomWave = 0.6;
@@ -935,7 +960,11 @@ class EntityBrain {
             this.setBehavior('thinking_vortex'); return;
         }
         if (this.appState === 'speaking') {
-            this.setBehavior('speaking_bloom'); return;
+            if (this.visualDirective === 'clock') this.setBehavior('shape_clock');
+            else if (this.visualDirective === 'cloud') this.setBehavior('shape_cloud');
+            else if (this.visualDirective === 'heart') this.setBehavior('shape_heart');
+            else this.setBehavior('speaking_bloom'); 
+            return;
         }
         if (this.appState === 'listening' || this.sensory.userTyping) {
             if (this.behaviorTime > 1) {
@@ -1072,17 +1101,27 @@ class EntityBrain {
         this.autonomic.boostEnergy(0.1);
         this.setBehavior('thinking_vortex');
     }
-    onResponse() {
+    onResponse(visual_directive) {
         this.sensory.isThinking = false;
         this.sensory.isSpeaking = true;
         this.sensory.onInteraction();
         this.appState = 'speaking';
+        this.visualDirective = visual_directive;
         this.autonomic.boostEnergy(0.15);
-        this.setBehavior('speaking_bloom');
+        
+        if (visual_directive === 'clock') this.setBehavior('shape_clock');
+        else if (visual_directive === 'cloud') this.setBehavior('shape_cloud');
+        else if (visual_directive === 'heart') this.setBehavior('shape_heart');
+        else this.setBehavior('speaking_bloom');
+
         setTimeout(() => {
             this.sensory.isSpeaking = false;
-            this.appState = 'idle';
-        }, 4000);
+            this.visualDirective = null;
+            if (this.appState === 'speaking') {
+                this.motor.targetShapeWeight = 0; // fade shape out
+                this.appState = 'idle';
+            }
+        }, 5000); // shape stays for 5 seconds
     }
     onError() {
         this.sensory.isThinking = false;
@@ -1235,8 +1274,57 @@ class OrgParticle {
         const nodY = Math.sin(m.nodPhase) * m.nodAmplitude;
 
         // Target position
-        const tx = Math.cos(this.angle) * targetR + m.driftX;
-        const ty = Math.sin(this.angle) * targetR * 0.88 + m.driftY + nodY;
+        let tx = Math.cos(this.angle) * targetR + m.driftX;
+        let ty = Math.sin(this.angle) * targetR * 0.88 + m.driftY + nodY;
+
+        if (m.shapeWeight > 0.01) {
+            let sx = 0, sy = 0;
+            if (m.shapeName === 'clock') {
+                const d = new Date();
+                const hrs = d.getHours() % 12 + d.getMinutes() / 60;
+                const mins = d.getMinutes() + d.getSeconds() / 60;
+                const secs = d.getSeconds() + d.getMilliseconds() / 1000;
+                const clockR = 120;
+                const role = this.idx % 100;
+                
+                if (role < 40) { // Ring
+                    const a = (this.idx / 40) * Math.PI * 2;
+                    sx = Math.cos(a) * clockR; sy = Math.sin(a) * clockR;
+                } else if (role < 55) { // Hour
+                    const a = (hrs / 12) * Math.PI * 2 - Math.PI/2;
+                    const r = ((role - 40) / 15) * 60;
+                    sx = Math.cos(a) * r; sy = Math.sin(a) * r;
+                } else if (role < 75) { // Minute
+                    const a = (mins / 60) * Math.PI * 2 - Math.PI/2;
+                    const r = ((role - 55) / 20) * 90;
+                    sx = Math.cos(a) * r; sy = Math.sin(a) * r;
+                } else if (role < 90) { // Second
+                    const a = (secs / 60) * Math.PI * 2 - Math.PI/2;
+                    const r = ((role - 75) / 15) * 100;
+                    sx = Math.cos(a) * r; sy = Math.sin(a) * r;
+                } else { // Fill
+                    const a = Math.random() * Math.PI * 2;
+                    const r = Math.random() * clockR;
+                    sx = Math.cos(a) * r; sy = Math.sin(a) * r;
+                }
+            } else if (m.shapeName === 'cloud') {
+                const a = this.idx * 0.137;
+                const r = 80 + Math.sin(a * 3) * 30 + Math.sin(a * 5) * 20;
+                sx = Math.cos(a) * r * 1.5;
+                sy = Math.sin(a) * r * 0.8 - 20;
+                if (this.idx % 3 === 0) { sx *= Math.random(); sy *= Math.random(); }
+            } else if (m.shapeName === 'heart') {
+                const a = this.idx * 0.1;
+                sx = 6 * 16 * Math.pow(Math.sin(a), 3);
+                sy = -6 * (13 * Math.cos(a) - 5 * Math.cos(2*a) - 2 * Math.cos(3*a) - Math.cos(4*a));
+                if (this.idx % 2 === 0) { const sc = Math.random(); sx *= sc; sy *= sc; }
+                const beat = 1 + auto.heartPulse * 0.1;
+                sx *= beat; sy *= beat;
+            }
+
+            tx = tx * (1 - m.shapeWeight) + sx * m.shapeWeight;
+            ty = ty * (1 - m.shapeWeight) + sy * m.shapeWeight;
+        }
 
         // Spring physics toward target
         if (this.part !== 'organelle') {
@@ -1547,7 +1635,7 @@ function connect() {
         else if (data.type === 'thinking') { showThinking(); brain.onThinkingStart(); }
         else if (data.type === 'response') { 
             removeThinking(); 
-            brain.onResponse(); 
+            brain.onResponse(data.visual_directive); 
             appendMessage('eris', data.content); 
             if (data.audio_base64 && ttsEnabled) {
                 playBase64Audio(data.audio_base64);

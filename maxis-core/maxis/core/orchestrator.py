@@ -108,7 +108,7 @@ class Orchestrator:
         person_id: str | None = None,
         is_voice: bool = False,
         is_creator: bool = False,
-    ) -> str:
+    ) -> tuple[str, str | None]:
         """
         Process a text message through the full pipeline.
 
@@ -219,6 +219,14 @@ class Orchestrator:
             # If no tool was called, we're done
             break
 
+        # Extract visual directive
+        visual_directive = None
+        visual_match = re.search(r"<visual>(.*?)</visual>", response, re.IGNORECASE)
+        if visual_match:
+            visual_directive = visual_match.group(1).strip()
+            # Remove the tag from the spoken/displayed response
+            response = re.sub(r"<visual>.*?</visual>", "", response, flags=re.IGNORECASE).strip()
+
         # ── 7. Add response to working memory ───────────────────────────
         working.add_assistant_message(response)
 
@@ -242,9 +250,9 @@ class Orchestrator:
             await self._save_emotional_state()
 
         elapsed = time.time() - start_time
-        logger.info(f"Response generated in {elapsed:.2f}s ({len(response)} chars)")
+        logger.info(f"Response generated in {elapsed:.2f}s ({len(response)} chars), Visual: {visual_directive}")
 
-        return response
+        return response, visual_directive
 
     async def register_primary_user(self, name: str) -> str:
         """Register the primary user (first-run setup)."""

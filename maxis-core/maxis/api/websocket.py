@@ -192,7 +192,7 @@ async def websocket_chat_handler(websocket: WebSocket, orchestrator):
 
                 # Process through orchestrator
                 try:
-                    response = await orchestrator.process_message(
+                    response, visual_directive = await orchestrator.process_message(
                         message=content,
                         person_id=session_person_id,
                         is_voice=is_voice,
@@ -219,6 +219,7 @@ async def websocket_chat_handler(websocket: WebSocket, orchestrator):
                         "type": "response",
                         "content": response,
                         "emotional_state": emotion,
+                        "visual_directive": visual_directive,
                         "timestamp": time.time(),
                         "audio_base64": audio_base64,
                     })

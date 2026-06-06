@@ -21,11 +21,14 @@ def set_orchestrator(orchestrator):
 class ChatRequest(BaseModel):
     message: str
     person_id: str | None = None
+    is_voice: bool = False
+    is_creator: bool = False
 
 
 class ChatResponse(BaseModel):
     response: str
-    emotional_state: str
+    emotional_state: dict[str, float]
+    visual_directive: str | None = None
     model_used: str = "local"
 
 
@@ -52,13 +55,16 @@ async def chat(req: ChatRequest):
     if not _orchestrator:
         raise HTTPException(500, "Orchestrator not initialized")
 
-    response = await _orchestrator.process_message(
+    response, visual_directive = await _orchestrator.process_message(
         message=req.message,
         person_id=req.person_id,
+        is_voice=req.is_voice,
+        is_creator=req.is_creator,
     )
 
     return ChatResponse(
         response=response,
+        visual_directive=visual_directive,
         emotional_state=_orchestrator.emotional_state.summary(),
     )
 
