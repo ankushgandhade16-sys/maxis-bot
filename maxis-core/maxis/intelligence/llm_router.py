@@ -57,17 +57,19 @@ class LLMRouter:
         # Initialize Gemini API
         if self._config.gemini.api_key:
             try:
-                self._gemini_client = genai.Client(api_key=self._config.gemini.api_key.strip())
+                clean_gemini_key = self._config.gemini.api_key.replace("\n", "").replace("\r", "").strip()
+                self._gemini_client = genai.Client(api_key=clean_gemini_key)
                 self._cloud_available = True
             except Exception as e:
                 logger.error(f"Failed to initialize Gemini API: {e}")
 
         # Initialize OpenRouter API
         if self._config.openrouter.api_key:
+            clean_api_key = self._config.openrouter.api_key.replace("\n", "").replace("\r", "").strip()
             self._openrouter_client = httpx.AsyncClient(
                 base_url=self._config.openrouter.base_url,
                 headers={
-                    "Authorization": f"Bearer {self._config.openrouter.api_key.strip()}",
+                    "Authorization": f"Bearer {clean_api_key}",
                     "HTTP-Referer": "https://github.com/ankushgandhade16-sys/maxis-bot",
                     "X-Title": "Eris UI"
                 },
