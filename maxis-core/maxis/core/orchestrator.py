@@ -218,9 +218,12 @@ class Orchestrator:
                         tool_result = "Failed to capture screenshot."
                 elif tool_name == "generate_image":
                     try:
-                        img_base64 = await self.llm.generate_image(tool_args)
+                        import urllib.parse
+                        prompt_encoded = urllib.parse.quote(tool_args.strip())
+                        img_url = f"https://image.pollinations.ai/prompt/{prompt_encoded}?width=512&height=512&nologo=true"
+                        
                         tool_result = f"Image generated successfully."
-                        img_html = f"<img src=\"data:image/jpeg;base64,{img_base64}\" style=\"max-height: 300px; border-radius: 8px; margin-top: 8px;\">"
+                        img_html = f"<img src=\"{img_url}\" style=\"max-height: 300px; border-radius: 8px; margin-top: 8px;\">"
                         generated_images.append(img_html)
                     except Exception as e:
                         logger.error(f"Image generation failed: {e}")

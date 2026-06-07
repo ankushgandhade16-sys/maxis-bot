@@ -315,34 +315,6 @@ class LLMRouter:
             
         return data["choices"][0]["message"]["content"]
 
-    async def generate_image(self, prompt: str) -> str:
-        """Generate an image base64 using OpenRouter Riverflow."""
-        if not self._openrouter_client:
-            raise ValueError("OpenRouter client not initialized.")
-            
-        payload = {
-            "model": "openai/gpt-5-image",
-            "messages": [
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
-            "temperature": 0.7,
-            "max_tokens": 1024,
-            "stream": False,
-        }
-        
-        logger.debug(f"Generating image via OpenRouter: {prompt}...")
-        resp = await self._openrouter_client.post("/chat/completions", json=payload)
-        resp.raise_for_status()
-        
-        data = resp.json()
-        if "usage" in data:
-            await self._token_budget.record_usage("openrouter", data["usage"].get("total_tokens", 0))
-            
-        return data["choices"][0]["message"]["content"]
-
     async def _generate_gemini(
         self,
         messages: list[dict],
