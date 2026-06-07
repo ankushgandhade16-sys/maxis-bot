@@ -262,7 +262,7 @@ class LLMRouter:
             "model": self._active_cloud_model,
             "messages": clean_messages,
             "temperature": temperature or config.temperature,
-            "max_tokens": 1024,
+            "max_tokens": 512,
             "stream": False,
         }
 
@@ -303,7 +303,7 @@ class LLMRouter:
                 }
             ],
             "temperature": 0.1,
-            "max_tokens": 1024,
+            "max_tokens": 512,
             "stream": False,
         }
         
