@@ -198,7 +198,7 @@ class LLMRouter:
             elif "404" in error_str or "not found" in error_str.lower() or "deprecated" in error_str.lower():
                 return f"*Confused buzzing* The model I was using seems to have been retired... Let the creator know to check the model settings. (Error: {error_str[:120]})"
             else:
-                return f"*Glitches slightly* Whoa, something just short-circuited in my core processing... give me a second and try again?"
+                return f"*Glitches slightly* Whoa, something just short-circuited in my core processing... give me a second and try again? (Debug: {error_str})"
 
     async def _generate_ollama(
         self,
