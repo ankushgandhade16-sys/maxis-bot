@@ -301,6 +301,7 @@ class LLMRouter:
                 }
             ],
             "temperature": 0.1,
+            "max_tokens": 1024,
             "stream": False,
         }
         
@@ -328,6 +329,7 @@ class LLMRouter:
                 }
             ],
             "temperature": 0.7,
+            "max_tokens": 1024,
             "stream": False,
         }
         
