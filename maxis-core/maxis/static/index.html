@@ -359,8 +359,8 @@
             <div class="topbar-right">
                 <select class="model-select" id="modelSelector">
                     <optgroup label="Google (Gemini)">
-                        <option value="gemini-3.1-flash-lite">⚡ Eris Swift (Gemini 3.1)</option>
-                        <option value="gemini-3.5-flash" selected>🧠 Eris Pro (Gemini 3.5)</option>
+                        <option value="gemini-3.1-flash-lite" selected>⚡ Eris Swift (Gemini 3.1)</option>
+                        <option value="gemini-3.5-flash">🧠 Eris Pro (Gemini 3.5)</option>
                     </optgroup>
                     <optgroup label="OpenRouter (Advanced)">
                         <option value="meta-llama/llama-3-8b-instruct:free">🦙 Llama 3 8B (Free)</option>
@@ -1818,7 +1818,10 @@ function toggleSidebar() {
         localStorage.setItem('eris_sidebar', el.sidebar.classList.contains('collapsed') ? 'collapsed' : 'open');
     }
 }
-el.menuBtn.addEventListener('click', toggleSidebar);
+el.menuBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleSidebar();
+});
 if (el.mobileCloseBtn) el.mobileCloseBtn.addEventListener('click', () => { el.sidebar.classList.remove('open'); });
 el.mainPanel.addEventListener('click', (e) => {
     if (window.innerWidth <= 768 && el.sidebar.classList.contains('open')) {
@@ -1848,7 +1851,14 @@ function connect() {
         el.statusDot.classList.add('online');
         brain.onConnect();
         ws.send(JSON.stringify({ type: 'switch_model', model: el.modelSelector.value }));
-        showLoginModal(false);
+        
+        const u = localStorage.getItem('eris_username');
+        const p = localStorage.getItem('eris_password');
+        if (u && p) {
+            ws.send(JSON.stringify({ type: 'login', username: u, password: p }));
+        } else {
+            showLoginModal(false);
+        }
     };
 
     ws.onmessage = (e) => {
@@ -1905,6 +1915,15 @@ function connect() {
 function onLoginSuccess(data) {
     isLoggedIn = true; personName = data.name; personId = data.person_id;
     isCreator = data.is_creator || false;
+    
+    // Save credentials if they were explicitly entered
+    const u = el.loginUser.value.trim();
+    const p = el.loginPass.value;
+    if (u && p) {
+        localStorage.setItem('eris_username', u);
+        localStorage.setItem('eris_password', p);
+    }
+    
     hideLoginModal();
     el.sidebarAvatar.textContent = personName.charAt(0).toUpperCase();
     el.sidebarName.textContent = personName;
@@ -1964,6 +1983,8 @@ el.cancelDropdownBtn.addEventListener('click', () => {
 });
 el.signOutBtn.addEventListener('click', () => {
     el.userDropdown.classList.remove('show');
+    localStorage.removeItem('eris_username');
+    localStorage.removeItem('eris_password');
     isLoggedIn=false; personName=''; personId=''; isCreator=false; hasMessages=false;
     el.chatMsg.innerHTML=''; el.welcome.classList.remove('hidden'); el.chatView.classList.remove('active'); el.creatorView.style.display = 'none';
     el.sidebarAvatar.textContent='?'; el.sidebarName.textContent='Not signed in';

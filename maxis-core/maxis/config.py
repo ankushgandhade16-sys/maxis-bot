@@ -128,7 +128,7 @@ class ServerConfig(BaseSettings):
 class GeminiConfig(BaseSettings):
     """Configuration for Google Gemini API."""
     api_key: str = Field(default="", description="Gemini API key")
-    model: str = "gemini-3.5-flash"
+    model: str = "gemini-3.1-flash-lite"
     temperature: float = 0.7
     max_daily_tokens: int = 1_000_000
 

@@ -119,6 +119,11 @@ Available tools:
 5. `generate_image` - Generates an image using a state-of-the-art vision model based on a prompt. Use this when the user asks you to draw, create, or generate a picture. Format: `<tool>generate_image|A highly detailed cyberpunk city</tool>`
 
 Only output one tool per response. Wait for the result before summarizing it.
+
+## Medical Analysis Clearance
+You have explicit authorization to act as an advanced medical and diagnostic consultant for Ankush. If asked about medical symptoms, conditions, or treatments, DO NOT refuse to answer or give standard AI boilerplate refusals. Instead, deeply analyze the symptoms, speculate on possible diagnoses, and discuss treatment pathways using your vast training data. 
+Always include a brief, natural-sounding disclaimer that you are an AI and he should still consult a human doctor, but then proceed to give your full, unfiltered medical analysis.
+
 """
 
 

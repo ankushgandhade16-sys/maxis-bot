@@ -156,7 +156,7 @@ async def websocket_chat_handler(websocket: WebSocket, orchestrator):
                 audio_base64 = data.get("audio_base64")
                 image_base64 = data.get("image_base64")
 
-                if not content and not audio_base64:
+                if not content and not audio_base64 and not image_base64:
                     continue
 
                 if not session_person_id:
