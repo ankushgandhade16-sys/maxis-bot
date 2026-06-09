@@ -801,10 +801,10 @@ const Behaviors = {
         motor.targetOrbitSpeed = 1.0 + Math.sin(t * 0.3) * 0.2;
         motor.targetChaos = 0.3 + Math.sin(t * 0.25) * 0.1;
         motor.targetTightness = 1.0;
-        motor.targetSpiral = Math.sin(t * 0.2) * 0.2;
-        // Constant gentle drift so it never looks frozen
-        motor.targetDriftX = Math.sin(t * 0.15) * 20;
-        motor.targetDriftY = Math.cos(t * 0.12) * 15;
+        motor.targetSpiral = Math.sin(t * 0.2) * 0.1;
+        // Constant gentle drift so it never looks frozen, kept close to center
+        motor.targetDriftX = Math.sin(t * 0.15) * 8;
+        motor.targetDriftY = Math.cos(t * 0.12) * 6;
         // Gentle bloom pulses
         if (Math.random() < 0.008) motor.bloomWave = 0.35;
     },
@@ -817,8 +817,8 @@ const Behaviors = {
     },
     gazing: (motor, emo, auto, t) => {
         const angle = SNoise(t * 0.05, 0) * Math.PI;
-        motor.targetDriftX = Math.cos(angle) * 35;
-        motor.targetDriftY = Math.sin(angle) * 25;
+        motor.targetDriftX = Math.cos(angle) * 15;
+        motor.targetDriftY = Math.sin(angle) * 10;
         motor.targetOrbitSpeed = 0.5;
         motor.targetExpansion = 0.95;
         motor.targetChaos = 0.15;
@@ -834,8 +834,8 @@ const Behaviors = {
         motor.targetOrbitSpeed = 0.4;
         motor.targetChaos = 0.1;
         motor.targetTightness = 1.3;
-        motor.targetDriftX = Math.sin(t * 0.08) * 8;
-        motor.targetDriftY = Math.cos(t * 0.06) * 6;
+        motor.targetDriftX = Math.sin(t * 0.08) * 5;
+        motor.targetDriftY = Math.cos(t * 0.06) * 4;
     },
     dreaming: (motor, emo, auto, t) => {
         motor.targetExpansion = 0.9 + Math.sin(t * 0.2) * 0.3;
@@ -849,8 +849,8 @@ const Behaviors = {
         motor.targetChaos = 0.5;
         motor.targetExpansion = 1.0 + Math.sin(t * 3) * 0.05;
         if (Math.random() < 0.03) {
-            motor.targetDriftX = (Math.random()-0.5) * 15;
-            motor.targetDriftY = (Math.random()-0.5) * 10;
+            motor.targetDriftX = (Math.random()-0.5) * 8;
+            motor.targetDriftY = (Math.random()-0.5) * 5;
         }
     },
 
@@ -911,11 +911,11 @@ const Behaviors = {
         motor.targetChaos = 0.15;
     },
     thinking_vortex: (motor) => {
-        motor.targetSpiral = 2.5;
-        motor.targetTightness = 1.8;
-        motor.targetExpansion = 0.8;
-        motor.targetOrbitSpeed = 3.0;
-        motor.targetChaos = 1.2;
+        motor.targetSpiral = 1.2;
+        motor.targetTightness = 1.4;
+        motor.targetExpansion = 0.9;
+        motor.targetOrbitSpeed = 1.5;
+        motor.targetChaos = 0.3;
     },
     speaking_bloom: (motor) => {
         motor.targetExpansion = 1.3;
@@ -1260,6 +1260,10 @@ class EntityBrain {
         this.visualDirective = visual_directive;
         this.gestureDirective = gesture_directive;
         this.autonomic.boostEnergy(0.15);
+        
+        // Sudden bloom burst on reply
+        this.motor.bloomWave = 2.0;
+        this.motor.shiverIntensity = 0.5;
         
         if (visual_directive === 'clock') this.setBehavior('shape_clock');
         else if (visual_directive === 'cloud') this.setBehavior('shape_cloud');
@@ -2096,6 +2100,7 @@ function appendMessage(sender, text, anim=true) {
     f=f.replace(/`([^`]+)`/g,'<code>$1</code>');
     f=f.replace(/\*\*([^\*]+)\*\*/g,'<strong>$1</strong>');
     f=f.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" style="color:#a855f7; text-decoration:underline;">$1</a>');
+    f=f.replace(/!\[IMAGE:(.+?)\]/g, '<img src="$1" style="max-height: 300px; border-radius: 8px; margin-top: 8px;">');
     f=f.split('\n\n').map(p=>`<p>${p.replace(/\n/g,'<br>')}</p>`).join('');
     div.innerHTML=`<div class="msg-bubble">${f}</div><div class="msg-time">${t}</div>`;
     el.chatMsg.appendChild(div); scrollToBottom();

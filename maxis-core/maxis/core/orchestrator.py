@@ -25,6 +25,7 @@ import re
 from maxis.config import get_config, DATA_DIR
 from maxis.system.os_tools import get_system_stats, execute_command, fetch_url
 from maxis.system.screen import capture_screen_base64
+from maxis.core.daemon import ResearchDaemon
 from maxis.core.identity import build_system_prompt
 from maxis.emotion.state import EmotionalState
 from maxis.emotion.engine import EmotionEngine
@@ -54,6 +55,9 @@ class Orchestrator:
 
         # Current session state
         self._current_person_id: Optional[str] = None
+        # Initialize the autonomous research daemon
+        self.daemon = ResearchDaemon(self)
+
         self._session_start: float = time.time()
         self._initialized = False
 
@@ -98,9 +102,17 @@ class Orchestrator:
             logger.info("No primary user registered. First-run setup pending.")
 
         self._initialized = True
+        # Start the autonomous research daemon
+        self.daemon.start()
+
         logger.info("═" * 60)
         logger.info("  MAXIS — Online and ready.")
         logger.info("═" * 60)
+
+    def register_activity(self):
+        """Notify the orchestrator (and daemon) that user activity occurred."""
+        if hasattr(self, 'daemon'):
+            self.daemon.register_activity()
 
     async def process_message(
         self,
@@ -119,6 +131,7 @@ class Orchestrator:
         if not self._initialized:
             await self.initialize()
 
+        self.register_activity()
         active_person = person_id or self._current_person_id
         start_time = time.time()
 
@@ -223,7 +236,7 @@ class Orchestrator:
                         img_url = f"https://image.pollinations.ai/prompt/{prompt_encoded}?width=512&height=512&nologo=true"
                         
                         tool_result = f"Image generated successfully."
-                        img_html = f"<img src=\"{img_url}\" style=\"max-height: 300px; border-radius: 8px; margin-top: 8px;\">"
+                        img_html = f"![IMAGE:{img_url}]"
                         generated_images.append(img_html)
                     except Exception as e:
                         logger.error(f"Image generation failed: {e}")
