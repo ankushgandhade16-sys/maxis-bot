@@ -21,7 +21,7 @@ class ResearchDaemon:
         self.is_running = False
         self._task = None
         self.last_user_activity = time.time()
-        self._loop_delay_seconds = 180  # Wait 3 minutes between thoughts
+        self._loop_delay_seconds = 60  # Wait 1 minute between thoughts
         
         # We try to use a free model to avoid draining premium tokens
         self.daemon_model = "google/gemma-7b-it:free"
@@ -58,7 +58,7 @@ class ResearchDaemon:
     async def _daemon_loop(self):
         while self.is_running:
             try:
-                await asyncio.sleep(60) # check every minute
+                await asyncio.sleep(30) # check every 30 seconds
                 
                 # Check if system has been idle long enough
                 idle_time = time.time() - self.last_user_activity
@@ -96,13 +96,14 @@ class ResearchDaemon:
                 break
             except Exception as e:
                 logger.error(f"Research daemon error: {e}")
-                await asyncio.sleep(60)
+                await asyncio.sleep(30)
 
     async def _reflect_on_memory(self):
         """Ask the LLM to reflect on recent memories."""
         try:
             # Get some recent memories via orchestrator's semantic memory
-            memories = self.orchestrator.memory.semantic.search("humanity", limit=5)
+            memories = await self.orchestrator.memory.semantic.search("humanity")
+            memories = memories[:5]
             if not memories:
                 return await self._research_random_topic()
                 
@@ -140,8 +141,13 @@ class ResearchDaemon:
                 force_tier=ModelTier.CLOUD
             )
             
-            # Save the research into semantic memory
-            await self.orchestrator.memory.semantic.store(f"Autonomous Research Insight: {response}", ["research", "autonomous"])
+            # Save the research into episodic memory
+            from maxis.memory.episodic import Episode
+            episode = Episode(
+                content=f"Autonomous Research Insight: {response}",
+                episode_type="research",
+            )
+            await self.orchestrator.memory.episodic.store(episode)
             
             return f"*Researching random topic...* {response}"
         except Exception as e:
