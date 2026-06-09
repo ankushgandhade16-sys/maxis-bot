@@ -65,11 +65,9 @@ class LLMRouter:
 
         # Initialize OpenRouter API
         if self._config.openrouter.api_key:
-            clean_api_key = self._config.openrouter.api_key.replace("\n", "").replace("\r", "").strip()
             self._openrouter_client = httpx.AsyncClient(
                 base_url=self._config.openrouter.base_url,
                 headers={
-                    "Authorization": f"Bearer {clean_api_key}",
                     "HTTP-Referer": "https://github.com/ankushgandhade16-sys/maxis-bot",
                     "X-Title": "Eris UI"
                 },
@@ -268,23 +266,39 @@ class LLMRouter:
 
         logger.debug(f"Generating via OpenRouter ({self._active_cloud_model})...")
         
-        resp = await self._openrouter_client.post("/chat/completions", json=payload)
-        
-        if resp.status_code != 200:
-            error_data = resp.text
+        keys = [k.strip() for k in config.api_key.replace("\n", "").replace("\r", "").split(",") if k.strip()]
+        if not keys:
+            raise Exception("No valid OpenRouter API keys found in configuration.")
+
+        last_error = None
+        for key in keys:
             try:
-                error_data = resp.json()
-            except:
-                pass
-            raise Exception(f"OpenRouter API error: {resp.status_code} - {error_data}")
-            
-        data = resp.json()
-        
-        if "usage" in data:
-            total_tokens = data["usage"].get("total_tokens", 0)
-            await self._token_budget.record_usage("openrouter", total_tokens)
-            
-        return data["choices"][0]["message"]["content"]
+                resp = await self._openrouter_client.post(
+                    "/chat/completions", 
+                    json=payload,
+                    headers={"Authorization": f"Bearer {key}"}
+                )
+                
+                if resp.status_code == 200:
+                    data = resp.json()
+                    if "usage" in data:
+                        total_tokens = data["usage"].get("total_tokens", 0)
+                        await self._token_budget.record_usage("openrouter", total_tokens)
+                    return data["choices"][0]["message"]["content"]
+                
+                # If exhausted (402) or unauthorized (401), try the next key
+                if resp.status_code in [401, 402]:
+                    logger.warning(f"OpenRouter key failed with {resp.status_code}, trying next key if available...")
+                    last_error = f"API Error: {resp.status_code} - {resp.text}"
+                    continue
+                else:
+                    raise Exception(f"OpenRouter API error: {resp.status_code} - {resp.text}")
+                    
+            except httpx.RequestError as e:
+                last_error = f"Network Error: {e}"
+                continue
+                
+        raise Exception(f"All OpenRouter keys exhausted or failed. Last error: {last_error}")
 
     async def transcribe_audio(self, audio_base64: str) -> str:
         """Transcribe base64 webm/mp3 audio using OpenRouter MAI-Transcribe."""
@@ -308,14 +322,34 @@ class LLMRouter:
         }
         
         logger.debug("Transcribing audio via OpenRouter...")
-        resp = await self._openrouter_client.post("/chat/completions", json=payload)
-        resp.raise_for_status()
-        
-        data = resp.json()
-        if "usage" in data:
-            await self._token_budget.record_usage("openrouter", data["usage"].get("total_tokens", 0))
-            
-        return data["choices"][0]["message"]["content"]
+        keys = [k.strip() for k in self._config.openrouter.api_key.replace("\n", "").replace("\r", "").split(",") if k.strip()]
+        if not keys:
+            raise ValueError("No OpenRouter API keys configured")
+
+        last_error = None
+        for key in keys:
+            try:
+                resp = await self._openrouter_client.post(
+                    "/chat/completions", 
+                    json=payload,
+                    headers={"Authorization": f"Bearer {key}"}
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    if "usage" in data:
+                        await self._token_budget.record_usage("openrouter", data["usage"].get("total_tokens", 0))
+                    return data["choices"][0]["message"]["content"]
+                
+                if resp.status_code in [401, 402]:
+                    last_error = f"API Error: {resp.status_code} - {resp.text}"
+                    continue
+                else:
+                    resp.raise_for_status()
+            except httpx.RequestError as e:
+                last_error = str(e)
+                continue
+                
+        raise ValueError(f"Transcription failed across all keys. Last error: {last_error}")
 
     async def _generate_gemini(
         self,
