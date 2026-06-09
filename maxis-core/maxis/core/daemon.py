@@ -24,7 +24,7 @@ class ResearchDaemon:
         self._loop_delay_seconds = 60  # Wait 1 minute between thoughts
         
         # We try to use a free model to avoid draining premium tokens
-        self.daemon_model = "meta-llama/llama-3.3-70b-instruct:free"
+        self.daemon_model = "google/gemma-4-31b-it:free"
         
     def start(self):
         if self.is_running:
@@ -95,7 +95,8 @@ class ResearchDaemon:
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                logger.error(f"Research daemon error: {e}")
+                import traceback
+                logger.error(f"Research daemon loop error: {e}\n{traceback.format_exc()}")
                 await asyncio.sleep(30)
 
     async def _reflect_on_memory(self):
@@ -119,7 +120,8 @@ class ResearchDaemon:
             )
             return f"*Reflecting...* {response}"
         except Exception as e:
-            logger.error(f"Daemon memory reflection failed: {e}")
+            import traceback
+            logger.error(f"Daemon memory reflection failed: {e}\n{traceback.format_exc()}")
             return None
 
     async def _research_random_topic(self):
@@ -151,5 +153,6 @@ class ResearchDaemon:
             
             return f"*Researching random topic...* {response}"
         except Exception as e:
-            logger.error(f"Daemon random research failed: {e}")
+            import traceback
+            logger.error(f"Daemon random research failed: {e}\n{traceback.format_exc()}")
             return None
