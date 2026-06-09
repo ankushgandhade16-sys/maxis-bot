@@ -383,8 +383,12 @@
                 <div class="chat-messages" id="chatMessages"></div>
             </div>
             <div class="creator-view" id="creatorView" style="display:none; flex:1; flex-direction:column; overflow:hidden;">
-                <div style="padding: 12px 24px; background: rgba(168,85,247,0.1); border-bottom: 1px solid rgba(168,85,247,0.2); color: #a855f7; font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase;">Live Feed</div>
+                <div style="display:flex; border-bottom: 1px solid rgba(168,85,247,0.2); background: rgba(168,85,247,0.1);">
+                    <button id="tabLiveFeed" style="flex:1; padding: 12px; background:transparent; border:none; color: #a855f7; font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; cursor:pointer; border-bottom: 2px solid #a855f7;">Live Chats</button>
+                    <button id="tabResearchFeed" style="flex:1; padding: 12px; background:transparent; border:none; color: rgba(168,85,247,0.5); font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; cursor:pointer; border-bottom: 2px solid transparent;">Research Daemon</button>
+                </div>
                 <div class="chat-messages" id="creatorFeed" style="flex:1;"></div>
+                <div class="chat-messages" id="researchFeed" style="flex:1; display:none;"></div>
             </div>
             <div class="input-area locked" id="inputArea">
                 <div id="imagePreviewContainer" style="display:none; padding: 8px 16px; border-bottom: 1px solid var(--border);">
@@ -1893,6 +1897,7 @@ function connect() {
         else if (data.type === 'chat_history') { chatSessions = data.sessions || []; renderChatList(); }
         else if (data.type === 'chat_messages') { loadChatMessages(data.messages || []); }
         else if (data.type === 'creator_feed') {
+            const isDaemon = data.username === '[Daemon]';
             const t = new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
             const div = document.createElement('div');
             div.className = 'message eris';
@@ -1900,13 +1905,22 @@ function connect() {
             let f = data.eris_response.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
             f = f.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" style="color:#a855f7; text-decoration:underline;">$1</a>');
             f = f.replace(/\n/g,'<br>');
-            div.innerHTML = `<div class="msg-time" style="text-align:left; color:#a855f7;">${t} — Interaction with ${data.username}</div>
-                             <div class="msg-bubble" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); margin-bottom:8px;"><strong>${data.username}:</strong> ${data.user_message}</div>
-                             <div class="msg-bubble" style="border-left:2px solid #a855f7; padding-left:12px;"><strong>Eris:</strong> ${f}</div>`;
-            el.creatorFeed.appendChild(div);
-            setTimeout(() => { el.creatorFeed.scrollTop = el.creatorFeed.scrollHeight; }, 50);
+            
+            if (isDaemon) {
+                div.innerHTML = `<div class="msg-time" style="text-align:left; color:#a855f7;">${t} — Autonomous Research Cycle</div>
+                                 <div class="msg-bubble" style="border-left:2px solid #a855f7; padding-left:12px;">${f}</div>`;
+                el.researchFeed.appendChild(div);
+                setTimeout(() => { el.researchFeed.scrollTop = el.researchFeed.scrollHeight; }, 50);
+            } else {
+                div.innerHTML = `<div class="msg-time" style="text-align:left; color:#a855f7;">${t} — Interaction with ${data.username}</div>
+                                 <div class="msg-bubble" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); margin-bottom:8px;"><strong>${data.username}:</strong> ${data.user_message}</div>
+                                 <div class="msg-bubble" style="border-left:2px solid #a855f7; padding-left:12px;"><strong>Eris:</strong> ${f}</div>`;
+                el.creatorFeed.appendChild(div);
+                setTimeout(() => { el.creatorFeed.scrollTop = el.creatorFeed.scrollHeight; }, 50);
+            }
+            
             if (isCreator && el.creatorView.style.display !== 'flex') {
-                showToast(`New activity from ${data.username}`);
+                showToast(`New ${isDaemon ? 'research' : 'activity from ' + data.username}`);
             }
         }
     };
@@ -2054,6 +2068,21 @@ el.creatorPortalBtn.addEventListener('click', () => {
     el.chatView.classList.remove('active');
     el.creatorView.style.display = 'flex';
     if (window.innerWidth <= 768) el.sidebar.classList.remove('open');
+});
+
+const t1 = document.getElementById('tabLiveFeed');
+const t2 = document.getElementById('tabResearchFeed');
+t1.addEventListener('click', () => {
+    el.creatorFeed.style.display = 'block';
+    el.researchFeed.style.display = 'none';
+    t1.style.color = '#a855f7'; t1.style.borderBottomColor = '#a855f7';
+    t2.style.color = 'rgba(168,85,247,0.5)'; t2.style.borderBottomColor = 'transparent';
+});
+t2.addEventListener('click', () => {
+    el.creatorFeed.style.display = 'none';
+    el.researchFeed.style.display = 'block';
+    t2.style.color = '#a855f7'; t2.style.borderBottomColor = '#a855f7';
+    t1.style.color = 'rgba(168,85,247,0.5)'; t1.style.borderBottomColor = 'transparent';
 });
 
 // Image Attachment
