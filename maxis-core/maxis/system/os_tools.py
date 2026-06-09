@@ -57,7 +57,10 @@ def fetch_url(url: str) -> str:
     """Fetch the text content of a URL."""
     logger.info(f"Fetching URL: {url}")
     try:
-        with httpx.Client(timeout=10.0, follow_redirects=True) as client:
+        headers = {
+            "User-Agent": "MaxisBot/1.0 (https://github.com/ankushgandhade16-sys/maxis-bot) httpx/0.25.0"
+        }
+        with httpx.Client(timeout=10.0, follow_redirects=True, headers=headers) as client:
             response = client.get(url)
             response.raise_for_status()
             
