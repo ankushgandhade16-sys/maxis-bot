@@ -148,159 +148,118 @@ precision highp float;
 uniform vec2 u_res;
 uniform float u_time;
 uniform float u_interact;
-#define PI 3.14159265359
 
 float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
 float hash2(vec2 p){return fract(sin(dot(p,vec2(41.1,17.4)))*43758.5453);}
 float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);}
-float fbm(vec2 p){float v=0.,a=.5;mat2 m=mat2(.8,-.6,.6,.8);for(int i=0;i<6;i++){v+=a*noise(p);p=m*p*2.+vec2(1.7,9.2);a*=.5;}return v;}
-
-vec3 diskColor(float t){
-    vec3 hot=vec3(1.,.96,.84);
-    vec3 warm=vec3(1.,.6,.1);
-    vec3 cool=vec3(.6,.18,.03);
-    vec3 dim=vec3(.18,.04,.005);
-    if(t<.12)return mix(hot,warm,t/.12);
-    if(t<.35)return mix(warm,cool,(t-.12)/.23);
-    return mix(cool,dim,clamp((t-.35)/.65,0.,1.));
-}
+float fbm3(vec2 p){float v=0.,a=.5;for(int i=0;i<3;i++){v+=a*noise(p);p=p*2.1+vec2(1.7,9.2);a*=.5;}return v;}
 
 void main(){
     vec2 uv=(gl_FragCoord.xy-.5*u_res)/u_res.y;
-    float r=length(uv);
-    float theta=atan(uv.y,uv.x);
 
-    float shadowR=.12;
-    float diskOuter=.65;
-    float diskInner=shadowR*1.15;
-    float rot=u_time*.04;
+    // ── Camera ──
+    vec3 ro=vec3(0.,2.,-40.);
+    vec3 ta=vec3(0.);
+    vec3 fwd=normalize(ta-ro);
+    vec3 right=normalize(cross(fwd,vec3(0,1,0)));
+    vec3 up=cross(right,fwd);
+    vec3 rd=normalize(fwd*2.+right*uv.x+up*uv.y);
 
-    // ── BACKGROUND: dark space with subtle nebula ──
-    vec3 col=vec3(.008,.012,.022);
-    col+=vec3(.004,.006,.012)*fbm(uv*2.5+vec2(3.7,1.2));
+    // ── Black hole params ──
+    float rs=1.;         // Schwarzschild radius
+    float diskIn=3.;     // ISCO
+    float diskOut=14.;   // outer disk edge
+    float STEP=.15;
 
-    // ── STARS (sharp points with lensing) ──
-    vec2 luv=uv;
-    if(r>shadowR*.8){
-        float def=shadowR*shadowR/max(r*r-shadowR*shadowR*.7,.001);
-        luv=uv*(1.+def*.4);
+    vec3 pos=ro;
+    vec3 vel=rd;
+    vec3 col=vec3(0.);
+    bool absorbed=false;
+
+    // ── Ray march through curved spacetime ──
+    for(int i=0;i<200;i++){
+        vec3 prev=pos;
+        pos+=vel*STEP;
+        float r2=dot(pos,pos);
+        float r=sqrt(r2);
+
+        if(r<rs*.7){absorbed=true;break;}
+
+        // Schwarzschild geodesic acceleration
+        vel-=pos*(1.5*rs/(r2*r))*STEP;
+        vel=normalize(vel);
+
+        // Disk-plane crossing (y=0)
+        if(prev.y*pos.y<0.){
+            float t=prev.y/(prev.y-pos.y);
+            vec3 hp=mix(prev,pos,t);
+            float hr=length(hp.xz);
+
+            if(hr>diskIn&&hr<diskOut){
+                float dn=(hr-diskIn)/(diskOut-diskIn);
+
+                // Keplerian rotation: omega ~ r^-1.5, angle += omega*time
+                float omega=1./pow(hr,.75);
+                float da=atan(hp.z,hp.x)+u_time*omega*.5;
+
+                // Temperature color
+                vec3 dc;
+                if(dn<.08) dc=mix(vec3(1.,.97,.9),vec3(1.,.7,.15),dn/.08);
+                else if(dn<.25) dc=mix(vec3(1.,.7,.15),vec3(.85,.28,.04),(dn-.08)/.17);
+                else dc=mix(vec3(.85,.28,.04),vec3(.12,.02,0.),clamp((dn-.25)/.75,0.,1.));
+
+                // Doppler beaming from orbital velocity
+                vec3 orbVel=normalize(vec3(-hp.z,0.,hp.x));
+                float dop=1.+dot(vel.xz,orbVel.xz)*2.5;
+                dop=clamp(dop,.08,4.);
+                dop=pow(dop,2.5);
+
+                // Gas texture — spiraling streaks
+                float spiral=da+hr*.35;
+                float tex=fbm3(vec2(spiral*4.,hr*2.5));
+                float streaks=noise(vec2(da*10.+hr*.8,hr*5.));
+                tex=.25+.75*mix(tex,streaks,.35);
+
+                // Opacity falloff at outer edge
+                float opacity=smoothstep(diskOut,diskIn+(diskOut-diskIn)*.1,hr);
+                opacity*=.6+.4*(1.-dn);
+
+                col+=dc*dop*tex*opacity*2.5;
+            }
+        }
+        if(r>50.)break;
     }
-    for(float layer=50.;layer<=200.;layer+=50.){
-        vec2 cell=floor(luv*layer);
-        float h=hash(cell);
-        if(h>.994){
-            vec2 sp=(cell+vec2(hash2(cell),hash(cell+vec2(7.3,13.1))))/layer;
-            float d=length(luv-sp)*layer;
-            float pt=exp(-d*d*5.);
-            float b=pow((h-.994)/.006,.3);
-            float tw=.7+.3*sin(u_time*(2.+h*5.)+h*60.);
-            vec3 sc=mix(vec3(.7,.8,1.),vec3(1.,.92,.78),hash2(cell));
-            col+=sc*pt*b*tw*.45;
+
+    if(!absorbed){
+        // ── Stars from final ray direction ──
+        vec3 fd=normalize(vel);
+        float phi=atan(fd.z,fd.x);
+        float psi=asin(clamp(fd.y,-1.,1.));
+        vec2 sc=vec2(phi,psi);
+        for(float s=20.;s<=80.;s+=20.){
+            vec2 cell=floor(sc*s);
+            float h=hash(cell);
+            if(h>.993){
+                vec2 sp=(cell+vec2(hash2(cell),hash(cell+vec2(7.3,13.1))))/s;
+                float d=length(sc*s-sp*s);
+                float pt=exp(-d*d*6.);
+                float b=pow((h-.993)/.007,.3);
+                float tw=.7+.3*sin(u_time*(2.+h*4.)+h*50.);
+                col+=mix(vec3(.65,.75,1.),vec3(1.,.92,.75),hash2(cell))*pt*b*tw*.35;
+            }
         }
     }
 
-    // ── ACCRETION DISK — HORIZONTAL BAND (front of disk, edge-on) ──
-    // The disk is a flat plane — viewed nearly edge-on it appears as a horizontal band
-    // Thicker near inner edge, thinner toward outer edge
-    float bandW=.015+.03*smoothstep(diskOuter,diskInner,abs(uv.x));
-    float bandD=abs(uv.y)/bandW;
-    float bandA=exp(-bandD*bandD*1.5);
+    // Subtle background
+    col+=vec3(.005,.008,.016);
 
-    float dx=abs(uv.x);
-    if(dx>diskInner*.7&&dx<diskOuter&&r>shadowR*.98){
-        float dn=clamp((dx-diskInner)/(diskOuter-diskInner),0.,1.);
-        vec3 dc=diskColor(dn);
-        float fo=pow(max(0.,1.-dn),1.);
-        fo*=smoothstep(diskInner*.7,diskInner*1.2,dx);
+    // Click interaction glow
+    float sr=length(uv);
+    col+=vec3(1.,.5,.12)*u_interact*exp(-sr*sr*12.)*.3;
 
-        // Doppler beaming — approaching side brighter
-        float dp=.3+.7*smoothstep(-.5,.5,uv.x/diskOuter);
-
-        // Streaky turbulence (stretched horizontally for gas texture)
-        float texU=uv.x*6.-rot*3.;
-        float texV=uv.y*60.+uv.x*4.;
-        float tex=fbm(vec2(texU,texV));
-        float str=noise(vec2(uv.x*3.-rot,uv.y*80.));
-        tex=.35+.65*mix(tex,str,.4);
-
-        col+=dc*bandA*fo*dp*tex*2.;
-    }
-
-    // Disk atmospheric glow (warm haze above/below the band)
-    float diskHaze=exp(-abs(uv.y)*6.)*smoothstep(0.,.15,dx)*smoothstep(diskOuter+.05,diskOuter*.4,dx);
-    col+=vec3(.4,.15,.04)*diskHaze*.06;
-
-    // ── LENSED BACK DISK — ARCS over top / under bottom of shadow ──
-    // The back of the disk is gravitationally lensed into elliptical arcs
-    // These arcs follow the shadow contour and connect to the horizontal band
-    float arcW=shadowR*1.8;  // horizontal half-extent of arc
-    float arcH=shadowR*1.08; // vertical peak of arc above/below center
-
-    for(float s=-1.;s<=1.;s+=2.){
-        // Elliptical arc path: y = s * arcH * sqrt(1 - (x/arcW)^2)
-        float xn=clamp(uv.x/arcW,-1.,1.);
-        float arcY=s*arcH*sqrt(max(0.,1.-xn*xn));
-
-        // Arc thickness — thicker at center, thinner at edges
-        float arcThick=.005+.02*(1.-abs(xn));
-
-        float ad=abs(uv.y-arcY)/arcThick;
-        float arcAlpha=exp(-ad*ad);
-
-        // Masks: correct side, within range, outside shadow
-        float sideMask=smoothstep(0.,.008,s*uv.y);
-        float rangeMask=smoothstep(arcW*1.05,arcW*.7,abs(uv.x));
-        float sMask=smoothstep(shadowR*.92,shadowR*1.05,r);
-
-        if(sideMask>.01&&rangeMask>.01&&sMask>.01){
-            float arcNorm=clamp((r-shadowR)/(shadowR*1.5),0.,1.);
-            vec3 ac=mix(vec3(1.,.72,.28),vec3(.5,.15,.04),arcNorm);
-
-            // Doppler on arcs
-            float adp=.35+.65*smoothstep(-1.,1.,uv.x/shadowR);
-
-            // Arc texture (turbulent gas)
-            float atex=fbm(vec2(theta*5.-rot*2.,r*22.));
-            float astr=noise(vec2(theta*8.-rot,r*40.));
-            atex=.4+.6*mix(atex,astr,.3);
-
-            col+=ac*arcAlpha*sideMask*rangeMask*sMask*adp*atex*(1.3-arcNorm*.4);
-        }
-    }
-
-    // Second-order lensed image (thinner, dimmer, closer to shadow)
-    float arc2W=shadowR*1.3;
-    float arc2H=shadowR*1.02;
-    for(float s=-1.;s<=1.;s+=2.){
-        float xn2=clamp(uv.x/arc2W,-1.,1.);
-        float arc2Y=s*arc2H*sqrt(max(0.,1.-xn2*xn2));
-        float a2d=abs(uv.y-arc2Y)/(.003+.008*(1.-abs(xn2)));
-        float a2a=exp(-a2d*a2d);
-        float sm2=smoothstep(0.,.005,s*uv.y)*smoothstep(arc2W*1.05,arc2W*.5,abs(uv.x))*smoothstep(shadowR*.9,shadowR*1.02,r);
-        if(sm2>.01){
-            float an2=clamp((r-shadowR)/shadowR,0.,1.);
-            vec3 ac2=mix(vec3(1.,.8,.45),vec3(.4,.12,.03),an2);
-            float dp2=.4+.6*smoothstep(-1.,1.,uv.x/shadowR);
-            col+=ac2*a2a*sm2*dp2*.5;
-        }
-    }
-
-    // ── PHOTON RING ──
-    float prd=abs(r-shadowR-.002);
-    float prDp=.4+.6*smoothstep(-1.,1.,uv.x/shadowR);
-    col+=vec3(1.,.9,.65)*exp(-prd*prd/(2.*.001*.001))*2.*prDp;
-
-    // ── EVENT HORIZON ──
-    col*=smoothstep(shadowR-.003,shadowR+.001,r);
-
-    // ── GLOW ──
-    col+=vec3(1.,.45,.1)*exp(-r*r*25.)*.035;
-    col+=vec3(.7,.25,.05)*exp(-(r-.2)*(r-.2)*5.)*.012;
-    col+=vec3(1.,.55,.2)*u_interact*exp(-r*r*15.)*.3;
-
-    // ── TONE MAP ──
-    col=1.-exp(-col*1.5);
-    col=pow(col,vec3(.9));
+    // Tone map
+    col=1.-exp(-col*1.3);
+    col=pow(col,vec3(.88));
     gl_FragColor=vec4(col,1.);
 }
     </script>
@@ -391,7 +350,7 @@ gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_
 const aP=gl.getAttribLocation(prog,'a_pos');gl.enableVertexAttribArray(aP);gl.vertexAttribPointer(aP,2,gl.FLOAT,false,0,0);
 const uR=gl.getUniformLocation(prog,'u_res'),uT=gl.getUniformLocation(prog,'u_time'),uI=gl.getUniformLocation(prog,'u_interact');
 let interact=0;
-function rsz(){const d=Math.min(devicePixelRatio,1.5);cv.width=innerWidth*d;cv.height=innerHeight*d;cv.style.width=innerWidth+'px';cv.style.height=innerHeight+'px';gl.viewport(0,0,cv.width,cv.height)}
+function rsz(){const d=Math.min(devicePixelRatio,1.);cv.width=innerWidth*d;cv.height=innerHeight*d;cv.style.width=innerWidth+'px';cv.style.height=innerHeight+'px';gl.viewport(0,0,cv.width,cv.height)}
 addEventListener('resize',rsz);rsz();
 addEventListener('click',()=>{interact=Math.min(interact+.5,1.5)});
 let t0=performance.now();
