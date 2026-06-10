@@ -8,6 +8,7 @@ Maxis to retrieve memories by MEANING and ASSOCIATION, not just keywords.
 from __future__ import annotations
 
 import time
+import os
 import uuid
 import json
 from dataclasses import dataclass, field
