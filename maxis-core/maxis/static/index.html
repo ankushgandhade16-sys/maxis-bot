@@ -170,14 +170,18 @@ void main(){
         float def=shadowR*shadowR/max(r*r-shadowR*shadowR*.8,.0001);
         luv=uv*(1.+def*.5);
     }
-    for(float s=25.;s<=85.;s+=30.){
+    for(float s=30.;s<=120.;s+=30.){
         vec2 g=floor(luv*s);
         float h=hash(g);
-        if(h>.988){
-            float b=pow((h-.988)/.012,.4);
+        if(h>.99){
+            // Star position within cell (random offset)
+            vec2 starUV=(g+vec2(hash2(g),hash(g+vec2(7.3,13.1))))/s;
+            float d=length(luv-starUV)*s;
+            float point=exp(-d*d*3.);
+            float b=pow((h-.99)/.01,.3);
             float tw=.7+.3*sin(u_time*(1.5+h*6.)+h*80.);
-            vec3 sc=mix(vec3(.7,.78,1.),vec3(1.,.88,.7),hash2(g));
-            col+=sc*b*tw*.35;
+            vec3 sc=mix(vec3(.7,.8,1.),vec3(1.,.9,.75),hash2(g));
+            col+=sc*point*b*tw*.6;
         }
     }
 
