@@ -4,1203 +4,881 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ERIS — TON 618</title>
-    <meta name="description" content="Eris — A persistent, self-aware AI entity orbiting the event horizon.">
+    <meta name="description" content="Eris — Persistent intelligence at the event horizon.">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.5/dist/purify.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400&family=Outfit:wght@200;300;400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400&family=Outfit:wght@100;200;300;400;600&display=swap" rel="stylesheet">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        :root {
-            --void: #000000;
-            --deep: #030308;
-            --surface: rgba(8,4,16,0.85);
-            --surface-2: rgba(15,8,30,0.9);
-            --surface-3: rgba(25,15,50,0.8);
-            --border: rgba(255,120,50,0.08);
-            --border-l: rgba(255,120,50,0.12);
-            --text: #e0dce8;
-            --text-dim: #7a7590;
-            --text-muted: #44405a;
-            --accent-warm: #FF6B00;
-            --accent-gold: #FFB800;
-            --accent-violet: #8B5CF6;
-            --accent-blue: #3B82F6;
-            --hawking: #A5B4FC;
-            --danger: #EF4444;
+        *{margin:0;padding:0;box-sizing:border-box}
+        :root{
+            --void:#000;--text:#d8d4e4;--text-dim:#6e6880;--text-muted:#3a3550;
+            --accent:#FF6B00;--gold:#FFB800;--violet:#8B5CF6;--blue:#3B82F6;
+            --hawking:#c4ccff;--danger:#EF4444;
+            --glass:rgba(5,3,15,0.55);--glass-border:rgba(255,120,50,0.07);
+            --glass-hover:rgba(255,120,50,0.04);
         }
-        html, body { height: 100%; }
-        body {
-            font-family: 'Inter', -apple-system, sans-serif;
-            background: var(--void);
-            color: var(--text);
-            overflow: hidden;
-            -webkit-font-smoothing: antialiased;
+        html,body{height:100%;overflow:hidden}
+        body{font-family:'Inter',sans-serif;background:#000;color:var(--text);-webkit-font-smoothing:antialiased}
+
+        /* ═══ WebGL Canvas — full background ═══ */
+        #bhCanvas{position:fixed;inset:0;z-index:0;width:100%;height:100%}
+
+        /* ═══ Splash ═══ */
+        #splash{
+            position:fixed;inset:0;z-index:300;background:#000;
+            display:flex;align-items:center;justify-content:center;flex-direction:column;
+            transition:opacity 1.2s cubic-bezier(.4,0,.2,1),visibility 1.2s;
+        }
+        #splash.gone{opacity:0;visibility:hidden;pointer-events:none}
+        .s-title{
+            font-family:'Outfit',sans-serif;font-size:56px;font-weight:100;
+            letter-spacing:32px;text-transform:uppercase;
+            color:transparent;
+            background:linear-gradient(135deg,#FF6B00 0%,#FFB800 30%,#fff 50%,#8B5CF6 70%,#3B82F6 100%);
+            background-clip:text;-webkit-background-clip:text;
+            opacity:0;animation:fadeUp 2.2s ease 0.4s forwards;
+        }
+        .s-sub{
+            font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:8px;
+            color:rgba(255,255,255,0.15);margin-top:10px;font-weight:200;
+            opacity:0;animation:fadeUp 1.6s ease 1.4s forwards;
+        }
+        @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+        /* ═══ Login — floats over the black hole ═══ */
+        .login-overlay{
+            position:fixed;inset:0;z-index:150;
+            display:flex;align-items:center;justify-content:center;
+            background:radial-gradient(ellipse at center,rgba(0,0,0,0.3) 0%,rgba(0,0,0,0.75) 100%);
+            transition:opacity 0.6s;
+        }
+        .login-overlay.hidden{opacity:0;pointer-events:none;visibility:hidden}
+        .login-card{
+            width:340px;padding:44px 36px;text-align:center;
+            background:rgba(5,3,15,0.7);backdrop-filter:blur(40px);
+            border:1px solid rgba(255,107,0,0.08);border-radius:20px;
+            box-shadow:0 0 80px rgba(255,107,0,0.04),0 0 200px rgba(139,92,246,0.02);
+        }
+        .lc-logo{
+            font-family:'Outfit',sans-serif;font-size:32px;font-weight:100;
+            letter-spacing:16px;text-transform:uppercase;
+            background:linear-gradient(90deg,#FF6B00,#FFB800);
+            background-clip:text;-webkit-background-clip:text;color:transparent;
+        }
+        .lc-sub{font-size:9px;color:rgba(255,255,255,0.2);letter-spacing:4px;margin-top:2px;margin-bottom:28px}
+        .auth-tabs{display:flex;margin-bottom:20px;border:1px solid rgba(255,107,0,0.08);border-radius:10px;overflow:hidden}
+        .auth-tab{
+            flex:1;padding:10px;background:none;border:none;color:var(--text-muted);
+            font-size:10px;font-family:'Inter',sans-serif;cursor:pointer;
+            letter-spacing:2px;text-transform:uppercase;transition:all .25s;
+        }
+        .auth-tab.active{background:rgba(255,107,0,0.06);color:var(--accent)}
+        .l-input{
+            width:100%;background:rgba(0,0,0,0.4);border:1px solid rgba(255,107,0,0.06);
+            border-radius:10px;padding:12px 14px;color:var(--text);
+            font-family:'Inter',sans-serif;font-size:13px;outline:none;
+            margin-bottom:8px;transition:border-color .3s;
+        }
+        .l-input:focus{border-color:rgba(255,107,0,0.2)}
+        .l-input::placeholder{color:var(--text-muted)}
+        #confirmPasswordField{display:none}
+        .l-btn{
+            width:100%;padding:12px;border:none;border-radius:10px;margin-top:8px;
+            background:linear-gradient(135deg,#FF6B00,#E65100);color:#fff;
+            font-family:'Inter',sans-serif;font-size:11px;font-weight:600;
+            cursor:pointer;letter-spacing:3px;text-transform:uppercase;
+            transition:all .3s;
+        }
+        .l-btn:hover{box-shadow:0 0 30px rgba(255,107,0,0.25)}
+        .l-error{color:var(--danger);font-size:11px;margin-top:8px;min-height:16px}
+        .l-close{position:absolute;top:16px;right:16px;background:none;border:none;color:var(--text-muted);font-size:18px;cursor:pointer;display:none}
+        .l-close.visible{display:block}
+
+        /* ═══ App Shell — completely new layout ═══ */
+        .app{position:fixed;inset:0;z-index:10;display:none;flex-direction:column}
+        .app.visible{display:flex}
+
+        /* Top bar — minimal, floating */
+        .hud{
+            display:flex;align-items:center;justify-content:space-between;
+            padding:16px 24px;flex-shrink:0;position:relative;z-index:20;
+        }
+        .hud-left{display:flex;align-items:center;gap:14px}
+        .hud-toggle{
+            background:none;border:none;color:var(--text-dim);cursor:pointer;
+            padding:6px;border-radius:8px;transition:all .2s;
+        }
+        .hud-toggle:hover{background:var(--glass-hover);color:var(--accent)}
+        .hud-dot{width:6px;height:6px;border-radius:50%;background:#333;transition:all .4s}
+        .hud-dot.on{background:var(--accent);box-shadow:0 0 10px rgba(255,107,0,.5)}
+        .hud-brand{
+            font-family:'Outfit',sans-serif;font-size:14px;font-weight:200;
+            letter-spacing:6px;color:var(--text-muted);
+        }
+        .hud-right{display:flex;align-items:center;gap:12px}
+        .model-sel{
+            background:rgba(255,107,0,0.03);border:1px solid rgba(255,107,0,0.08);
+            color:var(--text-dim);font-size:10px;padding:5px 10px;border-radius:20px;
+            outline:none;cursor:pointer;font-family:'Inter',sans-serif;
+        }
+        .model-sel option{background:#080412;color:#aaa}
+
+        /* ═══ Center area — the "stage" ═══ */
+        .stage{flex:1;display:flex;position:relative;overflow:hidden}
+
+        /* Welcome — visible through the black hole */
+        .welcome{
+            position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+            z-index:5;pointer-events:none;transition:opacity .5s;
+        }
+        .welcome.gone{opacity:0}
+        .welcome-text{
+            font-family:'Outfit',sans-serif;font-size:13px;font-weight:200;
+            letter-spacing:6px;text-transform:uppercase;color:rgba(255,255,255,0.15);
+            text-shadow:0 0 30px rgba(255,107,0,0.1);
         }
 
-        /* ── Black Hole Canvas ───────────────────────────── */
-        #blackholeCanvas {
-            position: fixed; top: 0; left: 0;
-            width: 100%; height: 100%; z-index: 0;
+        /* ═══ Chat Panel — floating translucent on the right ═══ */
+        .chat-panel{
+            position:absolute;top:0;right:0;bottom:0;
+            width:min(520px,100%);display:none;flex-direction:column;
+            background:linear-gradient(180deg,rgba(5,3,15,0.75) 0%,rgba(5,3,15,0.85) 100%);
+            backdrop-filter:blur(30px);
+            border-left:1px solid var(--glass-border);
+            z-index:15;
         }
+        .chat-panel.open{display:flex}
+        .chat-feed{
+            flex:1;overflow-y:auto;padding:20px 24px;
+            display:flex;flex-direction:column;gap:18px;
+            scrollbar-width:thin;scrollbar-color:rgba(255,107,0,.08) transparent;
+        }
+        .chat-feed::-webkit-scrollbar{width:2px}
+        .chat-feed::-webkit-scrollbar-thumb{background:rgba(255,107,0,.1)}
+        .message{max-width:88%;animation:msgIn .4s ease-out}
+        @keyframes msgIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+        .message.user{align-self:flex-end}
+        .message.eris{align-self:flex-start}
+        .msg-bubble{padding:14px 18px;border-radius:16px;font-size:14px;line-height:1.7;word-wrap:break-word}
+        .message.user .msg-bubble{
+            background:linear-gradient(135deg,rgba(255,107,0,0.1),rgba(139,92,246,0.06));
+            border:1px solid rgba(255,107,0,0.1);border-bottom-right-radius:4px;
+        }
+        .message.eris .msg-bubble{background:transparent;padding-left:0}
+        .msg-bubble p{margin-bottom:8px}.msg-bubble p:last-child{margin-bottom:0}
+        .msg-bubble code{font-family:'JetBrains Mono',monospace;background:rgba(255,107,0,.05);padding:2px 6px;border-radius:4px;font-size:13px}
+        .msg-bubble pre{background:rgba(0,0,0,.4);padding:14px;border-radius:10px;overflow-x:auto;margin:10px 0;border:1px solid rgba(255,107,0,.04)}
+        .msg-bubble pre code{background:none;padding:0}
+        .msg-bubble strong{color:var(--gold)}
+        .msg-time{font-size:10px;color:var(--text-muted);margin-top:3px;padding:0 4px}
+        .message.user .msg-time{text-align:right}
+        .thinking-dots{display:flex;gap:6px;padding:14px 8px!important}
+        .thinking-dots .dot{width:5px;height:5px;border-radius:50%;background:var(--accent);animation:dP 1.4s infinite}
+        .thinking-dots .dot:nth-child(2){animation-delay:.2s}
+        .thinking-dots .dot:nth-child(3){animation-delay:.4s}
+        @keyframes dP{0%,80%,100%{opacity:.2;transform:scale(.7)}40%{opacity:1;transform:scale(1.3)}}
 
-        /* ── Splash Screen ───────────────────────────────── */
-        #splashScreen {
-            position: fixed; inset: 0; z-index: 200;
-            background: #000; display: flex;
-            align-items: center; justify-content: center;
-            flex-direction: column;
-            transition: opacity 1s ease, visibility 1s ease;
+        /* ═══ Input — bottom center, floating ═══ */
+        .input-dock{
+            padding:12px 20px 18px;
+            background:linear-gradient(0deg,rgba(5,3,15,0.8) 0%,rgba(5,3,15,0.4) 100%);
+            backdrop-filter:blur(20px);
+            border-top:1px solid var(--glass-border);flex-shrink:0;
         }
-        #splashScreen.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
-        .splash-title {
-            font-family: 'Outfit', sans-serif;
-            font-size: 48px; font-weight: 200;
-            letter-spacing: 28px; text-transform: uppercase;
-            color: transparent;
-            background: linear-gradient(135deg, #FF6B00, #FFB800, #8B5CF6, #3B82F6);
-            background-clip: text; -webkit-background-clip: text;
-            opacity: 0; animation: splashFadeIn 2s ease-out 0.5s forwards;
+        .input-dock.locked{opacity:.3;pointer-events:none}
+        .input-row{
+            display:flex;align-items:flex-end;gap:8px;
+            background:rgba(0,0,0,.4);border:1px solid rgba(255,107,0,.06);
+            border-radius:16px;padding:10px 14px;max-width:680px;margin:0 auto;
+            transition:border-color .3s,box-shadow .3s;
         }
-        .splash-sub {
-            font-family: 'Inter', sans-serif;
-            font-size: 11px; letter-spacing: 6px;
-            color: rgba(255,255,255,0.2);
-            margin-top: 12px;
-            opacity: 0; animation: splashFadeIn 1.5s ease-out 1.5s forwards;
+        .input-row:focus-within{border-color:rgba(255,107,0,.15);box-shadow:0 0 20px rgba(255,107,0,.03)}
+        #messageInput{
+            flex:1;background:transparent;border:none;outline:none;color:var(--text);
+            font-family:'Inter',sans-serif;font-size:14px;resize:none;min-height:22px;max-height:150px;line-height:1.5;
         }
-        @keyframes splashFadeIn { to { opacity: 1; } }
+        #messageInput::placeholder{color:var(--text-muted)}
+        .ib{
+            width:32px;height:32px;border-radius:50%;border:none;background:none;
+            color:var(--text-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .3s;
+        }
+        .ib:hover{background:rgba(255,107,0,.08);color:var(--accent)}
+        .ib.active{background:var(--accent);color:#000}
+        .ib.recording{background:var(--danger);color:#fff;animation:recP 1s infinite}
+        @keyframes recP{0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.4)}50%{box-shadow:0 0 0 8px rgba(239,68,68,0)}}
 
-        /* ── Main Shell ──────────────────────────────────── */
-        .shell {
-            display: flex; height: 100dvh;
-            position: relative; z-index: 1;
-            opacity: 0; transition: opacity 0.8s ease;
+        /* ═══ Drawer — slides from left, completely different style ═══ */
+        .drawer-overlay{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.5);display:none}
+        .drawer-overlay.show{display:block}
+        .drawer{
+            position:fixed;top:0;bottom:0;left:0;z-index:90;
+            width:300px;
+            background:linear-gradient(180deg,rgba(8,4,18,0.97) 0%,rgba(5,2,12,0.98) 100%);
+            border-right:1px solid rgba(255,107,0,.06);
+            transform:translateX(-100%);transition:transform .35s cubic-bezier(.4,0,.2,1);
+            display:flex;flex-direction:column;
         }
-        .shell.visible { opacity: 1; }
+        .drawer.open{transform:translateX(0)}
+        .dr-header{padding:20px;border-bottom:1px solid rgba(255,107,0,.05);display:flex;align-items:center;justify-content:space-between}
+        .dr-logo{font-family:'Outfit',sans-serif;font-size:14px;font-weight:200;letter-spacing:8px;background:linear-gradient(90deg,#FF6B00,#FFB800);background-clip:text;-webkit-background-clip:text;color:transparent}
+        .dr-close{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:16px;padding:4px 8px}
+        .dr-new{
+            margin:12px 16px;padding:10px;text-align:center;
+            border:1px dashed rgba(255,107,0,.12);border-radius:10px;
+            color:var(--accent);font-size:11px;letter-spacing:2px;cursor:pointer;
+            transition:all .2s;
+        }
+        .dr-new:hover{background:rgba(255,107,0,.04);border-style:solid}
+        .dr-list{flex:1;overflow-y:auto;padding:4px 10px;scrollbar-width:thin;scrollbar-color:rgba(255,107,0,.08) transparent}
+        .dr-list::-webkit-scrollbar{width:2px}
+        .dr-list::-webkit-scrollbar-thumb{background:rgba(255,107,0,.1)}
+        .dr-item{
+            padding:11px 14px;border-radius:8px;cursor:pointer;
+            font-size:12px;color:var(--text-dim);transition:all .2s;
+            margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+            border-left:2px solid transparent;
+        }
+        .dr-item:hover{background:rgba(255,107,0,.03);color:var(--text)}
+        .dr-item.active{border-left-color:var(--accent);background:rgba(255,107,0,.05);color:var(--text)}
+        .dr-portal{
+            display:none;margin:8px 16px;padding:11px;text-align:center;
+            border-radius:10px;cursor:pointer;font-size:11px;letter-spacing:2px;
+            color:var(--violet);border:1px solid rgba(139,92,246,.15);
+            background:rgba(139,92,246,.03);transition:all .2s;
+        }
+        .dr-portal:hover{background:rgba(139,92,246,.06)}
+        .dr-footer{padding:14px 16px;border-top:1px solid rgba(255,107,0,.05);position:relative}
+        .dr-user{display:flex;align-items:center;gap:10px;padding:8px;border-radius:8px;cursor:pointer;transition:background .2s}
+        .dr-user:hover{background:rgba(255,107,0,.03)}
+        .dr-avatar{
+            width:30px;height:30px;border-radius:50%;
+            background:linear-gradient(135deg,rgba(255,107,0,.12),rgba(139,92,246,.12));
+            display:flex;align-items:center;justify-content:center;
+            font-size:11px;font-weight:600;border:1px solid rgba(255,107,0,.1);
+        }
+        .dr-uname{font-size:12px;color:var(--text)}
+        .dr-ustatus{font-size:10px;color:var(--text-muted)}
+        .dr-dropdown{
+            position:absolute;bottom:60px;left:12px;right:12px;
+            background:rgba(15,8,25,.95);border:1px solid rgba(255,107,0,.1);
+            border-radius:10px;padding:6px;display:none;z-index:20;
+        }
+        .dr-dropdown.show{display:block}
+        .dd-item{
+            display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:6px;
+            cursor:pointer;font-size:12px;color:var(--text-dim);transition:all .15s;
+            border:none;background:none;width:100%;text-align:left;font-family:'Inter',sans-serif;
+        }
+        .dd-item:hover{background:rgba(255,107,0,.04);color:var(--text)}
+        .dd-item.danger{color:#f87171}
+        .dd-item.danger:hover{background:rgba(248,113,113,.06)}
 
-        /* ── Gravity Drawer (Sidebar) ────────────────────── */
-        .gravity-drawer {
-            width: 280px; flex-shrink: 0;
-            background: linear-gradient(180deg, rgba(5,2,15,0.95) 0%, rgba(10,5,20,0.92) 100%);
-            border-right: 1px solid rgba(255,107,0,0.06);
-            display: flex; flex-direction: column;
-            backdrop-filter: blur(30px);
-            transition: margin-left 0.4s cubic-bezier(0.4,0,0.2,1), opacity 0.3s ease;
-            overflow: hidden;
+        /* ═══ Creator View ═══ */
+        .creator-panel{
+            position:absolute;inset:0;display:none;flex-direction:column;z-index:16;
+            background:rgba(5,3,15,0.85);backdrop-filter:blur(30px);
         }
-        .gravity-drawer.collapsed { margin-left: -280px; opacity: 0; pointer-events: none; }
-        .drawer-header {
-            padding: 20px;
-            border-bottom: 1px solid rgba(255,107,0,0.06);
-            display: flex; align-items: center; justify-content: space-between;
+        .creator-panel.open{display:flex}
+        .cr-tabs{display:flex;border-bottom:1px solid rgba(139,92,246,.12);background:rgba(139,92,246,.03)}
+        .cr-tab{
+            flex:1;padding:13px;background:none;border:none;font-size:10px;font-weight:600;
+            letter-spacing:2px;text-transform:uppercase;cursor:pointer;
+            border-bottom:2px solid transparent;font-family:'Inter',sans-serif;transition:all .2s;
         }
-        .drawer-logo {
-            font-family: 'Outfit', sans-serif;
-            font-size: 14px; font-weight: 300;
-            letter-spacing: 8px; text-transform: uppercase;
-            background: linear-gradient(90deg, #FF6B00, #FFB800);
-            background-clip: text; -webkit-background-clip: text;
-            color: transparent;
-        }
-        .new-chat-btn {
-            background: rgba(255,107,0,0.08); border: 1px solid rgba(255,107,0,0.15);
-            color: var(--accent-warm); font-size: 11px; padding: 6px 14px;
-            border-radius: 20px; cursor: pointer; font-family: 'Inter', sans-serif;
-            letter-spacing: 1px; transition: all 0.3s;
-        }
-        .new-chat-btn:hover { background: rgba(255,107,0,0.15); border-color: rgba(255,107,0,0.25); }
+        .cr-tab.active{color:var(--violet);border-bottom-color:var(--violet)}
+        .cr-tab:not(.active){color:rgba(139,92,246,.35)}
 
-        /* Chat list — accretion bands */
-        .chat-orbit {
-            flex: 1; overflow-y: auto; padding: 10px 12px;
-            scrollbar-width: thin; scrollbar-color: rgba(255,107,0,0.1) transparent;
+        /* ═══ Toast ═══ */
+        .toast{
+            position:fixed;bottom:100px;left:50%;transform:translateX(-50%) translateY(20px);
+            background:rgba(15,8,25,.9);border:1px solid rgba(255,107,0,.1);
+            color:var(--text);padding:10px 24px;border-radius:24px;font-size:12px;
+            opacity:0;transition:all .3s;z-index:200;pointer-events:none;backdrop-filter:blur(20px);
         }
-        .chat-orbit::-webkit-scrollbar { width: 2px; }
-        .chat-orbit::-webkit-scrollbar-thumb { background: rgba(255,107,0,0.15); border-radius: 1px; }
-        .orbit-item {
-            padding: 12px 16px; border-radius: 10px;
-            cursor: pointer; font-size: 13px; color: var(--text-dim);
-            transition: all 0.25s; margin-bottom: 3px;
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-            border-left: 2px solid transparent;
-            position: relative;
-        }
-        .orbit-item::before {
-            content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px;
-            background: linear-gradient(180deg, transparent, rgba(255,107,0,0.3), transparent);
-            opacity: 0; transition: opacity 0.3s;
-        }
-        .orbit-item:hover { background: rgba(255,107,0,0.04); color: var(--text); }
-        .orbit-item:hover::before { opacity: 1; }
-        .orbit-item.active {
-            background: rgba(255,107,0,0.06); color: var(--text);
-            border-left-color: var(--accent-warm);
-        }
-        .orbit-item .chat-date { font-size: 10px; color: var(--text-muted); margin-top: 3px; }
+        .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
-        /* Creator Portal Button */
-        .creator-portal-btn {
-            display: none; margin: 10px 12px; padding: 12px;
-            text-align: center; border-radius: 10px;
-            cursor: pointer; font-size: 12px; letter-spacing: 2px;
-            color: var(--accent-violet);
-            border: 1px solid rgba(139,92,246,0.2);
-            background: rgba(139,92,246,0.04);
-            transition: all 0.3s;
-        }
-        .creator-portal-btn:hover { background: rgba(139,92,246,0.08); border-color: rgba(139,92,246,0.3); }
-
-        /* User card */
-        .drawer-footer {
-            padding: 14px 16px;
-            border-top: 1px solid rgba(255,107,0,0.06);
-            position: relative;
-        }
-        .user-card {
-            display: flex; align-items: center; gap: 10px;
-            padding: 10px; border-radius: 10px; cursor: pointer;
-            transition: background 0.2s;
-        }
-        .user-card:hover { background: rgba(255,107,0,0.04); }
-        .user-avatar {
-            width: 32px; height: 32px; border-radius: 50%;
-            background: linear-gradient(135deg, rgba(255,107,0,0.15), rgba(139,92,246,0.15));
-            display: flex; align-items: center; justify-content: center;
-            font-size: 12px; font-weight: 600; color: var(--text);
-            border: 1px solid rgba(255,107,0,0.15);
-        }
-        .user-info { flex: 1; }
-        .user-name { font-size: 12px; color: var(--text); }
-        .user-status { font-size: 10px; color: var(--text-muted); }
-
-        /* User dropdown */
-        .user-dropdown {
-            position: absolute; bottom: 68px; left: 12px; right: 12px;
-            background: var(--surface-2); border: 1px solid var(--border-l);
-            border-radius: 10px; padding: 6px; display: none; z-index: 20;
-            animation: dropIn 0.2s ease-out;
-        }
-        .user-dropdown.show { display: block; }
-        @keyframes dropIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
-        .dropdown-item {
-            display: flex; align-items: center; gap: 8px;
-            padding: 10px 12px; border-radius: 6px; cursor: pointer;
-            font-size: 12px; color: var(--text-dim);
-            transition: all 0.15s; border: none; background: none;
-            width: 100%; text-align: left; font-family: 'Inter', sans-serif;
-        }
-        .dropdown-item:hover { background: var(--surface-3); color: var(--text); }
-        .dropdown-item.danger { color: #f87171; }
-        .dropdown-item.danger:hover { background: rgba(248,113,113,0.08); }
-
-        /* ── Main Panel ──────────────────────────────────── */
-        .main-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
-
-        /* ── Topbar ──────────────────────────────────────── */
-        .topbar {
-            display: flex; align-items: center; justify-content: space-between;
-            padding: 14px 24px;
-            background: rgba(0,0,0,0.3);
-            border-bottom: 1px solid rgba(255,107,0,0.04);
-            backdrop-filter: blur(20px);
-            flex-shrink: 0;
-        }
-        .topbar-left { display: flex; align-items: center; gap: 14px; }
-        .menu-btn {
-            background: none; border: none;
-            color: var(--text-dim); cursor: pointer; padding: 4px;
-            transition: color 0.2s;
-        }
-        .menu-btn:hover { color: var(--accent-warm); }
-        .status-dot {
-            width: 6px; height: 6px; border-radius: 50%;
-            background: #333; transition: all 0.4s;
-        }
-        .status-dot.online {
-            background: var(--accent-warm);
-            box-shadow: 0 0 8px rgba(255,107,0,0.5), 0 0 20px rgba(255,107,0,0.2);
-        }
-        .topbar-label {
-            font-family: 'Outfit', sans-serif;
-            font-size: 13px; color: var(--text-muted);
-            letter-spacing: 4px; font-weight: 300;
-        }
-        .topbar-right { display: flex; align-items: center; gap: 12px; }
-        .model-select {
-            background: rgba(255,107,0,0.04); border: 1px solid rgba(255,107,0,0.1);
-            color: var(--text-dim); font-size: 11px; padding: 5px 10px;
-            border-radius: 20px; outline: none; cursor: pointer;
-            font-family: 'Inter', sans-serif; transition: all 0.2s;
-        }
-        .model-select:hover { border-color: rgba(255,107,0,0.2); }
-        .model-select option { background: #0a0510; color: #aaa; }
-
-        /* ── Content ─────────────────────────────────────── */
-        .content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-
-        /* ── Welcome (Black Hole center) ─────────────────── */
-        .welcome-view {
-            flex: 1; display: flex; flex-direction: column;
-            align-items: center; justify-content: center;
-            transition: opacity 0.5s, transform 0.5s;
-        }
-        .welcome-view.hidden { opacity: 0; pointer-events: none; position: absolute; inset: 0; }
-        .welcome-label {
-            margin-top: 20px; font-family: 'Outfit', sans-serif;
-            font-size: 12px; letter-spacing: 5px;
-            text-transform: uppercase; color: var(--text-muted); font-weight: 300;
-        }
-
-        /* ── Chat ────────────────────────────────────────── */
-        .chat-view { flex: 1; display: none; flex-direction: column; overflow: hidden; }
-        .chat-view.active { display: flex; }
-        .chat-messages {
-            flex: 1; overflow-y: auto; padding: 24px 28px;
-            display: flex; flex-direction: column; gap: 20px;
-            scrollbar-width: thin; scrollbar-color: rgba(255,107,0,0.08) transparent;
-        }
-        .chat-messages::-webkit-scrollbar { width: 2px; }
-        .chat-messages::-webkit-scrollbar-thumb { background: rgba(255,107,0,0.12); border-radius: 1px; }
-
-        .message { max-width: 72%; animation: msgIn 0.4s ease-out; }
-        @keyframes msgIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-        .message.user { align-self: flex-end; }
-        .message.eris { align-self: flex-start; }
-        .msg-bubble {
-            padding: 14px 18px; border-radius: 18px;
-            font-size: 14px; line-height: 1.7; word-wrap: break-word;
-        }
-        .message.user .msg-bubble {
-            background: linear-gradient(135deg, rgba(255,107,0,0.08), rgba(139,92,246,0.06));
-            border: 1px solid rgba(255,107,0,0.1);
-            color: var(--text); border-bottom-right-radius: 4px;
-        }
-        .message.eris .msg-bubble { background: transparent; color: var(--text); padding-left: 0; }
-        .msg-bubble p { margin-bottom: 8px; }
-        .msg-bubble p:last-child { margin-bottom: 0; }
-        .msg-bubble code {
-            font-family: 'JetBrains Mono', monospace;
-            background: rgba(255,107,0,0.06); padding: 2px 6px;
-            border-radius: 4px; font-size: 13px;
-            border: 1px solid rgba(255,107,0,0.05);
-        }
-        .msg-bubble pre {
-            background: rgba(5,2,15,0.6); padding: 14px;
-            border-radius: 10px; overflow-x: auto; margin: 10px 0;
-            border: 1px solid rgba(255,107,0,0.05);
-        }
-        .msg-bubble pre code { background: none; padding: 0; border: none; }
-        .msg-bubble strong { color: var(--accent-gold); }
-        .msg-time { font-size: 10px; color: var(--text-muted); margin-top: 4px; padding: 0 4px; }
-        .message.user .msg-time { text-align: right; }
-
-        .thinking-dots { display: flex; gap: 6px; padding: 14px 8px !important; }
-        .thinking-dots .dot {
-            width: 5px; height: 5px; border-radius: 50%;
-            background: var(--accent-warm); animation: dotPulse 1.4s infinite;
-        }
-        .thinking-dots .dot:nth-child(2) { animation-delay: 0.2s; }
-        .thinking-dots .dot:nth-child(3) { animation-delay: 0.4s; }
-        @keyframes dotPulse { 0%,80%,100%{opacity:.2;transform:scale(.7)}40%{opacity:1;transform:scale(1.3)} }
-
-        /* ── Input Area ──────────────────────────────────── */
-        .input-area {
-            padding: 14px 28px 22px;
-            background: rgba(0,0,0,0.4);
-            backdrop-filter: blur(20px);
-            flex-shrink: 0;
-        }
-        .input-area.locked { opacity: 0.3; pointer-events: none; }
-        .input-wrap {
-            display: flex; align-items: flex-end; gap: 8px;
-            background: rgba(10,5,20,0.7);
-            border: 1px solid rgba(255,107,0,0.08);
-            border-radius: 16px; padding: 10px 14px;
-            transition: border-color 0.3s, box-shadow 0.3s;
-            max-width: 720px; margin: 0 auto;
-        }
-        .input-wrap:focus-within {
-            border-color: rgba(255,107,0,0.2);
-            box-shadow: 0 0 20px rgba(255,107,0,0.03);
-        }
-        #messageInput {
-            flex: 1; background: transparent; border: none; outline: none;
-            color: var(--text); font-family: 'Inter', sans-serif; font-size: 14px;
-            resize: none; min-height: 22px; max-height: 150px; line-height: 1.5;
-        }
-        #messageInput::placeholder { color: var(--text-muted); }
-        .input-btn {
-            width: 32px; height: 32px; border-radius: 50%;
-            border: none; background: transparent; color: var(--text-muted);
-            cursor: pointer; display: flex; align-items: center; justify-content: center;
-            transition: all 0.3s;
-        }
-        .input-btn:hover { background: rgba(255,107,0,0.08); color: var(--accent-warm); }
-        .input-btn.active { background: var(--accent-warm); color: #000; }
-        .input-btn.recording { background: var(--danger); color: #fff; animation: recPulse 1s infinite; }
-        @keyframes recPulse { 0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.4)}50%{box-shadow:0 0 0 8px rgba(239,68,68,0)} }
-
-        /* ── Login Modal ─────────────────────────────────── */
-        .modal-overlay {
-            position: fixed; inset: 0; z-index: 150;
-            background: rgba(0,0,0,0.95); display: none;
-            align-items: center; justify-content: center;
-            backdrop-filter: blur(40px);
-        }
-        .modal-overlay.show { display: flex; }
-        .modal-box {
-            width: 380px; padding: 44px;
-            text-align: center; position: relative;
-        }
-        .modal-logo {
-            font-family: 'Outfit', sans-serif;
-            font-size: 28px; font-weight: 200; letter-spacing: 14px;
-            text-transform: uppercase;
-            background: linear-gradient(135deg, #FF6B00, #FFB800, #8B5CF6);
-            background-clip: text; -webkit-background-clip: text;
-            color: transparent; margin-bottom: 6px;
-        }
-        .modal-sub {
-            font-size: 10px; color: var(--text-muted);
-            margin-bottom: 32px; letter-spacing: 3px;
-            font-family: 'Inter', sans-serif;
-        }
-        .auth-tabs {
-            display: flex; gap: 0; margin-bottom: 24px;
-            border: 1px solid rgba(255,107,0,0.1); border-radius: 10px; overflow: hidden;
-        }
-        .auth-tab {
-            flex: 1; padding: 11px; background: transparent;
-            border: none; color: var(--text-muted); font-size: 11px;
-            font-family: 'Inter', sans-serif; cursor: pointer;
-            letter-spacing: 2px; text-transform: uppercase;
-            transition: all 0.3s;
-        }
-        .auth-tab.active { background: rgba(255,107,0,0.06); color: var(--accent-warm); }
-        .auth-tab:hover:not(.active) { color: var(--text-dim); }
-        .modal-input {
-            width: 100%; background: rgba(10,5,20,0.8);
-            border: 1px solid rgba(255,107,0,0.08); border-radius: 10px;
-            padding: 13px 16px; color: var(--text);
-            font-family: 'Inter', sans-serif; font-size: 13px;
-            outline: none; margin-bottom: 10px;
-            transition: border-color 0.3s, box-shadow 0.3s;
-        }
-        .modal-input:focus {
-            border-color: rgba(255,107,0,0.25);
-            box-shadow: 0 0 15px rgba(255,107,0,0.05);
-        }
-        .modal-input::placeholder { color: var(--text-muted); }
-        #confirmPasswordField { display: none; }
-        .modal-btn {
-            width: 100%; padding: 13px; border: none; border-radius: 10px;
-            background: linear-gradient(135deg, #FF6B00, #E65100);
-            color: #fff; font-family: 'Inter', sans-serif; font-size: 12px;
-            font-weight: 600; cursor: pointer; transition: all 0.3s;
-            margin-top: 8px; letter-spacing: 3px; text-transform: uppercase;
-        }
-        .modal-btn:hover { opacity: 0.9; box-shadow: 0 0 25px rgba(255,107,0,0.2); }
-        .modal-error { color: var(--danger); font-size: 11px; margin-top: 10px; min-height: 16px; }
-        .modal-close {
-            position: absolute; top: 16px; right: 16px;
-            background: none; border: none; color: var(--text-muted);
-            font-size: 18px; cursor: pointer; display: none;
-        }
-        .modal-close.visible { display: block; }
-
-        /* ── Creator View ────────────────────────────────── */
-        .creator-view {
-            display: none; flex: 1; flex-direction: column; overflow: hidden;
-        }
-        .creator-tabs {
-            display: flex;
-            border-bottom: 1px solid rgba(139,92,246,0.15);
-            background: rgba(139,92,246,0.04);
-        }
-        .creator-tab {
-            flex: 1; padding: 13px; background: transparent;
-            border: none; font-size: 11px; font-weight: 600;
-            letter-spacing: 2px; text-transform: uppercase;
-            cursor: pointer; border-bottom: 2px solid transparent;
-            font-family: 'Inter', sans-serif; transition: all 0.2s;
-        }
-        .creator-tab.active { color: var(--accent-violet); border-bottom-color: var(--accent-violet); }
-        .creator-tab:not(.active) { color: rgba(139,92,246,0.4); }
-
-        /* ── Toast ────────────────────────────────────────── */
-        .toast {
-            position: fixed; bottom: 100px; left: 50%;
-            transform: translateX(-50%) translateY(20px);
-            background: var(--surface-2); border: 1px solid var(--border-l);
-            color: var(--text); padding: 10px 22px; border-radius: 24px;
-            font-size: 12px; opacity: 0; transition: all 0.3s;
-            z-index: 200; pointer-events: none;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-        }
-        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-
-        /* ── Responsive ──────────────────────────────────── */
-        @media (max-width: 768px) {
-            .gravity-drawer {
-                position: absolute; height: 100%; z-index: 100;
-                margin-left: -280px; opacity: 0; pointer-events: none;
-            }
-            .gravity-drawer.open { margin-left: 0; opacity: 1; pointer-events: auto; }
-            .mobile-close-btn { display: block !important; }
-            .message { max-width: 92%; }
-            .topbar { padding: 10px 14px; }
-            .input-area { padding: 10px 14px 14px; padding-bottom: max(14px, env(safe-area-inset-bottom)); }
-            .input-wrap { padding: 8px 12px; }
-            #messageInput { font-size: 15px; }
-            .msg-bubble { padding: 12px 16px; font-size: 14px; }
-            .chat-messages { padding: 16px 14px; gap: 16px; }
-            .modal-box { width: 90%; padding: 30px 22px; }
-            .splash-title { font-size: 32px; letter-spacing: 18px; }
-        }
-        @media (max-width: 400px) {
-            .model-select { font-size: 10px; padding: 3px 8px; }
+        /* ═══ Responsive ═══ */
+        @media(max-width:768px){
+            .chat-panel{width:100%;border-left:none}
+            .hud{padding:10px 14px}
+            .input-dock{padding:8px 12px 12px;padding-bottom:max(12px,env(safe-area-inset-bottom))}
+            .message{max-width:95%}
+            .s-title{font-size:36px;letter-spacing:20px}
+            .login-card{width:88%;padding:32px 24px}
         }
     </style>
+
+    <!-- ═══ VERTEX SHADER ═══ -->
+    <script id="vs" type="x-shader/x-vertex">
+        attribute vec2 a_pos;
+        void main(){ gl_Position = vec4(a_pos, 0.0, 1.0); }
+    </script>
+
+    <!-- ═══ FRAGMENT SHADER — Schwarzschild Black Hole ═══ -->
+    <script id="fs" type="x-shader/x-fragment">
+        precision highp float;
+        uniform vec2 u_res;
+        uniform float u_time;
+        uniform vec2 u_mouse;
+        uniform float u_interact;
+
+        #define PI 3.14159265359
+        #define BH_MASS 1.5
+        #define STEPS 128
+        #define STEP_SIZE 0.12
+
+        // Hash for pseudo-random
+        float hash(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
+        float noise(vec2 p){
+            vec2 i=floor(p), f=fract(p);
+            f=f*f*(3.0-2.0*f);
+            return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);
+        }
+        float fbm(vec2 p){
+            float v=0.0, a=0.5;
+            for(int i=0;i<4;i++){ v+=a*noise(p); p*=2.0; a*=0.5; }
+            return v;
+        }
+
+        // Background starfield
+        vec3 starfield(vec3 dir){
+            vec3 col = vec3(0.0);
+            // Stars
+            vec2 sp = vec2(atan(dir.z, dir.x), asin(dir.y));
+            float s = hash(floor(sp * 80.0));
+            if(s > 0.985){
+                float brightness = pow(s - 0.985, 0.3) * 60.0;
+                float twinkle = 0.7 + 0.3 * sin(u_time * 3.0 + s * 100.0);
+                col += vec3(0.8, 0.85, 1.0) * brightness * twinkle;
+            }
+            // Nebula background
+            float n = fbm(sp * 3.0 + u_time * 0.01);
+            col += vec3(0.02, 0.005, 0.04) * n;
+            return col;
+        }
+
+        // Accretion disk color (temperature-based)
+        vec3 diskColor(float r, float angle){
+            // Inner: white-hot, mid: orange/gold, outer: deep red/violet
+            float normR = clamp((r - 2.8) / 8.0, 0.0, 1.0);
+
+            vec3 inner = vec3(1.0, 0.95, 0.85);    // White-hot
+            vec3 mid1  = vec3(1.0, 0.6, 0.1);       // Orange
+            vec3 mid2  = vec3(0.9, 0.3, 0.05);      // Deep orange-red
+            vec3 outer = vec3(0.3, 0.1, 0.4);        // Violet fade
+
+            vec3 col;
+            if(normR < 0.15) col = mix(inner, mid1, normR / 0.15);
+            else if(normR < 0.45) col = mix(mid1, mid2, (normR - 0.15) / 0.3);
+            else col = mix(mid2, outer, (normR - 0.45) / 0.55);
+
+            // Turbulence
+            float turb = fbm(vec2(angle * 3.0 + u_time * 0.3, r * 2.0)) * 0.4 + 0.6;
+            col *= turb;
+
+            // Brightness falloff with distance
+            float brightness = 1.0 / (1.0 + normR * normR * 2.0);
+            col *= brightness * 2.5;
+
+            // Doppler beaming — approaching side is much brighter
+            float doppler = 0.5 + 0.5 * sin(angle + PI * 0.3);
+            doppler = pow(doppler, 0.6) * 1.5 + 0.3;
+            col *= doppler;
+
+            return col;
+        }
+
+        void main(){
+            vec2 uv = (gl_FragCoord.xy - 0.5 * u_res) / min(u_res.x, u_res.y);
+
+            // Camera setup — slight offset for dramatic framing
+            vec3 ro = vec3(0.0, 3.0, -18.0);  // Camera position (above, looking at center)
+            vec3 lookAt = vec3(0.0, 0.0, 0.0);
+
+            vec3 fwd = normalize(lookAt - ro);
+            vec3 right = normalize(cross(vec3(0,1,0), fwd));
+            vec3 up = cross(fwd, right);
+
+            float fov = 1.8;
+            vec3 rd = normalize(fwd * fov + right * uv.x + up * uv.y);
+
+            // ── Schwarzschild ray tracing ──
+            vec3 pos = ro;
+            vec3 vel = rd;
+            vec3 col = vec3(0.0);
+            float rs = 2.0 * BH_MASS; // Schwarzschild radius
+            bool hitDisk = false;
+            bool absorbed = false;
+
+            for(int i = 0; i < STEPS; i++){
+                float r = length(pos);
+
+                // Absorbed by event horizon
+                if(r < rs * 0.5){
+                    absorbed = true;
+                    break;
+                }
+
+                // Gravitational deflection (Schwarzschild approximation)
+                vec3 toCenter = -pos;
+                float r2 = dot(pos, pos);
+                float force = 1.5 * rs / (r2 * sqrt(r2));
+                vel += toCenter * force * STEP_SIZE;
+
+                pos += vel * STEP_SIZE;
+
+                // Check disk intersection (disk in y=0 plane, between r=2.8 and r=12)
+                float prevY = pos.y - vel.y * STEP_SIZE;
+                if(!hitDisk && prevY * pos.y < 0.0){
+                    // Crossed the disk plane
+                    float t = -prevY / (pos.y - prevY);
+                    vec3 hitPos = pos - vel * STEP_SIZE * (1.0 - t);
+                    float hitR = length(hitPos.xz);
+
+                    if(hitR > rs * 1.4 && hitR < 12.0){
+                        float angle = atan(hitPos.z, hitPos.x);
+                        vec3 dCol = diskColor(hitR, angle);
+
+                        // Gravitational redshift
+                        float redshift = sqrt(1.0 - rs / hitR);
+                        dCol *= redshift;
+
+                        // Opacity based on thickness
+                        float opacity = smoothstep(12.0, 4.0, hitR) * 0.9;
+                        col += dCol * opacity;
+                        hitDisk = true;
+                    }
+                }
+
+                // Far enough — sample background
+                if(r > 40.0){
+                    col += starfield(normalize(vel)) * (hitDisk ? 0.2 : 1.0);
+                    break;
+                }
+            }
+
+            if(absorbed) col = vec3(0.0);
+
+            // Photon ring glow — thin bright ring at ~1.5 rs
+            float screenR = length(uv);
+            float ringR = 0.17; // Approximate screen-space radius of photon ring
+            float ringDist = abs(screenR - ringR);
+            float ring = exp(-ringDist * ringDist * 8000.0) * 2.0;
+            col += vec3(1.0, 0.7, 0.3) * ring;
+
+            // Secondary ring
+            float ring2R = 0.155;
+            float ring2Dist = abs(screenR - ring2R);
+            col += vec3(0.6, 0.3, 0.8) * exp(-ring2Dist * ring2Dist * 12000.0) * 0.8;
+
+            // Bloom / glow around the center
+            float glow = exp(-screenR * screenR * 8.0) * 0.08;
+            col += vec3(1.0, 0.5, 0.15) * glow;
+
+            // Outer atmospheric glow
+            float outerGlow = exp(-screenR * 3.0) * 0.03;
+            col += vec3(0.4, 0.2, 0.6) * outerGlow;
+
+            // Interaction flare
+            col += vec3(1.0, 0.6, 0.2) * u_interact * exp(-screenR * screenR * 15.0) * 0.3;
+
+            // Tone mapping
+            col = col / (1.0 + col);
+            col = pow(col, vec3(0.85)); // Slight gamma
+
+            gl_FragColor = vec4(col, 1.0);
+        }
+    </script>
 </head>
 <body>
 
-<!-- Splash Screen -->
-<div id="splashScreen">
-    <div class="splash-title">ERIS</div>
-    <div class="splash-sub">event horizon intelligence</div>
-</div>
+<div id="splash"><div class="s-title">ERIS</div><div class="s-sub">event horizon intelligence</div></div>
+<canvas id="bhCanvas"></canvas>
 
-<!-- Black Hole Canvas -->
-<canvas id="blackholeCanvas"></canvas>
-
-<!-- Main Shell -->
-<div class="shell" id="shell">
-    <!-- Gravity Drawer (Sidebar) -->
-    <div class="gravity-drawer" id="sidebar">
-        <div class="drawer-header">
-            <span class="drawer-logo">Eris</span>
-            <button class="menu-btn mobile-close-btn" id="mobileCloseBtn" style="opacity:0;" title="Close">✕</button>
-            <button class="new-chat-btn" id="newChatBtn">+ NEW</button>
-        </div>
-        <div class="chat-orbit" id="chatList"></div>
-        <div class="creator-portal-btn" id="creatorPortalBtn">👁 Creator Portal</div>
-        <div class="drawer-footer" style="position:relative;">
-            <div class="user-dropdown" id="userDropdown">
-                <button class="dropdown-item danger" id="signOutBtn">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-                    Sign Out
-                </button>
-                <button class="dropdown-item" id="cancelDropdownBtn">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                    Cancel
-                </button>
-            </div>
-            <div class="user-card" id="userCard">
-                <div class="user-avatar" id="sidebarAvatar">?</div>
-                <div class="user-info">
-                    <div class="user-name" id="sidebarName">Not signed in</div>
-                    <div class="user-status" id="sidebarStatus">Click to sign in</div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Main Panel -->
-    <div class="main-panel" id="mainPanel">
-        <div class="topbar">
-            <div class="topbar-left">
-                <button class="menu-btn" id="menuBtn">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-                </button>
-                <div class="status-dot" id="statusDot"></div>
-                <span class="topbar-label" id="topbarLabel">ERIS</span>
-            </div>
-            <div class="topbar-right">
-                <select class="model-select" id="modelSelector">
-                    <optgroup label="Google (Gemini)">
-                        <option value="gemini-3.1-flash-lite" selected>⚡ Eris Swift (Gemini 3.1)</option>
-                        <option value="gemini-3.5-flash">🧠 Eris Pro (Gemini 3.5)</option>
-                    </optgroup>
-                    <optgroup label="OpenRouter (Advanced)">
-                        <option value="anthropic/claude-sonnet-latest">✨ Fabel 5 (Claude Sonnet Latest)</option>
-                        <option value="nvidia/nemotron-3-ultra-550b-a55b">🐉 Nemotron 3 Ultra</option>
-                    </optgroup>
-                </select>
-            </div>
-        </div>
-
-        <div class="content">
-            <div class="welcome-view" id="welcomeView">
-                <div class="welcome-label" id="welcomeLabel">awaiting presence</div>
-            </div>
-            <div class="chat-view" id="chatView">
-                <div class="chat-messages" id="chatMessages"></div>
-            </div>
-            <div class="creator-view" id="creatorView">
-                <div class="creator-tabs">
-                    <button class="creator-tab active" id="tabLiveFeed">Live Chats</button>
-                    <button class="creator-tab" id="tabResearchFeed">Research Daemon</button>
-                </div>
-                <div class="chat-messages" id="creatorFeed" style="flex:1;"></div>
-                <div class="chat-messages" id="researchFeed" style="flex:1; display:none;"></div>
-            </div>
-            <div class="input-area locked" id="inputArea">
-                <div id="imagePreviewContainer" style="display:none; padding: 8px 16px; border-bottom: 1px solid var(--border);">
-                    <img id="imagePreview" src="" style="max-height: 60px; border-radius: 6px; border: 1px solid var(--border);">
-                    <button id="removeImageBtn" style="background: none; border: none; color: #f87171; cursor: pointer; margin-left: 8px; vertical-align: top; font-size: 14px;">✕</button>
-                </div>
-                <div class="input-wrap">
-                    <button class="input-btn" id="attachBtn" title="Attach Image">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-                    </button>
-                    <input type="file" id="fileInput" accept="image/*" style="display: none;">
-                    <textarea id="messageInput" rows="1" placeholder="Speak to Eris..." disabled></textarea>
-                    <button class="input-btn" id="muteBtn" title="Toggle Voice">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
-                    </button>
-                    <button class="input-btn" id="micBtn" title="Voice">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
-                    </button>
-                    <button class="input-btn" id="sendBtn">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Login Modal -->
-<div class="modal-overlay show" id="loginModal">
-    <button class="modal-close" id="modalClose">✕</button>
-    <div class="modal-box">
-        <div class="modal-logo">Eris</div>
-        <div class="modal-sub">event horizon intelligence</div>
+<!-- Login -->
+<div class="login-overlay" id="loginModal">
+    <button class="l-close" id="modalClose">✕</button>
+    <div class="login-card">
+        <div class="lc-logo">Eris</div>
+        <div class="lc-sub">TON 618 · PERSISTENT INTELLIGENCE</div>
         <div class="auth-tabs">
             <button class="auth-tab active" id="tabSignIn">Sign In</button>
             <button class="auth-tab" id="tabSignUp">Sign Up</button>
         </div>
-        <input class="modal-input" id="loginUsername" type="text" placeholder="Username" autocomplete="off" spellcheck="false">
-        <input class="modal-input" id="loginPassword" type="password" placeholder="Password">
-        <input class="modal-input" id="confirmPasswordField" type="password" placeholder="Confirm Password">
-        <div style="display:flex; align-items:center; gap:8px; margin-top:6px; margin-bottom:14px; font-size:11px; color:var(--text-muted); cursor:pointer;">
-            <input type="checkbox" id="rememberMe" checked style="cursor:pointer; accent-color: #FF6B00;">
-            <label for="rememberMe" style="cursor:pointer;">Remember me automatically</label>
+        <input class="l-input" id="loginUsername" type="text" placeholder="Username" autocomplete="off" spellcheck="false">
+        <input class="l-input" id="loginPassword" type="password" placeholder="Password">
+        <input class="l-input" id="confirmPasswordField" type="password" placeholder="Confirm Password">
+        <div style="display:flex;align-items:center;gap:8px;margin:6px 0 10px;font-size:10px;color:var(--text-muted);cursor:pointer">
+            <input type="checkbox" id="rememberMe" checked style="cursor:pointer;accent-color:#FF6B00">
+            <label for="rememberMe" style="cursor:pointer">Remember me</label>
         </div>
-        <button class="modal-btn" id="loginBtn">Enter</button>
-        <div class="modal-error" id="loginError"></div>
+        <button class="l-btn" id="loginBtn">Enter</button>
+        <div class="l-error" id="loginError"></div>
+    </div>
+</div>
+
+<!-- App -->
+<div class="app" id="app">
+    <div class="hud">
+        <div class="hud-left">
+            <button class="hud-toggle" id="menuBtn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+            <div class="hud-dot" id="statusDot"></div>
+            <span class="hud-brand" id="topbarLabel">ERIS</span>
+        </div>
+        <div class="hud-right">
+            <select class="model-sel" id="modelSelector">
+                <optgroup label="Google (Gemini)">
+                    <option value="gemini-3.1-flash-lite" selected>⚡ Eris Swift (Gemini 3.1)</option>
+                    <option value="gemini-3.5-flash">🧠 Eris Pro (Gemini 3.5)</option>
+                </optgroup>
+                <optgroup label="OpenRouter (Advanced)">
+                    <option value="anthropic/claude-sonnet-latest">✨ Fabel 5 (Claude Sonnet)</option>
+                    <option value="nvidia/nemotron-3-ultra-550b-a55b">🐉 Nemotron 3 Ultra</option>
+                </optgroup>
+            </select>
+        </div>
+    </div>
+
+    <div class="stage">
+        <div class="welcome" id="welcomeView"><div class="welcome-text" id="welcomeLabel">awaiting presence</div></div>
+        <div class="chat-panel" id="chatView">
+            <div class="chat-feed" id="chatMessages"></div>
+        </div>
+        <div class="creator-panel" id="creatorView">
+            <div class="cr-tabs">
+                <button class="cr-tab active" id="tabLiveFeed">Live Chats</button>
+                <button class="cr-tab" id="tabResearchFeed">Research Daemon</button>
+            </div>
+            <div class="chat-feed" id="creatorFeed" style="flex:1"></div>
+            <div class="chat-feed" id="researchFeed" style="flex:1;display:none"></div>
+        </div>
+    </div>
+
+    <div class="input-dock locked" id="inputArea">
+        <div id="imagePreviewContainer" style="display:none;padding:8px 16px;border-bottom:1px solid var(--glass-border)">
+            <img id="imagePreview" src="" style="max-height:60px;border-radius:6px;border:1px solid var(--glass-border)">
+            <button id="removeImageBtn" style="background:none;border:none;color:#f87171;cursor:pointer;margin-left:8px;vertical-align:top;font-size:14px">✕</button>
+        </div>
+        <div class="input-row">
+            <button class="ib" id="attachBtn" title="Attach Image"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></button>
+            <input type="file" id="fileInput" accept="image/*" style="display:none">
+            <textarea id="messageInput" rows="1" placeholder="Speak to Eris..." disabled></textarea>
+            <button class="ib" id="muteBtn" title="Toggle Voice"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg></button>
+            <button class="ib" id="micBtn" title="Voice"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></button>
+            <button class="ib" id="sendBtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
+        </div>
+    </div>
+</div>
+
+<!-- Drawer overlay -->
+<div class="drawer-overlay" id="drawerOverlay"></div>
+<div class="drawer" id="drawer">
+    <div class="dr-header">
+        <span class="dr-logo">Eris</span>
+        <button class="dr-close" id="drawerClose">✕</button>
+    </div>
+    <div class="dr-new" id="newChatBtn">+ NEW CONVERSATION</div>
+    <div class="dr-list" id="chatList"></div>
+    <div class="dr-portal" id="creatorPortalBtn">👁 Creator Portal</div>
+    <div class="dr-footer" style="position:relative">
+        <div class="dr-dropdown" id="userDropdown">
+            <button class="dd-item danger" id="signOutBtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Sign Out</button>
+            <button class="dd-item" id="cancelDropdownBtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Cancel</button>
+        </div>
+        <div class="dr-user" id="userCard">
+            <div class="dr-avatar" id="sidebarAvatar">?</div>
+            <div><div class="dr-uname" id="sidebarName">Not signed in</div><div class="dr-ustatus" id="sidebarStatus">Click to sign in</div></div>
+        </div>
     </div>
 </div>
 
 <div class="toast" id="toast"></div>
 
 <script>
-// ════════════════════════════════════════════════════════════════
-//  TON 618 — INTERACTIVE BLACK HOLE SIMULATION
-// ════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════
+//  WebGL — TON 618 Black Hole Renderer
+// ════════════════════════════════════════════════════════════
+const canvas = document.getElementById('bhCanvas');
+const gl = canvas.getContext('webgl', { antialias: false, preserveDrawingBuffer: false });
 
-const bhCanvas = document.getElementById('blackholeCanvas');
-const bhCtx = bhCanvas.getContext('2d');
-let W, H, bhCx, bhCy;
-let mouseX = 0, mouseY = 0, mouseNear = false;
-let interactionFlare = 0;
-let isThinkingState = false, isSpeakingState = false;
-
-function bhResize() {
-    W = bhCanvas.width = innerWidth;
-    H = bhCanvas.height = innerHeight;
-    const sidebar = document.getElementById('sidebar');
-    const sW = (sidebar && !sidebar.classList.contains('collapsed') && innerWidth > 768) ? 280 : 0;
-    bhCx = sW + (W - sW) / 2;
-    bhCy = H / 2;
-}
-addEventListener('resize', bhResize); bhResize();
-setInterval(bhResize, 500);
-
-addEventListener('mousemove', e => { mouseX = e.clientX; mouseY = e.clientY; });
-addEventListener('click', () => { interactionFlare = Math.min(interactionFlare + 0.8, 2.0); });
-
-// ── Starfield ────────────────────────────────────────────
-const stars = [];
-for (let i = 0; i < 300; i++) {
-    stars.push({
-        x: Math.random() * 3000 - 500,
-        y: Math.random() * 2000 - 200,
-        r: Math.random() * 1.2 + 0.2,
-        a: Math.random() * 0.6 + 0.1,
-        twinkle: Math.random() * Math.PI * 2
-    });
+function compileShader(src, type){
+    const s = gl.createShader(type);
+    gl.shaderSource(s, src);
+    gl.compileShader(s);
+    if(!gl.getShaderParameter(s, gl.COMPILE_STATUS)) console.error(gl.getShaderInfoLog(s));
+    return s;
 }
 
-function drawStars(t) {
-    for (const s of stars) {
-        const dx = s.x - bhCx, dy = s.y - bhCy;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        // Gravitational lensing — stars near center get bent
-        const lensR = 180;
-        let sx = s.x, sy = s.y;
-        if (dist < lensR * 3 && dist > lensR * 0.5) {
-            const strength = Math.max(0, 1 - dist / (lensR * 3));
-            const angle = Math.atan2(dy, dx);
-            const bend = strength * 40;
-            sx += Math.cos(angle + Math.PI / 2) * bend;
-            sy += Math.sin(angle + Math.PI / 2) * bend;
-        }
-        // Hide stars behind event horizon
-        if (dist < lensR * 0.7) continue;
-        const tw = Math.sin(t * 2 + s.twinkle) * 0.3 + 0.7;
-        bhCtx.beginPath();
-        bhCtx.arc(sx, sy, s.r, 0, Math.PI * 2);
-        bhCtx.fillStyle = `rgba(200,210,240,${s.a * tw})`;
-        bhCtx.fill();
-    }
+const vs = compileShader(document.getElementById('vs').textContent, gl.VERTEX_SHADER);
+const fs = compileShader(document.getElementById('fs').textContent, gl.FRAGMENT_SHADER);
+const prog = gl.createProgram();
+gl.attachShader(prog, vs); gl.attachShader(prog, fs);
+gl.linkProgram(prog); gl.useProgram(prog);
+
+const buf = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,1,-1,-1,1,1,1]), gl.STATIC_DRAW);
+const aPos = gl.getAttribLocation(prog, 'a_pos');
+gl.enableVertexAttribArray(aPos);
+gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+
+const uRes = gl.getUniformLocation(prog, 'u_res');
+const uTime = gl.getUniformLocation(prog, 'u_time');
+const uMouse = gl.getUniformLocation(prog, 'u_mouse');
+const uInteract = gl.getUniformLocation(prog, 'u_interact');
+
+let interact = 0;
+let mX = 0.5, mY = 0.5;
+
+function resize(){
+    const dpr = Math.min(window.devicePixelRatio, 1.5);  // Cap for perf
+    canvas.width = innerWidth * dpr;
+    canvas.height = innerHeight * dpr;
+    canvas.style.width = innerWidth + 'px';
+    canvas.style.height = innerHeight + 'px';
+    gl.viewport(0, 0, canvas.width, canvas.height);
 }
+addEventListener('resize', resize); resize();
 
-// ── Accretion Disk Particles ──────────────────────────────
-const diskParticles = [];
-const DISK_COUNT = 2500;
-for (let i = 0; i < DISK_COUNT; i++) {
-    const angle = Math.random() * Math.PI * 2;
-    const r = 60 + Math.random() * 260;
-    const speed = (0.15 + Math.random() * 0.3) / Math.max(1, r * 0.008);
-    diskParticles.push({
-        angle, r, speed,
-        baseR: r,
-        wobble: Math.random() * Math.PI * 2,
-        wobbleAmp: 1 + Math.random() * 6,
-        size: 0.3 + Math.random() * 1.8,
-        brightness: Math.random(),
-        layer: Math.random() // for color variation
-    });
+addEventListener('mousemove', e => { mX = e.clientX / innerWidth; mY = 1.0 - e.clientY / innerHeight; });
+addEventListener('click', () => { interact = Math.min(interact + 0.6, 1.5); });
+
+let t0 = performance.now();
+function render(){
+    const now = performance.now();
+    const t = (now - t0) * 0.001;
+    interact *= 0.97;
+    gl.uniform2f(uRes, canvas.width, canvas.height);
+    gl.uniform1f(uTime, t);
+    gl.uniform2f(uMouse, mX, mY);
+    gl.uniform1f(uInteract, interact);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    requestAnimationFrame(render);
 }
+requestAnimationFrame(render);
 
-function drawAccretionDisk(t) {
-    const tiltY = 0.28; // Viewing angle tilt
-
-    for (const p of diskParticles) {
-        // Orbital speed varies with radius (Keplerian)
-        let speedMul = 1.0;
-        if (isThinkingState) speedMul = 2.5;
-        else if (isSpeakingState) speedMul = 1.8;
-
-        // Mouse interaction — particles near cursor accelerate
-        p.angle += p.speed * speedMul * 0.016;
-        p.angle %= Math.PI * 2;
-
-        // Wobble for turbulence
-        const wobble = Math.sin(t * 1.5 + p.wobble) * p.wobbleAmp;
-        const currentR = p.r + wobble;
-
-        // 3D position
-        const x = Math.cos(p.angle) * currentR;
-        const y = Math.sin(p.angle) * currentR * tiltY;
-        const z = Math.sin(p.angle) * currentR; // depth for occlusion
-
-        const sx = bhCx + x;
-        const sy = bhCy + y;
-
-        // Skip if behind black hole center
-        if (Math.abs(x) < 50 && z < 0 && Math.abs(y) < 15) continue;
-
-        // Color: inner ring is white-hot, middle is orange-gold, outer is violet-blue
-        const normR = (p.r - 60) / 260;
-        let hue, sat, light;
-        if (normR < 0.2) {
-            hue = 30 + p.layer * 20; sat = 90; light = 85 + p.brightness * 10;
-        } else if (normR < 0.5) {
-            hue = 25 + normR * 40; sat = 85; light = 65 + p.brightness * 20;
-        } else if (normR < 0.75) {
-            hue = 270 + p.layer * 30; sat = 70; light = 50 + p.brightness * 15;
-        } else {
-            hue = 220 + p.layer * 40; sat = 60; light = 35 + p.brightness * 15;
-        }
-
-        // Doppler effect — approaching side is brighter
-        const doppler = 0.5 + Math.cos(p.angle) * 0.4;
-        const flare = interactionFlare * (1 - normR) * 0.3;
-        let alpha = (0.15 + p.brightness * 0.5 + flare) * doppler;
-        // Depth fade for back-of-disk particles
-        if (z < 0) alpha *= 0.3;
-
-        const s = p.size * (0.8 + doppler * 0.4);
-
-        bhCtx.beginPath();
-        bhCtx.arc(sx, sy, s, 0, Math.PI * 2);
-        bhCtx.fillStyle = `hsla(${hue},${sat}%,${light}%,${Math.min(1, alpha)})`;
-        bhCtx.fill();
-    }
-}
-
-// ── Event Horizon + Shadow ────────────────────────────────
-function drawEventHorizon(t) {
-    // Black hole shadow (pure black)
-    const shadowR = 55;
-    bhCtx.beginPath();
-    bhCtx.arc(bhCx, bhCy, shadowR, 0, Math.PI * 2);
-    bhCtx.fillStyle = '#000';
-    bhCtx.fill();
-
-    // Photon ring — bright ring right at the edge
-    const ringR = shadowR + 3;
-    const ringGrad = bhCtx.createRadialGradient(bhCx, bhCy, shadowR - 2, bhCx, bhCy, ringR + 15);
-    ringGrad.addColorStop(0, 'rgba(0,0,0,1)');
-    ringGrad.addColorStop(0.3, 'rgba(255,180,80,0.6)');
-    ringGrad.addColorStop(0.5, 'rgba(255,140,50,0.3)');
-    ringGrad.addColorStop(0.8, 'rgba(180,100,255,0.1)');
-    ringGrad.addColorStop(1, 'transparent');
-    bhCtx.beginPath();
-    bhCtx.arc(bhCx, bhCy, ringR + 15, 0, Math.PI * 2);
-    bhCtx.fillStyle = ringGrad;
-    bhCtx.fill();
-
-    // Inner shadow cleanup
-    bhCtx.beginPath();
-    bhCtx.arc(bhCx, bhCy, shadowR - 1, 0, Math.PI * 2);
-    bhCtx.fillStyle = '#000';
-    bhCtx.fill();
-}
-
-// ── Ambient Glow ──────────────────────────────────────────
-function drawAmbientGlow(t) {
-    const pulse = Math.sin(t * 0.5) * 0.1 + 0.9;
-    const g = bhCtx.createRadialGradient(bhCx, bhCy, 30, bhCx, bhCy, 450 * pulse);
-    g.addColorStop(0, 'rgba(255,107,0,0.03)');
-    g.addColorStop(0.2, 'rgba(255,140,40,0.02)');
-    g.addColorStop(0.5, 'rgba(139,92,246,0.01)');
-    g.addColorStop(1, 'transparent');
-    bhCtx.fillStyle = g;
-    bhCtx.fillRect(0, 0, W, H);
-
-    // Flare glow
-    if (interactionFlare > 0.01) {
-        const fg = bhCtx.createRadialGradient(bhCx, bhCy, 0, bhCx, bhCy, 200);
-        fg.addColorStop(0, `rgba(255,200,100,${0.15 * interactionFlare})`);
-        fg.addColorStop(0.5, `rgba(255,107,0,${0.05 * interactionFlare})`);
-        fg.addColorStop(1, 'transparent');
-        bhCtx.fillStyle = fg;
-        bhCtx.fillRect(0, 0, W, H);
-    }
-}
-
-// ── Main Render Loop ──────────────────────────────────────
-let bhTime = 0;
-function bhAnimate(now) {
-    bhTime += 0.016;
-    interactionFlare *= 0.96;
-
-    // Mouse proximity to black hole
-    const mdx = mouseX - bhCx, mdy = mouseY - bhCy;
-    mouseNear = Math.sqrt(mdx * mdx + mdy * mdy) < 200;
-
-    bhCtx.clearRect(0, 0, W, H);
-
-    drawStars(bhTime);
-    drawAmbientGlow(bhTime);
-    drawAccretionDisk(bhTime);
-    drawEventHorizon(bhTime);
-
-    requestAnimationFrame(bhAnimate);
-}
-requestAnimationFrame(bhAnimate);
-
-// ── Splash Screen Sequence ────────────────────────────────
+// Splash
 setTimeout(() => {
-    document.getElementById('splashScreen').classList.add('hidden');
-    document.getElementById('shell').classList.add('visible');
-}, 3200);
+    document.getElementById('splash').classList.add('gone');
+    document.getElementById('loginModal').style.display = 'flex';
+}, 3000);
 
-// ════════════════════════════════════════════════════════════════
-//  APP LOGIC — Chat, Auth, WebSocket (All features preserved)
-// ════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════
+//  APP LOGIC
+// ════════════════════════════════════════════════════════════
+let ws=null,isConnected=false,isThinking=false;
+let personName='',personId='',hasMessages=false,isLoggedIn=false,isCreator=false;
+let currentSessionId=null,chatSessions=[],authMode='signin';
 
-let ws = null, isConnected = false, isThinking = false;
-let personName = '', personId = '', hasMessages = false, isLoggedIn = false;
-let isCreator = false;
-let currentSessionId = null;
-let chatSessions = [];
-let authMode = 'signin';
-
-const $ = id => document.getElementById(id);
-const el = {
-    chatMsg: $('chatMessages'), input: $('messageInput'), send: $('sendBtn'),
-    welcome: $('welcomeView'), chatView: $('chatView'), welcomeLabel: $('welcomeLabel'),
-    creatorView: $('creatorView'), creatorFeed: $('creatorFeed'), researchFeed: $('researchFeed'),
-    creatorPortalBtn: $('creatorPortalBtn'), muteBtn: $('muteBtn'),
-    modal: $('loginModal'), loginUser: $('loginUsername'), loginPass: $('loginPassword'),
-    confirmPass: $('confirmPasswordField'),
-    loginBtn: $('loginBtn'), loginError: $('loginError'), statusDot: $('statusDot'),
-    micBtn: $('micBtn'), inputArea: $('inputArea'),
-    modelSelector: $('modelSelector'), toast: $('toast'),
-    sidebarAvatar: $('sidebarAvatar'), sidebarName: $('sidebarName'),
-    sidebarStatus: $('sidebarStatus'), userCard: $('userCard'),
-    modalClose: $('modalClose'), topbarLabel: $('topbarLabel'),
-    sidebar: $('sidebar'), menuBtn: $('menuBtn'), mobileCloseBtn: $('mobileCloseBtn'),
-    newChatBtn: $('newChatBtn'), chatList: $('chatList'),
-    tabSignIn: $('tabSignIn'), tabSignUp: $('tabSignUp'),
-    userDropdown: $('userDropdown'), signOutBtn: $('signOutBtn'),
-    cancelDropdownBtn: $('cancelDropdownBtn'), mainPanel: $('mainPanel'),
+const $=id=>document.getElementById(id);
+const el={
+    chatMsg:$('chatMessages'),input:$('messageInput'),send:$('sendBtn'),
+    welcome:$('welcomeView'),chatView:$('chatView'),welcomeLabel:$('welcomeLabel'),
+    creatorView:$('creatorView'),creatorFeed:$('creatorFeed'),researchFeed:$('researchFeed'),
+    creatorPortalBtn:$('creatorPortalBtn'),muteBtn:$('muteBtn'),
+    modal:$('loginModal'),loginUser:$('loginUsername'),loginPass:$('loginPassword'),
+    confirmPass:$('confirmPasswordField'),
+    loginBtn:$('loginBtn'),loginError:$('loginError'),statusDot:$('statusDot'),
+    micBtn:$('micBtn'),inputArea:$('inputArea'),
+    modelSelector:$('modelSelector'),toast:$('toast'),
+    sidebarAvatar:$('sidebarAvatar'),sidebarName:$('sidebarName'),
+    sidebarStatus:$('sidebarStatus'),userCard:$('userCard'),
+    modalClose:$('modalClose'),topbarLabel:$('topbarLabel'),
+    menuBtn:$('menuBtn'),newChatBtn:$('newChatBtn'),chatList:$('chatList'),
+    tabSignIn:$('tabSignIn'),tabSignUp:$('tabSignUp'),
+    userDropdown:$('userDropdown'),signOutBtn:$('signOutBtn'),
+    cancelDropdownBtn:$('cancelDropdownBtn'),
+    app:$('app'),drawer:$('drawer'),drawerOverlay:$('drawerOverlay'),drawerClose:$('drawerClose'),
 };
 
-function showToast(msg) { el.toast.textContent = msg; el.toast.classList.add('show'); setTimeout(() => el.toast.classList.remove('show'), 2500); }
+function showToast(msg){el.toast.textContent=msg;el.toast.classList.add('show');setTimeout(()=>el.toast.classList.remove('show'),2500)}
 
 // Auth tabs
-el.tabSignIn.addEventListener('click', () => {
-    authMode = 'signin';
-    el.tabSignIn.classList.add('active'); el.tabSignUp.classList.remove('active');
-    el.confirmPass.style.display = 'none'; el.loginBtn.textContent = 'Enter';
-});
-el.tabSignUp.addEventListener('click', () => {
-    authMode = 'signup';
-    el.tabSignUp.classList.add('active'); el.tabSignIn.classList.remove('active');
-    el.confirmPass.style.display = 'block'; el.loginBtn.textContent = 'Create Account';
-});
+el.tabSignIn.addEventListener('click',()=>{authMode='signin';el.tabSignIn.classList.add('active');el.tabSignUp.classList.remove('active');el.confirmPass.style.display='none';el.loginBtn.textContent='Enter'});
+el.tabSignUp.addEventListener('click',()=>{authMode='signup';el.tabSignUp.classList.add('active');el.tabSignIn.classList.remove('active');el.confirmPass.style.display='block';el.loginBtn.textContent='Create Account'});
 
-// Model switcher
-const savedModel = localStorage.getItem('eris_model');
-if (savedModel) {
-    const validModels = [...el.modelSelector.options].map(o => o.value);
-    if (validModels.includes(savedModel)) el.modelSelector.value = savedModel;
-    else localStorage.removeItem('eris_model');
-}
-el.modelSelector.addEventListener('change', () => {
-    const model = el.modelSelector.value;
-    localStorage.setItem('eris_model', model);
-    if (ws && isConnected) ws.send(JSON.stringify({ type: 'switch_model', model }));
-});
+// Model
+const savedModel=localStorage.getItem('eris_model');
+if(savedModel){const v=[...el.modelSelector.options].map(o=>o.value);if(v.includes(savedModel))el.modelSelector.value=savedModel;else localStorage.removeItem('eris_model')}
+el.modelSelector.addEventListener('change',()=>{const m=el.modelSelector.value;localStorage.setItem('eris_model',m);if(ws&&isConnected)ws.send(JSON.stringify({type:'switch_model',model:m}))});
 
-// Sidebar toggle
-function toggleSidebar() {
-    const isMobile = window.innerWidth <= 768;
-    if (isMobile) el.sidebar.classList.toggle('open');
-    else {
-        el.sidebar.classList.toggle('collapsed');
-        localStorage.setItem('eris_sidebar', el.sidebar.classList.contains('collapsed') ? 'collapsed' : 'open');
-    }
-}
-el.menuBtn.addEventListener('click', e => { e.stopPropagation(); toggleSidebar(); });
-if (el.mobileCloseBtn) el.mobileCloseBtn.addEventListener('click', () => el.sidebar.classList.remove('open'));
-el.mainPanel.addEventListener('click', () => { if (window.innerWidth <= 768 && el.sidebar.classList.contains('open')) el.sidebar.classList.remove('open'); });
-if (localStorage.getItem('eris_sidebar') === 'collapsed' && window.innerWidth > 768) el.sidebar.classList.add('collapsed');
+// Drawer
+function openDrawer(){el.drawer.classList.add('open');el.drawerOverlay.classList.add('show')}
+function closeDrawer(){el.drawer.classList.remove('open');el.drawerOverlay.classList.remove('show')}
+el.menuBtn.addEventListener('click',openDrawer);
+el.drawerClose.addEventListener('click',closeDrawer);
+el.drawerOverlay.addEventListener('click',closeDrawer);
 
 // Typing
-el.input.addEventListener('input', () => {
-    el.input.style.height = 'auto';
-    el.input.style.height = Math.min(el.input.scrollHeight, 150) + 'px';
-    updateInputState();
-});
+el.input.addEventListener('input',()=>{el.input.style.height='auto';el.input.style.height=Math.min(el.input.scrollHeight,150)+'px';updateInputState()});
 
 // WebSocket
-function connect() {
-    const url = `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/ws/chat`;
-    ws = new WebSocket(url);
-
-    ws.onopen = () => {
-        isConnected = true;
-        el.statusDot.classList.add('online');
-        ws.send(JSON.stringify({ type: 'switch_model', model: el.modelSelector.value }));
-        const u = localStorage.getItem('eris_username');
-        const p = localStorage.getItem('eris_password');
-        if (u && p) ws.send(JSON.stringify({ type: 'login', username: u, password: p }));
+function connect(){
+    const url=`${location.protocol==='https:'?'wss:':'ws:'}//${location.host}/ws/chat`;
+    ws=new WebSocket(url);
+    ws.onopen=()=>{
+        isConnected=true;el.statusDot.classList.add('on');
+        ws.send(JSON.stringify({type:'switch_model',model:el.modelSelector.value}));
+        const u=localStorage.getItem('eris_username'),p=localStorage.getItem('eris_password');
+        if(u&&p)ws.send(JSON.stringify({type:'login',username:u,password:p}));
         else showLoginModal(false);
     };
-
-    ws.onmessage = (e) => {
-        const data = JSON.parse(e.data);
-        if (data.type === 'status') {}
-        else if (data.type === 'login_success') onLoginSuccess(data);
-        else if (data.type === 'login_failed') {
-            el.loginError.textContent = data.reason || 'Access denied.';
-            el.loginBtn.textContent = authMode === 'signup' ? 'Create Account' : 'Enter';
-        }
-        else if (data.type === 'model_switched') showToast(`Model → ${data.model}`);
-        else if (data.type === 'thinking') { showThinking(); isThinkingState = true; }
-        else if (data.type === 'response') {
-            removeThinking(); isThinkingState = false; isSpeakingState = true;
-            interactionFlare = 1.5;
-            appendMessage('eris', data.content);
-            if (data.audio_base64 && ttsEnabled) playBase64Audio(data.audio_base64);
-            else speakText(data.content);
-            setTimeout(() => { isSpeakingState = false; }, 3000);
-        }
-        else if (data.type === 'error') { removeThinking(); isThinkingState = false; appendMessage('eris', `⚠️ ${data.message}`); }
-        else if (data.type === 'chat_history') { chatSessions = data.sessions || []; renderChatList(); }
-        else if (data.type === 'chat_messages') loadChatMessages(data.messages || []);
-        else if (data.type === 'creator_feed') {
-            const isDaemon = data.username === '[Daemon]';
-            const t = new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-            const div = document.createElement('div');
-            div.className = 'message eris'; div.style.maxWidth = '90%';
-            let f = data.eris_response.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-            const imgs = [];
-            f = f.replace(/!\[IMAGE:(.+?)\]/g, (match, url) => { imgs.push(url); return `__IMG_${imgs.length-1}__`; });
-            f = f.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" style="color:#FF6B00; text-decoration:underline;">$1</a>');
-            f = f.replace(/__IMG_(\d+)__/g, (match, idx) => `<img src="${imgs[idx]}" style="max-height: 300px; border-radius: 8px; margin-top: 8px;">`);
-            f = f.replace(/\n/g,'<br>');
-            if (isDaemon) {
-                div.innerHTML = `<div class="msg-time" style="text-align:left; color:var(--accent-violet);">${t} — Autonomous Research Cycle</div>
-                    <div class="msg-bubble" style="border-left:2px solid var(--accent-violet); padding-left:12px;">${f}</div>`;
-                el.researchFeed.appendChild(div);
-                setTimeout(() => { el.researchFeed.scrollTop = el.researchFeed.scrollHeight; }, 50);
-            } else {
-                div.innerHTML = `<div class="msg-time" style="text-align:left; color:var(--accent-violet);">${t} — Interaction with ${data.username}</div>
-                    <div class="msg-bubble" style="background:rgba(255,107,0,0.03); border:1px solid rgba(255,107,0,0.06); margin-bottom:8px;"><strong>${data.username}:</strong> ${data.user_message}</div>
-                    <div class="msg-bubble" style="border-left:2px solid var(--accent-violet); padding-left:12px;"><strong>Eris:</strong> ${f}</div>`;
-                el.creatorFeed.appendChild(div);
-                setTimeout(() => { el.creatorFeed.scrollTop = el.creatorFeed.scrollHeight; }, 50);
-            }
-            if (isCreator && el.creatorView.style.display !== 'flex') showToast(`New ${isDaemon ? 'research' : 'activity from ' + data.username}`);
+    ws.onmessage=(e)=>{
+        const data=JSON.parse(e.data);
+        if(data.type==='status'){}
+        else if(data.type==='login_success')onLoginSuccess(data);
+        else if(data.type==='login_failed'){el.loginError.textContent=data.reason||'Access denied.';el.loginBtn.textContent=authMode==='signup'?'Create Account':'Enter'}
+        else if(data.type==='model_switched')showToast(`Model → ${data.model}`);
+        else if(data.type==='thinking'){showThinking();interact=1.0}
+        else if(data.type==='response'){removeThinking();interact=1.5;appendMessage('eris',data.content);if(data.audio_base64&&ttsEnabled)playBase64Audio(data.audio_base64);else speakText(data.content)}
+        else if(data.type==='error'){removeThinking();appendMessage('eris',`⚠️ ${data.message}`)}
+        else if(data.type==='chat_history'){chatSessions=data.sessions||[];renderChatList()}
+        else if(data.type==='chat_messages')loadChatMessages(data.messages||[]);
+        else if(data.type==='creator_feed'){
+            const isDaemon=data.username==='[Daemon]';
+            const t=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+            const div=document.createElement('div');div.className='message eris';div.style.maxWidth='90%';
+            let f=data.eris_response.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+            const imgs=[];
+            f=f.replace(/!\[IMAGE:(.+?)\]/g,(m,url)=>{imgs.push(url);return`__IMG_${imgs.length-1}__`});
+            f=f.replace(/(https?:\/\/[^\s<]+)/g,'<a href="$1" target="_blank" style="color:var(--accent);text-decoration:underline">$1</a>');
+            f=f.replace(/__IMG_(\d+)__/g,(m,i)=>`<img src="${imgs[i]}" style="max-height:300px;border-radius:8px;margin-top:8px">`);
+            f=f.replace(/\n/g,'<br>');
+            if(isDaemon){div.innerHTML=`<div class="msg-time" style="text-align:left;color:var(--violet)">${t} — Autonomous Research</div><div class="msg-bubble" style="border-left:2px solid var(--violet);padding-left:12px">${f}</div>`;el.researchFeed.appendChild(div);setTimeout(()=>{el.researchFeed.scrollTop=el.researchFeed.scrollHeight},50)}
+            else{div.innerHTML=`<div class="msg-time" style="text-align:left;color:var(--violet)">${t} — ${data.username}</div><div class="msg-bubble" style="background:rgba(255,107,0,.03);border:1px solid rgba(255,107,0,.06);margin-bottom:8px"><strong>${data.username}:</strong> ${data.user_message}</div><div class="msg-bubble" style="border-left:2px solid var(--violet);padding-left:12px"><strong>Eris:</strong> ${f}</div>`;el.creatorFeed.appendChild(div);setTimeout(()=>{el.creatorFeed.scrollTop=el.creatorFeed.scrollHeight},50)}
+            if(isCreator&&el.creatorView.style.display!=='flex')showToast(`New ${isDaemon?'research':'activity from '+data.username}`);
         }
     };
-
-    ws.onclose = () => {
-        isConnected = false; el.statusDot.classList.remove('online');
-        setTimeout(connect, 2000);
-    };
+    ws.onclose=()=>{isConnected=false;el.statusDot.classList.remove('on');setTimeout(connect,2000)};
 }
 
-// Login
-function onLoginSuccess(data) {
-    const isReconnect = isLoggedIn;
-    isLoggedIn = true; personName = data.name; personId = data.person_id;
-    isCreator = data.is_creator || false;
-    const u = el.loginUser.value.trim(), p = el.loginPass.value;
-    if (u && p && document.getElementById('rememberMe').checked) {
-        localStorage.setItem('eris_username', u);
-        localStorage.setItem('eris_password', p);
-    }
+function onLoginSuccess(data){
+    const isReconnect=isLoggedIn;isLoggedIn=true;personName=data.name;personId=data.person_id;isCreator=data.is_creator||false;
+    const u=el.loginUser.value.trim(),p=el.loginPass.value;
+    if(u&&p&&$('rememberMe').checked){localStorage.setItem('eris_username',u);localStorage.setItem('eris_password',p)}
     hideLoginModal();
-    el.sidebarAvatar.textContent = personName.charAt(0).toUpperCase();
-    el.sidebarName.textContent = personName;
-    el.sidebarStatus.textContent = isCreator ? 'Creator' : 'Online';
-    el.inputArea.classList.remove('locked'); el.input.disabled = false;
-    el.input.placeholder = 'Speak to Eris...';
-    el.welcomeLabel.textContent = `Hello, ${personName}`;
-    if (!isReconnect) {
-        hasMessages = false; el.chatMsg.innerHTML = '';
-        el.welcome.classList.remove('hidden'); el.chatView.classList.remove('active'); el.creatorView.style.display = 'none';
-    } else if (currentSessionId && ws && isConnected) {
-        ws.send(JSON.stringify({ type: 'load_chat', session_id: currentSessionId }));
-    }
-    if (isCreator) {
-        el.creatorPortalBtn.style.display = 'block';
-        if (!isReconnect) showToast('Welcome home, Creator ✨');
-    } else el.creatorPortalBtn.style.display = 'none';
-    if (ws && isConnected) ws.send(JSON.stringify({ type: 'list_chats' }));
+    el.sidebarAvatar.textContent=personName.charAt(0).toUpperCase();
+    el.sidebarName.textContent=personName;el.sidebarStatus.textContent=isCreator?'Creator':'Online';
+    el.inputArea.classList.remove('locked');el.input.disabled=false;el.input.placeholder='Speak to Eris...';
+    el.welcomeLabel.textContent=`Hello, ${personName}`;
+    el.app.classList.add('visible');
+    if(!isReconnect){hasMessages=false;el.chatMsg.innerHTML='';el.welcome.classList.remove('gone');el.chatView.classList.remove('open');el.creatorView.style.display='none'}
+    else if(currentSessionId&&ws&&isConnected)ws.send(JSON.stringify({type:'load_chat',session_id:currentSessionId}));
+    if(isCreator){el.creatorPortalBtn.style.display='block';if(!isReconnect)showToast('Welcome home, Creator ✨')}else el.creatorPortalBtn.style.display='none';
+    if(ws&&isConnected)ws.send(JSON.stringify({type:'list_chats'}));
 }
+function showLoginModal(canClose){el.loginUser.value='';el.loginPass.value='';el.confirmPass.value='';el.loginError.textContent='';el.modalClose.classList.toggle('visible',canClose);el.modal.style.display='flex';setTimeout(()=>el.loginUser.focus(),100)}
+function hideLoginModal(){el.modal.classList.add('hidden')}
 
-function showLoginModal(canClose) {
-    el.loginUser.value=''; el.loginPass.value=''; el.confirmPass.value='';
-    el.loginError.textContent='';
-    el.modalClose.classList.toggle('visible', canClose);
-    el.modal.classList.add('show');
-    setTimeout(() => el.loginUser.focus(), 100);
-}
-function hideLoginModal() { el.modal.classList.remove('show'); }
-
-el.loginBtn.addEventListener('click', () => {
-    const u = el.loginUser.value.trim(), p = el.loginPass.value;
-    if (!u||!p) { el.loginError.textContent='Both fields required.'; return; }
-    if (u.length<2) { el.loginError.textContent='Username too short.'; return; }
-    if (p.length<4) { el.loginError.textContent='Password too short.'; return; }
-    if (authMode==='signup' && p!==el.confirmPass.value) { el.loginError.textContent='Passwords do not match.'; return; }
-    if (!ws || ws.readyState !== WebSocket.OPEN) { el.loginError.textContent='Server is waking up... Please wait.'; return; }
-    el.loginError.textContent=''; el.loginBtn.textContent = 'Verifying...';
-    ws.send(JSON.stringify({ type:'login', username:u, password:p }));
+el.loginBtn.addEventListener('click',()=>{
+    const u=el.loginUser.value.trim(),p=el.loginPass.value;
+    if(!u||!p){el.loginError.textContent='Both fields required.';return}
+    if(u.length<2){el.loginError.textContent='Username too short.';return}
+    if(p.length<4){el.loginError.textContent='Password too short.';return}
+    if(authMode==='signup'&&p!==el.confirmPass.value){el.loginError.textContent='Passwords do not match.';return}
+    if(!ws||ws.readyState!==WebSocket.OPEN){el.loginError.textContent='Server waking up... wait.';return}
+    el.loginError.textContent='';el.loginBtn.textContent='Verifying...';
+    ws.send(JSON.stringify({type:'login',username:u,password:p}));
 });
-el.loginPass.addEventListener('keydown', e => { if(e.key==='Enter'){authMode==='signup'?el.confirmPass.focus():el.loginBtn.click();} });
-el.confirmPass.addEventListener('keydown', e => { if(e.key==='Enter') el.loginBtn.click(); });
-el.loginUser.addEventListener('keydown', e => { if(e.key==='Enter') el.loginPass.focus(); });
-el.modalClose.addEventListener('click', hideLoginModal);
+el.loginPass.addEventListener('keydown',e=>{if(e.key==='Enter'){authMode==='signup'?el.confirmPass.focus():el.loginBtn.click()}});
+el.confirmPass.addEventListener('keydown',e=>{if(e.key==='Enter')el.loginBtn.click()});
+el.loginUser.addEventListener('keydown',e=>{if(e.key==='Enter')el.loginPass.focus()});
+el.modalClose.addEventListener('click',hideLoginModal);
 
-// User card → dropdown
-el.userCard.addEventListener('click', () => { if (!isLoggedIn) { showLoginModal(false); return; } el.userDropdown.classList.toggle('show'); });
-el.cancelDropdownBtn.addEventListener('click', () => el.userDropdown.classList.remove('show'));
-el.signOutBtn.addEventListener('click', () => {
-    el.userDropdown.classList.remove('show');
-    localStorage.removeItem('eris_username'); localStorage.removeItem('eris_password');
-    isLoggedIn=false; personName=''; personId=''; isCreator=false; hasMessages=false;
-    el.chatMsg.innerHTML=''; el.welcome.classList.remove('hidden'); el.chatView.classList.remove('active'); el.creatorView.style.display = 'none';
-    el.sidebarAvatar.textContent='?'; el.sidebarName.textContent='Not signed in';
-    el.creatorPortalBtn.style.display = 'none';
-    el.sidebarStatus.textContent='Click to sign in'; el.inputArea.classList.add('locked');
-    el.input.disabled=true; el.welcomeLabel.textContent='awaiting presence';
-    el.chatList.innerHTML=''; showLoginModal(false);
+el.userCard.addEventListener('click',()=>{if(!isLoggedIn){showLoginModal(false);return}el.userDropdown.classList.toggle('show')});
+el.cancelDropdownBtn.addEventListener('click',()=>el.userDropdown.classList.remove('show'));
+el.signOutBtn.addEventListener('click',()=>{
+    el.userDropdown.classList.remove('show');localStorage.removeItem('eris_username');localStorage.removeItem('eris_password');
+    isLoggedIn=false;personName='';personId='';isCreator=false;hasMessages=false;
+    el.chatMsg.innerHTML='';el.welcome.classList.remove('gone');el.chatView.classList.remove('open');el.creatorView.style.display='none';
+    el.sidebarAvatar.textContent='?';el.sidebarName.textContent='Not signed in';el.creatorPortalBtn.style.display='none';
+    el.sidebarStatus.textContent='Click to sign in';el.inputArea.classList.add('locked');el.input.disabled=true;
+    el.welcomeLabel.textContent='awaiting presence';el.chatList.innerHTML='';el.app.classList.remove('visible');
+    showLoginModal(false);closeDrawer();
 });
-document.addEventListener('click', e => {
-    if (!el.userDropdown.contains(e.target) && !el.userCard.contains(e.target)) el.userDropdown.classList.remove('show');
-});
+document.addEventListener('click',e=>{if(!el.userDropdown.contains(e.target)&&!el.userCard.contains(e.target))el.userDropdown.classList.remove('show')});
 
-// Chat history
-function renderChatList() {
+function renderChatList(){
     el.chatList.innerHTML='';
-    for (const s of chatSessions) {
-        const div = document.createElement('div');
-        div.className = 'orbit-item' + (s.id === currentSessionId ? ' active' : '');
-        div.textContent = s.title || 'New conversation';
-        div.addEventListener('click', () => loadChat(s.id));
-        el.chatList.appendChild(div);
+    for(const s of chatSessions){
+        const d=document.createElement('div');d.className='dr-item'+(s.id===currentSessionId?' active':'');
+        d.textContent=s.title||'New conversation';d.addEventListener('click',()=>loadChat(s.id));el.chatList.appendChild(d);
     }
 }
-function loadChat(sid) {
-    currentSessionId = sid; renderChatList();
-    if (window.innerWidth <= 768) el.sidebar.classList.remove('open');
-    el.creatorView.style.display = 'none';
-    if (ws && isConnected) ws.send(JSON.stringify({type:'load_chat', session_id:sid}));
+function loadChat(sid){currentSessionId=sid;renderChatList();closeDrawer();el.creatorView.style.display='none';if(ws&&isConnected)ws.send(JSON.stringify({type:'load_chat',session_id:sid}))}
+function loadChatMessages(msgs){
+    hasMessages=msgs.length>0;el.chatMsg.innerHTML='';
+    if(hasMessages){el.welcome.classList.add('gone');el.chatView.classList.add('open');for(const m of msgs)appendMessage(m.role==='user'?'user':'eris',m.content,false)}
+    else{el.welcome.classList.remove('gone');el.chatView.classList.remove('open')}
 }
-function loadChatMessages(msgs) {
-    hasMessages = msgs.length > 0; el.chatMsg.innerHTML = '';
-    if (hasMessages) { el.welcome.classList.add('hidden'); el.chatView.classList.add('active'); for (const m of msgs) appendMessage(m.role==='user'?'user':'eris', m.content, false); }
-    else { el.welcome.classList.remove('hidden'); el.chatView.classList.remove('active'); }
+el.newChatBtn.addEventListener('click',()=>{currentSessionId=null;hasMessages=false;el.chatMsg.innerHTML='';el.welcome.classList.remove('gone');el.chatView.classList.remove('open');el.creatorView.style.display='none';renderChatList();if(ws&&isConnected)ws.send(JSON.stringify({type:'new_chat'}));closeDrawer()});
+
+el.creatorPortalBtn.addEventListener('click',()=>{el.welcome.classList.add('gone');el.chatView.classList.remove('open');el.creatorView.style.display='flex';closeDrawer()});
+const t1=$('tabLiveFeed'),t2=$('tabResearchFeed');
+t1.addEventListener('click',()=>{el.creatorFeed.style.display='block';el.researchFeed.style.display='none';t1.classList.add('active');t2.classList.remove('active')});
+t2.addEventListener('click',()=>{el.creatorFeed.style.display='none';el.researchFeed.style.display='block';t2.classList.add('active');t1.classList.remove('active')});
+
+let attachedImageBase64=null;
+$('attachBtn').addEventListener('click',()=>{if(isLoggedIn)$('fileInput').click()});
+$('fileInput').addEventListener('change',function(){const f=this.files[0];if(f){const r=new FileReader();r.onload=e=>{attachedImageBase64=e.target.result.split(',')[1];$('imagePreview').src=e.target.result;$('imagePreviewContainer').style.display='block';updateInputState()};r.readAsDataURL(f)}});
+$('removeImageBtn').addEventListener('click',()=>{attachedImageBase64=null;$('fileInput').value='';$('imagePreviewContainer').style.display='none';updateInputState()});
+
+function updateInputState(){el.send.classList.toggle('active',(el.input.value.trim().length>0||attachedImageBase64)&&isConnected&&isLoggedIn)}
+function sendMsg(isVoice=false){
+    const v=el.input.value.trim();if((!v&&!attachedImageBase64)||!isConnected||!isLoggedIn)return;
+    let mc=v;if(attachedImageBase64)mc+=`<br><img src="data:image/jpeg;base64,${attachedImageBase64}" style="max-height:200px;border-radius:6px;margin-top:8px">`;
+    appendMessage('user',mc);
+    const payload={type:'message',content:v,is_voice:isVoice};
+    if(attachedImageBase64){payload.image_base64=attachedImageBase64;$('removeImageBtn').click()}
+    ws.send(JSON.stringify(payload));el.input.value='';el.input.style.height='auto';updateInputState();interact=1.0;
 }
-el.newChatBtn.addEventListener('click', () => {
-    currentSessionId=null; hasMessages=false; el.chatMsg.innerHTML='';
-    el.welcome.classList.remove('hidden'); el.chatView.classList.remove('active'); el.creatorView.style.display = 'none'; renderChatList();
-    if (ws && isConnected) ws.send(JSON.stringify({type:'new_chat'}));
-});
+el.send.addEventListener('click',()=>sendMsg(false));
+el.input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg(false)}});
 
-// Creator Portal
-el.creatorPortalBtn.addEventListener('click', () => {
-    el.welcome.classList.add('hidden'); el.chatView.classList.remove('active');
-    el.creatorView.style.display = 'flex';
-    if (window.innerWidth <= 768) el.sidebar.classList.remove('open');
-});
-const t1 = $('tabLiveFeed'), t2 = $('tabResearchFeed');
-t1.addEventListener('click', () => { el.creatorFeed.style.display = 'block'; el.researchFeed.style.display = 'none'; t1.classList.add('active'); t2.classList.remove('active'); });
-t2.addEventListener('click', () => { el.creatorFeed.style.display = 'none'; el.researchFeed.style.display = 'block'; t2.classList.add('active'); t1.classList.remove('active'); });
-
-// Image Attachment
-let attachedImageBase64 = null;
-$('attachBtn').addEventListener('click', () => { if(isLoggedIn) $('fileInput').click(); });
-$('fileInput').addEventListener('change', function() {
-    const file = this.files[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            attachedImageBase64 = e.target.result.split(',')[1];
-            $('imagePreview').src = e.target.result;
-            $('imagePreviewContainer').style.display = 'block';
-            updateInputState();
-        };
-        reader.readAsDataURL(file);
-    }
-});
-$('removeImageBtn').addEventListener('click', () => {
-    attachedImageBase64 = null; $('fileInput').value = '';
-    $('imagePreviewContainer').style.display = 'none'; updateInputState();
-});
-
-// Send
-function updateInputState() { el.send.classList.toggle('active', (el.input.value.trim().length>0 || attachedImageBase64) && isConnected && isLoggedIn); }
-function sendMsg(isVoice = false) {
-    const v = el.input.value.trim(); if ((!v && !attachedImageBase64) || !isConnected || !isLoggedIn) return;
-    let msgContent = v;
-    if (attachedImageBase64) msgContent += `<br><img src="data:image/jpeg;base64,${attachedImageBase64}" style="max-height: 200px; border-radius: 6px; margin-top: 8px;">`;
-    appendMessage('user', msgContent);
-    const payload = {type:'message', content:v, is_voice:isVoice};
-    if (attachedImageBase64) { payload.image_base64 = attachedImageBase64; $('removeImageBtn').click(); }
-    ws.send(JSON.stringify(payload));
-    el.input.value=''; el.input.style.height='auto'; updateInputState();
-    interactionFlare = 1.0;
+function appendMessage(sender,text,anim=true){
+    if(!hasMessages){hasMessages=true;el.welcome.classList.add('gone');el.chatView.classList.add('open')}
+    const div=document.createElement('div');div.className=`message ${sender}`;if(!anim)div.style.animation='none';
+    const t=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+    let f=text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    f=f.replace(/```([\s\S]*?)```/g,'<pre><code>$1</code></pre>');
+    f=f.replace(/`([^`]+)`/g,'<code>$1</code>');
+    f=f.replace(/\*\*([^\*]+)\*\*/g,'<strong>$1</strong>');
+    const imgs=[];f=f.replace(/!\[IMAGE:(.+?)\]/g,(m,url)=>{imgs.push(url);return`__IMG_${imgs.length-1}__`});
+    f=f.replace(/<skill\s+name="([^"]+)">([\s\S]+?)<\/skill>/gi,(m,name,code)=>{
+        const ec=code.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        return`<div style="border:1px solid rgba(255,107,0,.2);border-radius:10px;overflow:hidden;margin:15px 0;background:rgba(0,0,0,.5)"><div style="background:rgba(255,107,0,.08);padding:8px 14px;font-weight:bold;border-bottom:1px solid rgba(255,107,0,.15);color:var(--accent);display:flex;justify-content:space-between;align-items:center"><span>🛠️ ${name}</span><button onclick="const f=this.parentElement.nextElementSibling;f.style.height=f.style.height==='500px'?'0':'500px'" style="background:none;border:1px solid var(--accent);color:var(--accent);border-radius:4px;padding:2px 8px;cursor:pointer;font-size:.8rem">Toggle</button></div><iframe srcdoc="${ec}" style="width:100%;height:500px;border:none;background:#fff;transition:height .3s"></iframe></div>`});
+    f=f.replace(/(https?:\/\/[^\s<]+)/g,'<a href="$1" target="_blank" style="color:var(--accent);text-decoration:underline">$1</a>');
+    f=f.replace(/__IMG_(\d+)__/g,(m,i)=>`<img src="${imgs[i]}" style="max-height:300px;border-radius:8px;margin-top:8px">`);
+    f=f.split('\n\n').map(p=>`<p>${p.replace(/\n/g,'<br>')}</p>`).join('');
+    div.innerHTML=`<div class="msg-bubble">${f}</div><div class="msg-time">${t}</div>`;
+    el.chatMsg.appendChild(div);scrollToBottom();
 }
-el.send.addEventListener('click', () => sendMsg(false));
-el.input.addEventListener('keydown', e => { if(e.key==='Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(false); } });
+function showThinking(){if(isThinking)return;isThinking=true;const d=document.createElement('div');d.className='message eris';d.id='thinking';d.innerHTML='<div class="msg-bubble thinking-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>';el.chatMsg.appendChild(d);scrollToBottom()}
+function removeThinking(){isThinking=false;const e=$('thinking');if(e)e.remove()}
+function scrollToBottom(){setTimeout(()=>{el.chatMsg.scrollTop=el.chatMsg.scrollHeight},50)}
 
-function appendMessage(sender, text, anim=true) {
-    if (!hasMessages) { hasMessages=true; el.welcome.classList.add('hidden'); el.chatView.classList.add('active'); }
-    const div = document.createElement('div'); div.className = `message ${sender}`;
-    if (!anim) div.style.animation = 'none';
-    const t = new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-    let f = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    f = f.replace(/```([\s\S]*?)```/g,'<pre><code>$1</code></pre>');
-    f = f.replace(/`([^`]+)`/g,'<code>$1</code>');
-    f = f.replace(/\*\*([^\*]+)\*\*/g,'<strong>$1</strong>');
-    const imgs = [];
-    f = f.replace(/!\[IMAGE:(.+?)\]/g, (match, url) => { imgs.push(url); return `__IMG_${imgs.length-1}__`; });
-    // Skill Renderer
-    f = f.replace(/<skill\s+name="([^"]+)">([\s\S]+?)<\/skill>/gi, (match, name, code) => {
-        const escapedCode = code.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        return `<div class="skill-container" style="border: 1px solid rgba(255,107,0,0.2); border-radius: 10px; overflow: hidden; margin-top: 15px; margin-bottom: 15px; background: rgba(0,0,0,0.5);">
-            <div style="background: rgba(255,107,0,0.08); padding: 8px 14px; font-weight: bold; border-bottom: 1px solid rgba(255,107,0,0.15); color: var(--accent-warm); display: flex; justify-content: space-between; align-items: center;">
-                <span>🛠️ ${name}</span>
-                <button onclick="const iframe = this.parentElement.nextElementSibling; if(iframe.style.height === '500px') { iframe.style.height = '0px'; } else { iframe.style.height = '500px'; }" style="background: none; border: 1px solid var(--accent-warm); color: var(--accent-warm); border-radius: 4px; padding: 2px 8px; cursor: pointer; font-size: 0.8rem;">Toggle</button>
-            </div>
-            <iframe srcdoc="${escapedCode}" style="width: 100%; height: 500px; border: none; background: white; transition: height 0.3s ease;"></iframe>
-        </div>`;
+let mediaRecorder=null,audioChunks=[],isRecording=false;
+if(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia){
+    el.micBtn.addEventListener('click',async()=>{
+        if(!isLoggedIn)return;
+        if(isRecording&&mediaRecorder)mediaRecorder.stop();
+        else{try{const s=await navigator.mediaDevices.getUserMedia({audio:true});mediaRecorder=new MediaRecorder(s);audioChunks=[];
+            mediaRecorder.ondataavailable=e=>audioChunks.push(e.data);
+            mediaRecorder.onstop=()=>{const b=new Blob(audioChunks,{type:'audio/webm'});const r=new FileReader();r.readAsDataURL(b);r.onloadend=()=>{const a=r.result.split(',')[1];appendMessage('user','🎙️ (Audio)');ws.send(JSON.stringify({type:'message',content:'',audio_base64:a,is_voice:true}))};s.getTracks().forEach(t=>t.stop());stopRec()};
+            mediaRecorder.start();isRecording=true;el.micBtn.classList.add('recording');el.input.placeholder='Recording...'
+        }catch(e){showToast('Mic access denied')}}
     });
-    f = f.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" style="color:var(--accent-warm); text-decoration:underline;">$1</a>');
-    f = f.replace(/__IMG_(\d+)__/g, (match, idx) => `<img src="${imgs[idx]}" style="max-height: 300px; border-radius: 8px; margin-top: 8px;">`);
-    f = f.split('\n\n').map(p => `<p>${p.replace(/\n/g,'<br>')}</p>`).join('');
-    div.innerHTML = `<div class="msg-bubble">${f}</div><div class="msg-time">${t}</div>`;
-    el.chatMsg.appendChild(div); scrollToBottom();
-}
-function showThinking() { if(isThinking)return; isThinking=true; const d=document.createElement('div'); d.className='message eris'; d.id='thinking'; d.innerHTML='<div class="msg-bubble thinking-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>'; el.chatMsg.appendChild(d); scrollToBottom(); }
-function removeThinking() { isThinking=false; const e=$('thinking'); if(e)e.remove(); }
-function scrollToBottom() { setTimeout(()=>{ el.chatMsg.scrollTop = el.chatMsg.scrollHeight; },50); }
+}else el.micBtn.style.display='none';
+function stopRec(){isRecording=false;el.micBtn.classList.remove('recording');el.input.placeholder='Speak to Eris...'}
 
-// Voice Input
-let mediaRecorder = null, audioChunks = [], isRecording = false;
-if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-    el.micBtn.addEventListener('click', async () => {
-        if (!isLoggedIn) return;
-        if (isRecording && mediaRecorder) { mediaRecorder.stop(); }
-        else {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                mediaRecorder = new MediaRecorder(stream);
-                audioChunks = [];
-                mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-                mediaRecorder.onstop = () => {
-                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                    const reader = new FileReader();
-                    reader.readAsDataURL(audioBlob);
-                    reader.onloadend = () => {
-                        const base64Audio = reader.result.split(',')[1];
-                        appendMessage('user', '🎙️ (Audio snippet)');
-                        ws.send(JSON.stringify({ type: 'message', content: '', audio_base64: base64Audio, is_voice: true }));
-                    };
-                    stream.getTracks().forEach(track => track.stop());
-                    stopRec();
-                };
-                mediaRecorder.start(); isRecording = true;
-                el.micBtn.classList.add('recording');
-                el.input.placeholder = 'Recording... (Click mic to send)';
-            } catch (err) { showToast("Microphone access denied."); }
-        }
-    });
-} else el.micBtn.style.display = 'none';
-function stopRec() { isRecording = false; el.micBtn.classList.remove('recording'); el.input.placeholder = 'Speak to Eris...'; }
-
-// Voice Output (TTS)
-let ttsEnabled = localStorage.getItem('eris_tts') !== 'off';
-if (!ttsEnabled) el.muteBtn.style.color = 'var(--danger)';
-el.muteBtn.addEventListener('click', () => {
-    ttsEnabled = !ttsEnabled;
-    localStorage.setItem('eris_tts', ttsEnabled ? 'on' : 'off');
-    if (!ttsEnabled) { el.muteBtn.style.color = 'var(--danger)'; if (currentAudio) currentAudio.pause(); if ('speechSynthesis' in window) speechSynthesis.cancel(); }
-    else el.muteBtn.style.color = 'var(--text-muted)';
-});
-function speakText(text) {
-    if (!ttsEnabled || !('speechSynthesis' in window)) return;
-    let clean = text.replace(/\*\*([^*]+)\*\*/g, '$1').replace(/\*([^*]+)\*/g, '$1').replace(/`[^`]+`/g, '').replace(/```[\s\S]*?```/g, '').replace(/[#>\-_]/g, '').trim();
-    if (!clean) return;
-    if (currentAudio) currentAudio.pause();
-    speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(clean);
-    utterance.rate = 1.0; utterance.pitch = 1.1; utterance.volume = 0.9;
-    const voices = speechSynthesis.getVoices();
-    const preferred = voices.find(v => v.name.includes('Female') || v.name.includes('Samantha') || v.name.includes('Google UK English Female') || v.name.includes('Zira'));
-    if (preferred) utterance.voice = preferred;
-    speechSynthesis.speak(utterance);
-}
-if ('speechSynthesis' in window) speechSynthesis.onvoiceschanged = () => {};
-let currentAudio = null;
-function playBase64Audio(base64) {
-    if (currentAudio) currentAudio.pause();
-    if ('speechSynthesis' in window) speechSynthesis.cancel();
-    currentAudio = new Audio(`data:audio/mp3;base64,${base64}`);
-    currentAudio.play().catch(e => console.error("Audio playback failed:", e));
-}
+let ttsEnabled=localStorage.getItem('eris_tts')!=='off';
+if(!ttsEnabled)el.muteBtn.style.color='var(--danger)';
+el.muteBtn.addEventListener('click',()=>{ttsEnabled=!ttsEnabled;localStorage.setItem('eris_tts',ttsEnabled?'on':'off');if(!ttsEnabled){el.muteBtn.style.color='var(--danger)';if(currentAudio)currentAudio.pause();if('speechSynthesis'in window)speechSynthesis.cancel()}else el.muteBtn.style.color='var(--text-muted)'});
+function speakText(text){if(!ttsEnabled||!('speechSynthesis'in window))return;let c=text.replace(/\*\*([^*]+)\*\*/g,'$1').replace(/\*([^*]+)\*/g,'$1').replace(/`[^`]+`/g,'').replace(/```[\s\S]*?```/g,'').replace(/[#>\-_]/g,'').trim();if(!c)return;if(currentAudio)currentAudio.pause();speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(c);u.rate=1;u.pitch=1.1;u.volume=.9;const v=speechSynthesis.getVoices();const pref=v.find(v=>v.name.includes('Female')||v.name.includes('Samantha')||v.name.includes('Google UK English Female')||v.name.includes('Zira'));if(pref)u.voice=pref;speechSynthesis.speak(u)}
+if('speechSynthesis'in window)speechSynthesis.onvoiceschanged=()=>{};
+let currentAudio=null;
+function playBase64Audio(b){if(currentAudio)currentAudio.pause();if('speechSynthesis'in window)speechSynthesis.cancel();currentAudio=new Audio(`data:audio/mp3;base64,${b}`);currentAudio.play().catch(e=>console.error('Audio fail:',e))}
 
 connect();
 </script>
