@@ -75,10 +75,11 @@ class LLMRouter:
 
         
         # Initialize xAI API
-        if hasattr(self._config, 'xai') and self._config.xai.api_key:
+        xai_api_key = os.getenv("XAI_API_KEY") or (self._config.xai.api_key if hasattr(self._config, 'xai') else None)
+        if xai_api_key:
             self._xai_client = httpx.AsyncClient(
                 base_url=self._config.xai.base_url,
-                headers={"Authorization": f"Bearer {self._config.xai.api_key}"},
+                headers={"Authorization": f"Bearer {xai_api_key}"},
                 timeout=120.0,
             )
             self._cloud_available = True
