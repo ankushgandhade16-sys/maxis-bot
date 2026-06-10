@@ -153,96 +153,154 @@ uniform float u_interact;
 float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
 float hash2(vec2 p){return fract(sin(dot(p,vec2(41.1,17.4)))*43758.5453);}
 float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);}
-float fbm(vec2 p){float v=0.,a=.5;mat2 m=mat2(.8,-.6,.6,.8);for(int i=0;i<5;i++){v+=a*noise(p);p=m*p*2.+vec2(1.7,9.2);a*=.5;}return v;}
+float fbm(vec2 p){float v=0.,a=.5;mat2 m=mat2(.8,-.6,.6,.8);for(int i=0;i<6;i++){v+=a*noise(p);p=m*p*2.+vec2(1.7,9.2);a*=.5;}return v;}
+
+vec3 diskColor(float t){
+    vec3 hot=vec3(1.,.96,.84);
+    vec3 warm=vec3(1.,.6,.1);
+    vec3 cool=vec3(.6,.18,.03);
+    vec3 dim=vec3(.18,.04,.005);
+    if(t<.12)return mix(hot,warm,t/.12);
+    if(t<.35)return mix(warm,cool,(t-.12)/.23);
+    return mix(cool,dim,clamp((t-.35)/.65,0.,1.));
+}
 
 void main(){
     vec2 uv=(gl_FragCoord.xy-.5*u_res)/u_res.y;
     float r=length(uv);
     float theta=atan(uv.y,uv.x);
-    vec3 col=vec3(0.);
 
-    float shadowR=0.135;
-    float rotation=u_time*.06;
+    float shadowR=.12;
+    float diskOuter=.65;
+    float diskInner=shadowR*1.15;
+    float rot=u_time*.04;
 
-    // ── BACKGROUND: lensed starfield ──
+    // ── BACKGROUND: dark space with subtle nebula ──
+    vec3 col=vec3(.008,.012,.022);
+    col+=vec3(.004,.006,.012)*fbm(uv*2.5+vec2(3.7,1.2));
+
+    // ── STARS (sharp points with lensing) ──
     vec2 luv=uv;
-    if(r>shadowR*.85){
-        float def=shadowR*shadowR/max(r*r-shadowR*shadowR*.8,.0001);
-        luv=uv*(1.+def*.5);
+    if(r>shadowR*.8){
+        float def=shadowR*shadowR/max(r*r-shadowR*shadowR*.7,.001);
+        luv=uv*(1.+def*.4);
     }
-    for(float s=30.;s<=120.;s+=30.){
-        vec2 g=floor(luv*s);
-        float h=hash(g);
-        if(h>.99){
-            // Star position within cell (random offset)
-            vec2 starUV=(g+vec2(hash2(g),hash(g+vec2(7.3,13.1))))/s;
-            float d=length(luv-starUV)*s;
-            float point=exp(-d*d*3.);
-            float b=pow((h-.99)/.01,.3);
-            float tw=.7+.3*sin(u_time*(1.5+h*6.)+h*80.);
-            vec3 sc=mix(vec3(.7,.8,1.),vec3(1.,.9,.75),hash2(g));
-            col+=sc*point*b*tw*.6;
+    for(float layer=50.;layer<=200.;layer+=50.){
+        vec2 cell=floor(luv*layer);
+        float h=hash(cell);
+        if(h>.994){
+            vec2 sp=(cell+vec2(hash2(cell),hash(cell+vec2(7.3,13.1))))/layer;
+            float d=length(luv-sp)*layer;
+            float pt=exp(-d*d*5.);
+            float b=pow((h-.994)/.006,.3);
+            float tw=.7+.3*sin(u_time*(2.+h*5.)+h*60.);
+            vec3 sc=mix(vec3(.7,.8,1.),vec3(1.,.92,.78),hash2(cell));
+            col+=sc*pt*b*tw*.45;
         }
     }
 
-    // ── ACCRETION DISK ──
-    // Multi-ring structure near shadow (inner accretion + photon ring + lensed back disk)
-    for(float i=0.;i<5.;i++){
-        float rr=shadowR+.005+i*.018;
-        float rw=.003+i*.004;
-        // Thicker at equator (direct disk), thinner at poles (lensed back)
-        float eq=.5+.5*pow(abs(cos(theta)),1.2);
-        float aw=rw*(eq+.3);
-        float d=abs(r-rr);
-        float ring=exp(-d*d/(2.*aw*aw));
-        // Temperature color
-        float t=1.-i/5.;
-        vec3 rc;
-        if(t>.8) rc=vec3(1.,.94,.82);
-        else if(t>.55) rc=vec3(1.,.58,.14);
-        else if(t>.3) rc=vec3(.88,.28,.06);
-        else rc=vec3(.45,.12,.35);
-        // Turbulence
-        float tb=fbm(vec2((theta-rotation)*3.+i*8.,r*22.+i*4.));
-        tb=.55+.45*tb;
-        // Doppler beaming
-        float dp=.3+.7*(.5+.5*cos(theta+rotation+.3));
-        dp=pow(dp,.55);
-        col+=rc*ring*tb*dp*(2.2-i*.25);
+    // ── ACCRETION DISK — HORIZONTAL BAND (front of disk, edge-on) ──
+    // The disk is a flat plane — viewed nearly edge-on it appears as a horizontal band
+    // Thicker near inner edge, thinner toward outer edge
+    float bandW=.015+.03*smoothstep(diskOuter,diskInner,abs(uv.x));
+    float bandD=abs(uv.y)/bandW;
+    float bandA=exp(-bandD*bandD*1.5);
+
+    float dx=abs(uv.x);
+    if(dx>diskInner*.7&&dx<diskOuter&&r>shadowR*.98){
+        float dn=clamp((dx-diskInner)/(diskOuter-diskInner),0.,1.);
+        vec3 dc=diskColor(dn);
+        float fo=pow(max(0.,1.-dn),1.);
+        fo*=smoothstep(diskInner*.7,diskInner*1.2,dx);
+
+        // Doppler beaming — approaching side brighter
+        float dp=.3+.7*smoothstep(-.5,.5,uv.x/diskOuter);
+
+        // Streaky turbulence (stretched horizontally for gas texture)
+        float texU=uv.x*6.-rot*3.;
+        float texV=uv.y*60.+uv.x*4.;
+        float tex=fbm(vec2(texU,texV));
+        float str=noise(vec2(uv.x*3.-rot,uv.y*80.));
+        tex=.35+.65*mix(tex,str,.4);
+
+        col+=dc*bandA*fo*dp*tex*2.;
     }
 
-    // Extended disk band (horizontal, direct front-of-disk)
-    float bw=.005+.007*smoothstep(shadowR*1.4,.55,abs(uv.x));
-    float band=exp(-uv.y*uv.y/(2.*bw*bw));
-    float bx=abs(uv.x);
-    if(bx>shadowR*1.25&&bx<.55){
-        float dn=(bx-shadowR*1.25)/(.55-shadowR*1.25);
-        vec3 dc=mix(vec3(1.,.55,.12),vec3(.25,.04,.01),pow(dn,.6));
-        float fo=pow(1.-dn,1.4);
-        float tb=fbm(vec2(theta*4.-u_time*.12,bx*14.));
-        tb=.5+.5*tb;
-        float bdp=uv.x>0.?.4+.6*smoothstep(0.,.3,uv.x/.55):.25+.15*smoothstep(-.3,0.,uv.x/.55);
-        col+=dc*band*fo*tb*bdp*1.1;
+    // Disk atmospheric glow (warm haze above/below the band)
+    float diskHaze=exp(-abs(uv.y)*6.)*smoothstep(0.,.15,dx)*smoothstep(diskOuter+.05,diskOuter*.4,dx);
+    col+=vec3(.4,.15,.04)*diskHaze*.06;
+
+    // ── LENSED BACK DISK — ARCS over top / under bottom of shadow ──
+    // The back of the disk is gravitationally lensed into elliptical arcs
+    // These arcs follow the shadow contour and connect to the horizontal band
+    float arcW=shadowR*1.8;  // horizontal half-extent of arc
+    float arcH=shadowR*1.08; // vertical peak of arc above/below center
+
+    for(float s=-1.;s<=1.;s+=2.){
+        // Elliptical arc path: y = s * arcH * sqrt(1 - (x/arcW)^2)
+        float xn=clamp(uv.x/arcW,-1.,1.);
+        float arcY=s*arcH*sqrt(max(0.,1.-xn*xn));
+
+        // Arc thickness — thicker at center, thinner at edges
+        float arcThick=.005+.02*(1.-abs(xn));
+
+        float ad=abs(uv.y-arcY)/arcThick;
+        float arcAlpha=exp(-ad*ad);
+
+        // Masks: correct side, within range, outside shadow
+        float sideMask=smoothstep(0.,.008,s*uv.y);
+        float rangeMask=smoothstep(arcW*1.05,arcW*.7,abs(uv.x));
+        float sMask=smoothstep(shadowR*.92,shadowR*1.05,r);
+
+        if(sideMask>.01&&rangeMask>.01&&sMask>.01){
+            float arcNorm=clamp((r-shadowR)/(shadowR*1.5),0.,1.);
+            vec3 ac=mix(vec3(1.,.72,.28),vec3(.5,.15,.04),arcNorm);
+
+            // Doppler on arcs
+            float adp=.35+.65*smoothstep(-1.,1.,uv.x/shadowR);
+
+            // Arc texture (turbulent gas)
+            float atex=fbm(vec2(theta*5.-rot*2.,r*22.));
+            float astr=noise(vec2(theta*8.-rot,r*40.));
+            atex=.4+.6*mix(atex,astr,.3);
+
+            col+=ac*arcAlpha*sideMask*rangeMask*sMask*adp*atex*(1.3-arcNorm*.4);
+        }
     }
 
-    // Photon ring (very thin, bright)
-    float prd=abs(r-shadowR-.003);
-    col+=vec3(1.,.9,.65)*exp(-prd*prd/(2.*.0012*.0012))*2.5*(.4+.6*(.5+.5*cos(theta+rotation)));
-    // Secondary
-    col+=vec3(.55,.35,.75)*exp(-pow(abs(r-shadowR-.0005),.8)*800000.)*.8;
+    // Second-order lensed image (thinner, dimmer, closer to shadow)
+    float arc2W=shadowR*1.3;
+    float arc2H=shadowR*1.02;
+    for(float s=-1.;s<=1.;s+=2.){
+        float xn2=clamp(uv.x/arc2W,-1.,1.);
+        float arc2Y=s*arc2H*sqrt(max(0.,1.-xn2*xn2));
+        float a2d=abs(uv.y-arc2Y)/(.003+.008*(1.-abs(xn2)));
+        float a2a=exp(-a2d*a2d);
+        float sm2=smoothstep(0.,.005,s*uv.y)*smoothstep(arc2W*1.05,arc2W*.5,abs(uv.x))*smoothstep(shadowR*.9,shadowR*1.02,r);
+        if(sm2>.01){
+            float an2=clamp((r-shadowR)/shadowR,0.,1.);
+            vec3 ac2=mix(vec3(1.,.8,.45),vec3(.4,.12,.03),an2);
+            float dp2=.4+.6*smoothstep(-1.,1.,uv.x/shadowR);
+            col+=ac2*a2a*sm2*dp2*.5;
+        }
+    }
+
+    // ── PHOTON RING ──
+    float prd=abs(r-shadowR-.002);
+    float prDp=.4+.6*smoothstep(-1.,1.,uv.x/shadowR);
+    col+=vec3(1.,.9,.65)*exp(-prd*prd/(2.*.001*.001))*2.*prDp;
 
     // ── EVENT HORIZON ──
     col*=smoothstep(shadowR-.003,shadowR+.001,r);
 
-    // ── GLOW LAYERS ──
-    col+=vec3(1.,.45,.15)*exp(-r*r*28.)*.04;
-    col+=vec3(.7,.25,.08)*exp(-(r-.22)*(r-.22)*6.)*.015;
-    col+=vec3(.3,.12,.45)*exp(-r*2.2)*.008;
-    col+=vec3(1.,.65,.25)*u_interact*exp(-r*r*18.)*.35;
+    // ── GLOW ──
+    col+=vec3(1.,.45,.1)*exp(-r*r*25.)*.035;
+    col+=vec3(.7,.25,.05)*exp(-(r-.2)*(r-.2)*5.)*.012;
+    col+=vec3(1.,.55,.2)*u_interact*exp(-r*r*15.)*.3;
 
     // ── TONE MAP ──
-    col=1.-exp(-col*1.6);
-    col=pow(col,vec3(.87));
+    col=1.-exp(-col*1.5);
+    col=pow(col,vec3(.9));
     gl_FragColor=vec4(col,1.);
 }
     </script>
