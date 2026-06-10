@@ -76,17 +76,6 @@ class EpisodicMemory:
             return
 
 
-        if not self._index:
-            # Local fallback search (dumb keyword search)
-            results = []
-            q = query.lower()
-            for ep in reversed(self._local_episodes):
-                if q in ep["content"].lower() or "research" in ep["content"].lower():
-                    results.append({"id": ep["id"], "content": ep["content"], "distance": 0.5, "metadata": {}})
-                    if len(results) >= k:
-                        break
-            return results
-
         config = get_config()
         
 
@@ -186,6 +175,9 @@ class EpisodicMemory:
             await self.initialize()
 
 
+        config = get_config()
+        k = top_k or config.memory.episodic_top_k
+
         if not self._index:
             # Local fallback search (dumb keyword search)
             results = []
@@ -196,8 +188,6 @@ class EpisodicMemory:
                     if len(results) >= k:
                         break
             return results
-
-        config = get_config()
         k = top_k or config.memory.episodic_top_k
 
         # Build Pinecone metadata filter

@@ -56,7 +56,7 @@ class ActiveMind:
                 original_model = self.orchestrator.llm.get_active_model()
                 self.orchestrator.llm.set_model(self.active_mind_model)
 
-try:
+                try:
                     # Choose a task type
                     activity_type = random.choice(["reflect", "build_skill"])
                     
