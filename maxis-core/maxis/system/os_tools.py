@@ -87,3 +87,26 @@ def fetch_url(url: str) -> str:
         logger.error(f"Failed to fetch url: {e}")
         return f"Failed to fetch {url}: {e}"
 
+
+
+def search_web(query: str, max_results: int = 5) -> str:
+    """Search the internet using DuckDuckGo."""
+    logger.info(f"Searching web for: {query}")
+    try:
+        from duckduckgo_search import DDGS
+        with DDGS() as ddgs:
+            results = list(ddgs.text(query, max_results=max_results))
+            
+            if not results:
+                return "No results found."
+                
+            formatted = []
+            for i, r in enumerate(results):
+                formatted.append(f"Result {i+1}:\nTitle: {r.get('title')}\nURL: {r.get('href')}\nSnippet: {r.get('body')}\n")
+                
+            return "\n".join(formatted)
+    except ImportError:
+        return "Failed to search: duckduckgo-search package is not installed."
+    except Exception as e:
+        logger.error(f"Web search failed: {e}")
+        return f"Failed to search web: {e}"

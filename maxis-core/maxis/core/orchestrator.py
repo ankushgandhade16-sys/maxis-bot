@@ -23,7 +23,7 @@ from loguru import logger
 import json
 import re
 from maxis.config import get_config, DATA_DIR
-from maxis.system.os_tools import get_system_stats, execute_command, fetch_url
+from maxis.system.os_tools import get_system_stats, execute_command, fetch_url, search_web
 from maxis.system.screen import capture_screen_base64
 from maxis.core.active_mind import ActiveMind
 from maxis.core.identity import build_system_prompt
@@ -221,8 +221,8 @@ class Orchestrator:
                     tool_result = json.dumps(stats)
                 elif tool_name == "execute_command":
                     tool_result = execute_command(tool_args)
-                elif tool_name == "fetch_url":
-                    tool_result = fetch_url(tool_args)
+                elif tool_name == "fetch_url, search_web":
+                    tool_result = fetch_url, search_web(tool_args)
                 elif tool_name == "take_screenshot":
                     image_data = capture_screen_base64()
                     if image_data:
