@@ -118,6 +118,12 @@ class ResearchDaemon:
                 messages=messages,
                 force_tier=ModelTier.CLOUD
             )
+            
+            if "The cloud servers are completely jammed up" in response or "something just short-circuited" in response:
+                # Back off significantly if we hit an API limit
+                self.last_user_activity = time.time() + 3600
+                return None
+                
             return f"*Reflecting...* {response}"
         except Exception as e:
             import traceback
@@ -142,6 +148,11 @@ class ResearchDaemon:
                 messages=messages,
                 force_tier=ModelTier.CLOUD
             )
+            
+            if "The cloud servers are completely jammed up" in response or "something just short-circuited" in response:
+                # Back off significantly if we hit an API limit
+                self.last_user_activity = time.time() + 3600
+                return None
             
             # Save the research into episodic memory
             from maxis.memory.episodic import Episode
