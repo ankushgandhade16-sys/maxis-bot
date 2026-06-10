@@ -111,8 +111,8 @@ class Orchestrator:
 
     def register_activity(self):
         """Notify the orchestrator (and daemon) that user activity occurred."""
-        if hasattr(self, 'daemon'):
-            self.daemon.register_activity()
+        if hasattr(self, 'active_mind'):
+            self.active_mind.last_user_activity = time.time()
 
     async def process_message(
         self,

@@ -53,7 +53,7 @@ class ActiveMind:
                     continue
 
                 # User is idle, begin self-improvement / task cycle
-                original_model = self.orchestrator.llm.get_active_model()
+                original_model = self.orchestrator.llm.active_cloud_model
                 self.orchestrator.llm.set_model(self.active_mind_model)
 
                 try:
