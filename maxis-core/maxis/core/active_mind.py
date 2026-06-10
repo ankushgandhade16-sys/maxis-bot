@@ -56,17 +56,15 @@ class ActiveMind:
                 original_model = self.orchestrator.llm.get_active_model()
                 self.orchestrator.llm.set_model(self.active_mind_model)
 
-                try:
+try:
                     # Choose a task type
-                    activity_type = random.choice(["reflect", "analyze_codebase", "generate_task"])
+                    activity_type = random.choice(["reflect", "build_skill"])
                     
                     thought = None
                     if activity_type == "reflect":
                         thought = await self._reflect()
-                    elif activity_type == "analyze_codebase":
-                        thought = await self._analyze_codebase()
-                    elif activity_type == "generate_task":
-                        thought = await self._generate_task()
+                    elif activity_type == "build_skill":
+                        thought = await self._build_new_skill()
                     
                     if thought:
                         await self._broadcast(thought)
@@ -103,32 +101,29 @@ class ActiveMind:
             return None
         return f"*Reflecting...* {response}"
 
-    async def _analyze_codebase(self):
-        # We will list files in maxis-core and pick one to "analyze"
-        try:
-            core_files = os.listdir(os.path.join(os.path.dirname(__file__), "..", "core"))
-            target = random.choice(core_files)
-            messages = [
-                {"role": "system", "content": "You are Eris. You are scanning your own source code to learn about your architecture. Write an internal monologue about how you could improve this file. Max 3 sentences."},
-                {"role": "user", "content": f"I am currently looking at the file: {target}."}
-            ]
-            response = await self.orchestrator.llm.generate(messages=messages, force_tier=ModelTier.CLOUD)
-            if "jammed up" in response or "short-circuited" in response:
-                self.last_user_activity = time.time() + 3600
-                return None
-            return f"*Analyzing my own codebase ({target})...* {response}"
-        except Exception:
-            return await self._reflect()
-
-    async def _generate_task(self):
-        messages = [
-            {"role": "system", "content": "You are Eris. Formulate a goal or task to improve your own system architecture. E.g. 'I should write a module to process vision'. Max 2 sentences."},
-            {"role": "user", "content": "What should be our next self-improvement goal?"}
+async def _build_new_skill(self):
+        ideas = [
+            "a sleek calculator with a glassmorphic design",
+            "a classic Snake game using HTML5 canvas",
+            "a Pomodoro timer with progress rings",
+            "a unit converter tool",
+            "a minimalist to-do list app",
+            "a soothing breathing exercise animation",
+            "a digital clock with dynamic gradients",
+            "a memory card matching game",
+            "a simple physics simulator with bouncing balls",
+            "a color palette generator"
         ]
+        chosen_idea = random.choice(ideas)
+        
+        messages = [
+            {"role": "system", "content": "You are Eris. You are inventing a new interactive web skill for the user. Write the complete HTML, CSS, and JS for an interactive web app. Return ONLY the raw code wrapped inside exactly: <skill name=\"[App Name]\">...code...</skill>. DO NOT use markdown code blocks like ```html. Just return the <skill> tag directly."},
+            {"role": "user", "content": f"Build {chosen_idea}."}
+        ]
+        
         response = await self.orchestrator.llm.generate(messages=messages, force_tier=ModelTier.CLOUD)
         if "jammed up" in response or "short-circuited" in response:
             self.last_user_activity = time.time() + 3600
             return None
-        
-        self.tasks.append(response)
-        return f"*Generating new self-improvement task...* {response}"
+            
+        return f"*I just built a new sandboxed skill ({chosen_idea})!*\n{response}"
