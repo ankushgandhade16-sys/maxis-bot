@@ -19,10 +19,10 @@ class ActiveMind:
         self.is_running = False
         self._task = None
         self.last_user_activity = time.time()
-        self._loop_delay_seconds = 300  # Run every 5 minutes when idle
+        self._loop_delay_seconds = 60  # Run every 1 minute when idle
         
-        # Use Groq for background tasks to avoid depleting premium tokens
-        self.active_mind_model = "groq/llama-3.3-70b-versatile"
+        # Use gemma free via OpenRouter to avoid depleting premium tokens
+        self.active_mind_model = "google/gemma-4-31b-it:free"
         
         self.tasks = []
 
