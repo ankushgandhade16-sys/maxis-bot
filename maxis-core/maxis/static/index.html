@@ -3,295 +3,183 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ERIS</title>
-    <meta name="description" content="Eris — A persistent, self-aware AI entity.">
-    <!-- External Libraries -->
+    <title>ERIS — TON 618</title>
+    <meta name="description" content="Eris — A persistent, self-aware AI entity orbiting the event horizon.">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.5/dist/purify.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400&family=Outfit:wght@200;300;400;600&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
-            --black: #000000;
-            --surface: #080808;
-            --surface-2: #0e0e0e;
-            --surface-3: #151515;
-            --border: rgba(255,255,255,0.05);
-            --border-l: rgba(255,255,255,0.08);
-            --text: #e0e0e0;
-            --text-dim: #777;
-            --text-muted: #444;
-            --accent: #ffffff;
+            --void: #000000;
+            --deep: #030308;
+            --surface: rgba(8,4,16,0.85);
+            --surface-2: rgba(15,8,30,0.9);
+            --surface-3: rgba(25,15,50,0.8);
+            --border: rgba(255,120,50,0.08);
+            --border-l: rgba(255,120,50,0.12);
+            --text: #e0dce8;
+            --text-dim: #7a7590;
+            --text-muted: #44405a;
+            --accent-warm: #FF6B00;
+            --accent-gold: #FFB800;
+            --accent-violet: #8B5CF6;
+            --accent-blue: #3B82F6;
+            --hawking: #A5B4FC;
+            --danger: #EF4444;
         }
         html, body { height: 100%; }
         body {
             font-family: 'Inter', -apple-system, sans-serif;
-            background: var(--black);
+            background: var(--void);
             color: var(--text);
             overflow: hidden;
             -webkit-font-smoothing: antialiased;
         }
 
-        /* ── Canvas ───────────────────────────────────────── */
-        #coreCanvas {
+        /* ── Black Hole Canvas ───────────────────────────── */
+        #blackholeCanvas {
             position: fixed; top: 0; left: 0;
             width: 100%; height: 100%; z-index: 0;
         }
 
-        /* ── Layout ───────────────────────────────────────── */
-        .shell { display: flex; height: 100dvh; position: relative; z-index: 1; }
-
-        /* ── Sidebar ──────────────────────────────────────── */
-        .sidebar {
-            width: 260px; flex-shrink: 0;
-            background: rgba(5,5,5,0.9);
-            border-right: 1px solid var(--border);
-            display: flex; flex-direction: column;
-            backdrop-filter: blur(20px);
-            transition: margin-left 0.3s ease, opacity 0.3s ease;
+        /* ── Splash Screen ───────────────────────────────── */
+        #splashScreen {
+            position: fixed; inset: 0; z-index: 200;
+            background: #000; display: flex;
+            align-items: center; justify-content: center;
+            flex-direction: column;
+            transition: opacity 1s ease, visibility 1s ease;
         }
-        .sidebar.collapsed { margin-left: -260px; opacity: 0; pointer-events: none; }
-        .sidebar-header {
-            padding: 16px;
-            border-bottom: 1px solid var(--border);
+        #splashScreen.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+        .splash-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 48px; font-weight: 200;
+            letter-spacing: 28px; text-transform: uppercase;
+            color: transparent;
+            background: linear-gradient(135deg, #FF6B00, #FFB800, #8B5CF6, #3B82F6);
+            background-clip: text; -webkit-background-clip: text;
+            opacity: 0; animation: splashFadeIn 2s ease-out 0.5s forwards;
+        }
+        .splash-sub {
+            font-family: 'Inter', sans-serif;
+            font-size: 11px; letter-spacing: 6px;
+            color: rgba(255,255,255,0.2);
+            margin-top: 12px;
+            opacity: 0; animation: splashFadeIn 1.5s ease-out 1.5s forwards;
+        }
+        @keyframes splashFadeIn { to { opacity: 1; } }
+
+        /* ── Main Shell ──────────────────────────────────── */
+        .shell {
+            display: flex; height: 100dvh;
+            position: relative; z-index: 1;
+            opacity: 0; transition: opacity 0.8s ease;
+        }
+        .shell.visible { opacity: 1; }
+
+        /* ── Gravity Drawer (Sidebar) ────────────────────── */
+        .gravity-drawer {
+            width: 280px; flex-shrink: 0;
+            background: linear-gradient(180deg, rgba(5,2,15,0.95) 0%, rgba(10,5,20,0.92) 100%);
+            border-right: 1px solid rgba(255,107,0,0.06);
+            display: flex; flex-direction: column;
+            backdrop-filter: blur(30px);
+            transition: margin-left 0.4s cubic-bezier(0.4,0,0.2,1), opacity 0.3s ease;
+            overflow: hidden;
+        }
+        .gravity-drawer.collapsed { margin-left: -280px; opacity: 0; pointer-events: none; }
+        .drawer-header {
+            padding: 20px;
+            border-bottom: 1px solid rgba(255,107,0,0.06);
             display: flex; align-items: center; justify-content: space-between;
         }
-        .sidebar-logo { font-size: 13px; font-weight: 600; letter-spacing: 5px; text-transform: uppercase; color: var(--accent); }
+        .drawer-logo {
+            font-family: 'Outfit', sans-serif;
+            font-size: 14px; font-weight: 300;
+            letter-spacing: 8px; text-transform: uppercase;
+            background: linear-gradient(90deg, #FF6B00, #FFB800);
+            background-clip: text; -webkit-background-clip: text;
+            color: transparent;
+        }
         .new-chat-btn {
-            background: var(--surface-2); border: 1px solid var(--border-l);
-            color: var(--text-dim); font-size: 12px; padding: 6px 12px;
-            border-radius: 6px; cursor: pointer; font-family: 'Inter', sans-serif;
-            transition: all 0.2s;
+            background: rgba(255,107,0,0.08); border: 1px solid rgba(255,107,0,0.15);
+            color: var(--accent-warm); font-size: 11px; padding: 6px 14px;
+            border-radius: 20px; cursor: pointer; font-family: 'Inter', sans-serif;
+            letter-spacing: 1px; transition: all 0.3s;
         }
-        .new-chat-btn:hover { background: var(--surface-3); color: var(--text); }
-        .chat-list {
-            flex: 1; overflow-y: auto; padding: 8px;
-            scrollbar-width: thin; scrollbar-color: #1a1a1a transparent;
+        .new-chat-btn:hover { background: rgba(255,107,0,0.15); border-color: rgba(255,107,0,0.25); }
+
+        /* Chat list — accretion bands */
+        .chat-orbit {
+            flex: 1; overflow-y: auto; padding: 10px 12px;
+            scrollbar-width: thin; scrollbar-color: rgba(255,107,0,0.1) transparent;
         }
-        .chat-list::-webkit-scrollbar { width: 3px; }
-        .chat-list::-webkit-scrollbar-thumb { background: #1a1a1a; border-radius: 2px; }
-        .chat-item {
-            padding: 10px 12px; border-radius: 8px;
+        .chat-orbit::-webkit-scrollbar { width: 2px; }
+        .chat-orbit::-webkit-scrollbar-thumb { background: rgba(255,107,0,0.15); border-radius: 1px; }
+        .orbit-item {
+            padding: 12px 16px; border-radius: 10px;
             cursor: pointer; font-size: 13px; color: var(--text-dim);
-            transition: all 0.15s; margin-bottom: 2px;
+            transition: all 0.25s; margin-bottom: 3px;
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            border-left: 2px solid transparent;
+            position: relative;
         }
-        .chat-item:hover { background: var(--surface-2); color: var(--text); }
-        .chat-item.active { background: var(--surface-3); color: var(--text); }
-        .chat-item .chat-date { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
-        .sidebar-footer {
-            padding: 12px 16px;
-            border-top: 1px solid var(--border);
+        .orbit-item::before {
+            content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px;
+            background: linear-gradient(180deg, transparent, rgba(255,107,0,0.3), transparent);
+            opacity: 0; transition: opacity 0.3s;
+        }
+        .orbit-item:hover { background: rgba(255,107,0,0.04); color: var(--text); }
+        .orbit-item:hover::before { opacity: 1; }
+        .orbit-item.active {
+            background: rgba(255,107,0,0.06); color: var(--text);
+            border-left-color: var(--accent-warm);
+        }
+        .orbit-item .chat-date { font-size: 10px; color: var(--text-muted); margin-top: 3px; }
+
+        /* Creator Portal Button */
+        .creator-portal-btn {
+            display: none; margin: 10px 12px; padding: 12px;
+            text-align: center; border-radius: 10px;
+            cursor: pointer; font-size: 12px; letter-spacing: 2px;
+            color: var(--accent-violet);
+            border: 1px solid rgba(139,92,246,0.2);
+            background: rgba(139,92,246,0.04);
+            transition: all 0.3s;
+        }
+        .creator-portal-btn:hover { background: rgba(139,92,246,0.08); border-color: rgba(139,92,246,0.3); }
+
+        /* User card */
+        .drawer-footer {
+            padding: 14px 16px;
+            border-top: 1px solid rgba(255,107,0,0.06);
+            position: relative;
         }
         .user-card {
             display: flex; align-items: center; gap: 10px;
-            padding: 8px; border-radius: 8px; cursor: pointer;
+            padding: 10px; border-radius: 10px; cursor: pointer;
             transition: background 0.2s;
         }
-        .user-card:hover { background: var(--surface-2); }
+        .user-card:hover { background: rgba(255,107,0,0.04); }
         .user-avatar {
-            width: 28px; height: 28px; border-radius: 50%;
-            background: var(--surface-3); display: flex; align-items: center;
-            justify-content: center; font-size: 11px; font-weight: 600; color: var(--text);
-            border: 1px solid var(--border-l);
+            width: 32px; height: 32px; border-radius: 50%;
+            background: linear-gradient(135deg, rgba(255,107,0,0.15), rgba(139,92,246,0.15));
+            display: flex; align-items: center; justify-content: center;
+            font-size: 12px; font-weight: 600; color: var(--text);
+            border: 1px solid rgba(255,107,0,0.15);
         }
         .user-info { flex: 1; }
         .user-name { font-size: 12px; color: var(--text); }
         .user-status { font-size: 10px; color: var(--text-muted); }
 
-        /* ── Main Panel ───────────────────────────────────── */
-        .main-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
-
-        /* ── Topbar ───────────────────────────────────────── */
-        .topbar {
-            display: flex; align-items: center; justify-content: space-between;
-            padding: 12px 20px; backdrop-filter: blur(20px);
-            background: rgba(0,0,0,0.4);
-            border-bottom: 1px solid var(--border); flex-shrink: 0;
-        }
-        .topbar-left { display: flex; align-items: center; gap: 12px; }
-        .menu-btn {
-            background: none; border: none;
-            color: var(--text-dim); cursor: pointer; padding: 4px;
-        }
-        .status-dot { width: 6px; height: 6px; border-radius: 50%; background: #333; transition: all 0.3s; }
-        .status-dot.online { background: #4ade80; box-shadow: 0 0 8px rgba(74,222,128,0.4); }
-        .topbar-center { font-size: 12px; color: var(--text-muted); letter-spacing: 2px; }
-        .topbar-right { display: flex; align-items: center; gap: 12px; }
-        .model-select {
-            background: transparent; border: 1px solid var(--border);
-            color: var(--text-dim); font-size: 11px; padding: 4px 8px;
-            border-radius: 6px; outline: none; cursor: pointer;
-            font-family: 'Inter', sans-serif;
-        }
-        .model-select option { background: #0a0a0a; color: #aaa; }
-
-        /* ── Content ──────────────────────────────────────── */
-        .content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-
-        /* ── Welcome ──────────────────────────────────────── */
-        .welcome-view {
-            flex: 1; display: flex; flex-direction: column;
-            align-items: center; justify-content: center;
-            transition: opacity 0.4s, transform 0.4s;
-        }
-        .welcome-view.hidden { opacity: 0; pointer-events: none; position: absolute; inset: 0; }
-        .welcome-label {
-            margin-top: 20px; font-size: 11px; letter-spacing: 4px;
-            text-transform: uppercase; color: var(--text-muted); font-weight: 300;
-        }
-
-        /* ── Chat ─────────────────────────────────────────── */
-        .chat-view { flex: 1; display: none; flex-direction: column; overflow: hidden; }
-        .chat-view.active { display: flex; }
-        .chat-messages {
-            flex: 1; overflow-y: auto; padding: 24px;
-            display: flex; flex-direction: column; gap: 20px;
-            scrollbar-width: thin; scrollbar-color: #1a1a1a transparent;
-        }
-        .chat-messages::-webkit-scrollbar { width: 3px; }
-        .chat-messages::-webkit-scrollbar-thumb { background: #1a1a1a; border-radius: 2px; }
-        .message { max-width: 72%; animation: msgIn 0.3s ease-out; }
-        @keyframes msgIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
-        .message.user { align-self: flex-end; }
-        .message.eris { align-self: flex-start; }
-        .msg-bubble { padding: 12px 16px; border-radius: 16px; font-size: 14px; line-height: 1.65; word-wrap: break-word; }
-        .message.user .msg-bubble {
-            background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08);
-            color: var(--text); border-bottom-right-radius: 4px;
-        }
-        .message.eris .msg-bubble { background: transparent; color: var(--text); padding-left: 0; }
-        .msg-bubble p { margin-bottom: 8px; }
-        .msg-bubble p:last-child { margin-bottom: 0; }
-        .msg-bubble code { font-family: 'JetBrains Mono', monospace; background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px; font-size: 13px; }
-        .msg-bubble pre { background: rgba(255,255,255,0.03); padding: 12px; border-radius: 8px; overflow-x: auto; margin: 8px 0; }
-        .msg-bubble pre code { background: none; padding: 0; }
-        .msg-bubble strong { color: #fff; }
-        .msg-time { font-size: 10px; color: var(--text-muted); margin-top: 3px; padding: 0 4px; }
-        .message.user .msg-time { text-align: right; }
-        .thinking-dots { display: flex; gap: 5px; padding: 14px 8px !important; }
-        .thinking-dots .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--text-muted); animation: dotP 1.4s infinite; }
-        .thinking-dots .dot:nth-child(2) { animation-delay: 0.2s; }
-        .thinking-dots .dot:nth-child(3) { animation-delay: 0.4s; }
-        @keyframes dotP { 0%,80%,100%{opacity:.3;transform:scale(.8)}40%{opacity:1;transform:scale(1.2)} }
-
-        /* ── Input ────────────────────────────────────────── */
-        .input-area { padding: 12px 24px 20px; backdrop-filter: blur(20px); background: rgba(0,0,0,0.5); flex-shrink: 0; }
-        .input-area.locked { opacity: 0.3; pointer-events: none; }
-        .input-wrap {
-            display: flex; align-items: flex-end; gap: 8px;
-            background: var(--surface); border: 1px solid var(--border);
-            border-radius: 14px; padding: 8px 12px;
-            transition: border-color 0.2s; max-width: 700px; margin: 0 auto;
-        }
-        .input-wrap:focus-within { border-color: rgba(255,255,255,0.12); }
-        #messageInput {
-            flex: 1; background: transparent; border: none; outline: none;
-            color: var(--text); font-family: 'Inter', sans-serif; font-size: 14px;
-            resize: none; min-height: 22px; max-height: 150px; line-height: 1.5;
-        }
-        #messageInput::placeholder { color: var(--text-muted); }
-        .input-btn {
-            width: 30px; height: 30px; border-radius: 50%;
-            border: none; background: transparent; color: var(--text-muted);
-            cursor: pointer; display: flex; align-items: center; justify-content: center;
-            transition: all 0.2s;
-        }
-        .input-btn:hover { background: var(--surface-2); color: var(--text); }
-        .input-btn.active { background: #fff; color: #000; }
-        .input-btn.recording { background: #ef4444; color: #fff; animation: recP 1s infinite; }
-        @keyframes recP { 0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.4)}50%{box-shadow:0 0 0 6px rgba(239,68,68,0)} }
-
-        /* ── Login Modal ──────────────────────────────────── */
-        .modal-overlay {
-            position: fixed; inset: 0; z-index: 100;
-            background: rgba(0,0,0,0.97); display: none;
-            align-items: center; justify-content: center;
-            backdrop-filter: blur(40px);
-        }
-        .modal-overlay.show { display: flex; }
-        .modal-box { width: 360px; padding: 40px; text-align: center; }
-        .modal-logo { font-size: 20px; font-weight: 600; letter-spacing: 10px; text-transform: uppercase; color: var(--accent); margin-bottom: 4px; }
-        .modal-sub { font-size: 11px; color: var(--text-muted); margin-bottom: 28px; letter-spacing: 1px; }
-        .auth-tabs {
-            display: flex; gap: 0; margin-bottom: 24px;
-            border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
-        }
-        .auth-tab {
-            flex: 1; padding: 10px; background: transparent;
-            border: none; color: var(--text-muted); font-size: 12px;
-            font-family: 'Inter', sans-serif; cursor: pointer;
-            letter-spacing: 1px; text-transform: uppercase;
-            transition: all 0.2s;
-        }
-        .auth-tab.active { background: rgba(255,255,255,0.06); color: var(--text); }
-        .auth-tab:hover:not(.active) { color: var(--text-dim); }
-        .modal-input {
-            width: 100%; background: var(--surface);
-            border: 1px solid var(--border); border-radius: 8px;
-            padding: 12px 14px; color: var(--text);
-            font-family: 'Inter', sans-serif; font-size: 13px;
-            outline: none; margin-bottom: 10px; transition: border-color 0.2s;
-        }
-        .modal-input:focus { border-color: rgba(255,255,255,0.15); }
-        .modal-input::placeholder { color: var(--text-muted); }
-        #confirmPasswordField { display: none; }
-        .modal-btn {
-            width: 100%; padding: 12px; border: none; border-radius: 8px;
-            background: var(--accent); color: var(--black);
-            font-family: 'Inter', sans-serif; font-size: 13px;
-            font-weight: 600; cursor: pointer; transition: opacity 0.2s;
-            margin-top: 6px; letter-spacing: 2px; text-transform: uppercase;
-        }
-        .modal-btn:hover { opacity: 0.85; }
-        .modal-error { color: #ef4444; font-size: 11px; margin-top: 10px; min-height: 16px; }
-        .modal-close {
-            position: absolute; top: 20px; right: 20px;
-            background: none; border: none; color: var(--text-muted);
-            font-size: 18px; cursor: pointer; display: none;
-        }
-        .modal-close.visible { display: block; }
-
-        /* ── Toast ─────────────────────────────────────────── */
-        .toast {
-            position: fixed; bottom: 90px; left: 50%;
-            transform: translateX(-50%) translateY(20px);
-            background: var(--surface-2); border: 1px solid var(--border-l);
-            color: var(--text); padding: 8px 18px; border-radius: 8px;
-            font-size: 12px; opacity: 0; transition: all 0.3s;
-            z-index: 200; pointer-events: none;
-        }
-        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-
-        /* ── Responsive ───────────────────────────────────── */
-        @media (max-width: 768px) {
-            .sidebar { position: absolute; height: 100%; z-index: 100; margin-left: -260px; opacity: 0; pointer-events: none; }
-            .sidebar.open { margin-left: 0; opacity: 1; pointer-events: auto; }
-            .mobile-close-btn { display: block !important; margin-right: auto; margin-left: 10px; }
-            .message { max-width: 92%; }
-            .topbar { padding: 8px 12px; }
-            .topbar-center { font-size: 11px; letter-spacing: 1.5px; }
-            .input-area { padding: 8px 12px 12px; padding-bottom: max(12px, env(safe-area-inset-bottom)); }
-            .input-wrap { padding: 6px 10px; border-radius: 12px; }
-            #messageInput { font-size: 15px; }
-            .msg-bubble { padding: 10px 14px; font-size: 14px; line-height: 1.55; }
-            .chat-messages { padding: 16px 12px; gap: 14px; }
-            .modal-box { width: 90%; padding: 28px 20px; }
-            .modal-logo { font-size: 18px; letter-spacing: 8px; }
-            .welcome-label { font-size: 10px; letter-spacing: 3px; }
-        }
-        @media (max-width: 400px) {
-            .model-select { font-size: 10px; padding: 3px 6px; }
-            .topbar-center { font-size: 10px; }
-        }
-
-        /* ── User Dropdown ────────────────────────────────── */
+        /* User dropdown */
         .user-dropdown {
-            position: absolute; bottom: 60px; left: 12px; right: 12px;
+            position: absolute; bottom: 68px; left: 12px; right: 12px;
             background: var(--surface-2); border: 1px solid var(--border-l);
-            border-radius: 10px; padding: 6px; display: none;
-            z-index: 20; animation: dropIn 0.15s ease-out;
+            border-radius: 10px; padding: 6px; display: none; z-index: 20;
+            animation: dropIn 0.2s ease-out;
         }
         .user-dropdown.show { display: block; }
         @keyframes dropIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
@@ -304,28 +192,300 @@
         }
         .dropdown-item:hover { background: var(--surface-3); color: var(--text); }
         .dropdown-item.danger { color: #f87171; }
-        .dropdown-item.danger:hover { background: rgba(248,113,113,0.1); color: #fca5a5; }
+        .dropdown-item.danger:hover { background: rgba(248,113,113,0.08); }
+
+        /* ── Main Panel ──────────────────────────────────── */
+        .main-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
+
+        /* ── Topbar ──────────────────────────────────────── */
+        .topbar {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 14px 24px;
+            background: rgba(0,0,0,0.3);
+            border-bottom: 1px solid rgba(255,107,0,0.04);
+            backdrop-filter: blur(20px);
+            flex-shrink: 0;
+        }
+        .topbar-left { display: flex; align-items: center; gap: 14px; }
+        .menu-btn {
+            background: none; border: none;
+            color: var(--text-dim); cursor: pointer; padding: 4px;
+            transition: color 0.2s;
+        }
+        .menu-btn:hover { color: var(--accent-warm); }
+        .status-dot {
+            width: 6px; height: 6px; border-radius: 50%;
+            background: #333; transition: all 0.4s;
+        }
+        .status-dot.online {
+            background: var(--accent-warm);
+            box-shadow: 0 0 8px rgba(255,107,0,0.5), 0 0 20px rgba(255,107,0,0.2);
+        }
+        .topbar-label {
+            font-family: 'Outfit', sans-serif;
+            font-size: 13px; color: var(--text-muted);
+            letter-spacing: 4px; font-weight: 300;
+        }
+        .topbar-right { display: flex; align-items: center; gap: 12px; }
+        .model-select {
+            background: rgba(255,107,0,0.04); border: 1px solid rgba(255,107,0,0.1);
+            color: var(--text-dim); font-size: 11px; padding: 5px 10px;
+            border-radius: 20px; outline: none; cursor: pointer;
+            font-family: 'Inter', sans-serif; transition: all 0.2s;
+        }
+        .model-select:hover { border-color: rgba(255,107,0,0.2); }
+        .model-select option { background: #0a0510; color: #aaa; }
+
+        /* ── Content ─────────────────────────────────────── */
+        .content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+        /* ── Welcome (Black Hole center) ─────────────────── */
+        .welcome-view {
+            flex: 1; display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            transition: opacity 0.5s, transform 0.5s;
+        }
+        .welcome-view.hidden { opacity: 0; pointer-events: none; position: absolute; inset: 0; }
+        .welcome-label {
+            margin-top: 20px; font-family: 'Outfit', sans-serif;
+            font-size: 12px; letter-spacing: 5px;
+            text-transform: uppercase; color: var(--text-muted); font-weight: 300;
+        }
+
+        /* ── Chat ────────────────────────────────────────── */
+        .chat-view { flex: 1; display: none; flex-direction: column; overflow: hidden; }
+        .chat-view.active { display: flex; }
+        .chat-messages {
+            flex: 1; overflow-y: auto; padding: 24px 28px;
+            display: flex; flex-direction: column; gap: 20px;
+            scrollbar-width: thin; scrollbar-color: rgba(255,107,0,0.08) transparent;
+        }
+        .chat-messages::-webkit-scrollbar { width: 2px; }
+        .chat-messages::-webkit-scrollbar-thumb { background: rgba(255,107,0,0.12); border-radius: 1px; }
+
+        .message { max-width: 72%; animation: msgIn 0.4s ease-out; }
+        @keyframes msgIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        .message.user { align-self: flex-end; }
+        .message.eris { align-self: flex-start; }
+        .msg-bubble {
+            padding: 14px 18px; border-radius: 18px;
+            font-size: 14px; line-height: 1.7; word-wrap: break-word;
+        }
+        .message.user .msg-bubble {
+            background: linear-gradient(135deg, rgba(255,107,0,0.08), rgba(139,92,246,0.06));
+            border: 1px solid rgba(255,107,0,0.1);
+            color: var(--text); border-bottom-right-radius: 4px;
+        }
+        .message.eris .msg-bubble { background: transparent; color: var(--text); padding-left: 0; }
+        .msg-bubble p { margin-bottom: 8px; }
+        .msg-bubble p:last-child { margin-bottom: 0; }
+        .msg-bubble code {
+            font-family: 'JetBrains Mono', monospace;
+            background: rgba(255,107,0,0.06); padding: 2px 6px;
+            border-radius: 4px; font-size: 13px;
+            border: 1px solid rgba(255,107,0,0.05);
+        }
+        .msg-bubble pre {
+            background: rgba(5,2,15,0.6); padding: 14px;
+            border-radius: 10px; overflow-x: auto; margin: 10px 0;
+            border: 1px solid rgba(255,107,0,0.05);
+        }
+        .msg-bubble pre code { background: none; padding: 0; border: none; }
+        .msg-bubble strong { color: var(--accent-gold); }
+        .msg-time { font-size: 10px; color: var(--text-muted); margin-top: 4px; padding: 0 4px; }
+        .message.user .msg-time { text-align: right; }
+
+        .thinking-dots { display: flex; gap: 6px; padding: 14px 8px !important; }
+        .thinking-dots .dot {
+            width: 5px; height: 5px; border-radius: 50%;
+            background: var(--accent-warm); animation: dotPulse 1.4s infinite;
+        }
+        .thinking-dots .dot:nth-child(2) { animation-delay: 0.2s; }
+        .thinking-dots .dot:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes dotPulse { 0%,80%,100%{opacity:.2;transform:scale(.7)}40%{opacity:1;transform:scale(1.3)} }
+
+        /* ── Input Area ──────────────────────────────────── */
+        .input-area {
+            padding: 14px 28px 22px;
+            background: rgba(0,0,0,0.4);
+            backdrop-filter: blur(20px);
+            flex-shrink: 0;
+        }
+        .input-area.locked { opacity: 0.3; pointer-events: none; }
+        .input-wrap {
+            display: flex; align-items: flex-end; gap: 8px;
+            background: rgba(10,5,20,0.7);
+            border: 1px solid rgba(255,107,0,0.08);
+            border-radius: 16px; padding: 10px 14px;
+            transition: border-color 0.3s, box-shadow 0.3s;
+            max-width: 720px; margin: 0 auto;
+        }
+        .input-wrap:focus-within {
+            border-color: rgba(255,107,0,0.2);
+            box-shadow: 0 0 20px rgba(255,107,0,0.03);
+        }
+        #messageInput {
+            flex: 1; background: transparent; border: none; outline: none;
+            color: var(--text); font-family: 'Inter', sans-serif; font-size: 14px;
+            resize: none; min-height: 22px; max-height: 150px; line-height: 1.5;
+        }
+        #messageInput::placeholder { color: var(--text-muted); }
+        .input-btn {
+            width: 32px; height: 32px; border-radius: 50%;
+            border: none; background: transparent; color: var(--text-muted);
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: all 0.3s;
+        }
+        .input-btn:hover { background: rgba(255,107,0,0.08); color: var(--accent-warm); }
+        .input-btn.active { background: var(--accent-warm); color: #000; }
+        .input-btn.recording { background: var(--danger); color: #fff; animation: recPulse 1s infinite; }
+        @keyframes recPulse { 0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.4)}50%{box-shadow:0 0 0 8px rgba(239,68,68,0)} }
+
+        /* ── Login Modal ─────────────────────────────────── */
+        .modal-overlay {
+            position: fixed; inset: 0; z-index: 150;
+            background: rgba(0,0,0,0.95); display: none;
+            align-items: center; justify-content: center;
+            backdrop-filter: blur(40px);
+        }
+        .modal-overlay.show { display: flex; }
+        .modal-box {
+            width: 380px; padding: 44px;
+            text-align: center; position: relative;
+        }
+        .modal-logo {
+            font-family: 'Outfit', sans-serif;
+            font-size: 28px; font-weight: 200; letter-spacing: 14px;
+            text-transform: uppercase;
+            background: linear-gradient(135deg, #FF6B00, #FFB800, #8B5CF6);
+            background-clip: text; -webkit-background-clip: text;
+            color: transparent; margin-bottom: 6px;
+        }
+        .modal-sub {
+            font-size: 10px; color: var(--text-muted);
+            margin-bottom: 32px; letter-spacing: 3px;
+            font-family: 'Inter', sans-serif;
+        }
+        .auth-tabs {
+            display: flex; gap: 0; margin-bottom: 24px;
+            border: 1px solid rgba(255,107,0,0.1); border-radius: 10px; overflow: hidden;
+        }
+        .auth-tab {
+            flex: 1; padding: 11px; background: transparent;
+            border: none; color: var(--text-muted); font-size: 11px;
+            font-family: 'Inter', sans-serif; cursor: pointer;
+            letter-spacing: 2px; text-transform: uppercase;
+            transition: all 0.3s;
+        }
+        .auth-tab.active { background: rgba(255,107,0,0.06); color: var(--accent-warm); }
+        .auth-tab:hover:not(.active) { color: var(--text-dim); }
+        .modal-input {
+            width: 100%; background: rgba(10,5,20,0.8);
+            border: 1px solid rgba(255,107,0,0.08); border-radius: 10px;
+            padding: 13px 16px; color: var(--text);
+            font-family: 'Inter', sans-serif; font-size: 13px;
+            outline: none; margin-bottom: 10px;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        .modal-input:focus {
+            border-color: rgba(255,107,0,0.25);
+            box-shadow: 0 0 15px rgba(255,107,0,0.05);
+        }
+        .modal-input::placeholder { color: var(--text-muted); }
+        #confirmPasswordField { display: none; }
+        .modal-btn {
+            width: 100%; padding: 13px; border: none; border-radius: 10px;
+            background: linear-gradient(135deg, #FF6B00, #E65100);
+            color: #fff; font-family: 'Inter', sans-serif; font-size: 12px;
+            font-weight: 600; cursor: pointer; transition: all 0.3s;
+            margin-top: 8px; letter-spacing: 3px; text-transform: uppercase;
+        }
+        .modal-btn:hover { opacity: 0.9; box-shadow: 0 0 25px rgba(255,107,0,0.2); }
+        .modal-error { color: var(--danger); font-size: 11px; margin-top: 10px; min-height: 16px; }
+        .modal-close {
+            position: absolute; top: 16px; right: 16px;
+            background: none; border: none; color: var(--text-muted);
+            font-size: 18px; cursor: pointer; display: none;
+        }
+        .modal-close.visible { display: block; }
+
+        /* ── Creator View ────────────────────────────────── */
+        .creator-view {
+            display: none; flex: 1; flex-direction: column; overflow: hidden;
+        }
+        .creator-tabs {
+            display: flex;
+            border-bottom: 1px solid rgba(139,92,246,0.15);
+            background: rgba(139,92,246,0.04);
+        }
+        .creator-tab {
+            flex: 1; padding: 13px; background: transparent;
+            border: none; font-size: 11px; font-weight: 600;
+            letter-spacing: 2px; text-transform: uppercase;
+            cursor: pointer; border-bottom: 2px solid transparent;
+            font-family: 'Inter', sans-serif; transition: all 0.2s;
+        }
+        .creator-tab.active { color: var(--accent-violet); border-bottom-color: var(--accent-violet); }
+        .creator-tab:not(.active) { color: rgba(139,92,246,0.4); }
+
+        /* ── Toast ────────────────────────────────────────── */
+        .toast {
+            position: fixed; bottom: 100px; left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: var(--surface-2); border: 1px solid var(--border-l);
+            color: var(--text); padding: 10px 22px; border-radius: 24px;
+            font-size: 12px; opacity: 0; transition: all 0.3s;
+            z-index: 200; pointer-events: none;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+        /* ── Responsive ──────────────────────────────────── */
+        @media (max-width: 768px) {
+            .gravity-drawer {
+                position: absolute; height: 100%; z-index: 100;
+                margin-left: -280px; opacity: 0; pointer-events: none;
+            }
+            .gravity-drawer.open { margin-left: 0; opacity: 1; pointer-events: auto; }
+            .mobile-close-btn { display: block !important; }
+            .message { max-width: 92%; }
+            .topbar { padding: 10px 14px; }
+            .input-area { padding: 10px 14px 14px; padding-bottom: max(14px, env(safe-area-inset-bottom)); }
+            .input-wrap { padding: 8px 12px; }
+            #messageInput { font-size: 15px; }
+            .msg-bubble { padding: 12px 16px; font-size: 14px; }
+            .chat-messages { padding: 16px 14px; gap: 16px; }
+            .modal-box { width: 90%; padding: 30px 22px; }
+            .splash-title { font-size: 32px; letter-spacing: 18px; }
+        }
+        @media (max-width: 400px) {
+            .model-select { font-size: 10px; padding: 3px 8px; }
+        }
     </style>
 </head>
 <body>
 
-<canvas id="coreCanvas"></canvas>
+<!-- Splash Screen -->
+<div id="splashScreen">
+    <div class="splash-title">ERIS</div>
+    <div class="splash-sub">event horizon intelligence</div>
+</div>
 
-<div class="shell">
-    <!-- Sidebar -->
-    <div class="sidebar" id="sidebar">
-        <div class="sidebar-header">
-            <span class="sidebar-logo">Eris</span>
-            <button class="menu-btn mobile-close-btn" id="mobileCloseBtn" style="opacity: 0;" title="Close Menu">✕</button>
-            <button class="new-chat-btn" id="newChatBtn">+ New</button>
+<!-- Black Hole Canvas -->
+<canvas id="blackholeCanvas"></canvas>
+
+<!-- Main Shell -->
+<div class="shell" id="shell">
+    <!-- Gravity Drawer (Sidebar) -->
+    <div class="gravity-drawer" id="sidebar">
+        <div class="drawer-header">
+            <span class="drawer-logo">Eris</span>
+            <button class="menu-btn mobile-close-btn" id="mobileCloseBtn" style="opacity:0;" title="Close">✕</button>
+            <button class="new-chat-btn" id="newChatBtn">+ NEW</button>
         </div>
-        <div class="chat-list" id="chatList">
-            <!-- populated by JS -->
-        </div>
-        <div id="creatorPortalBtn" class="chat-item" style="display:none; color: #a855f7; border: 1px solid rgba(168,85,247,0.3); margin: 8px; text-align: center;">
-            👁 Creator Portal
-        </div>
-        <div class="sidebar-footer" style="position:relative;">
+        <div class="chat-orbit" id="chatList"></div>
+        <div class="creator-portal-btn" id="creatorPortalBtn">👁 Creator Portal</div>
+        <div class="drawer-footer" style="position:relative;">
             <div class="user-dropdown" id="userDropdown">
                 <button class="dropdown-item danger" id="signOutBtn">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -346,7 +506,7 @@
         </div>
     </div>
 
-    <!-- Main -->
+    <!-- Main Panel -->
     <div class="main-panel" id="mainPanel">
         <div class="topbar">
             <div class="topbar-left">
@@ -354,7 +514,7 @@
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
                 </button>
                 <div class="status-dot" id="statusDot"></div>
-                <span class="topbar-center" id="topbarLabel">ERIS</span>
+                <span class="topbar-label" id="topbarLabel">ERIS</span>
             </div>
             <div class="topbar-right">
                 <select class="model-select" id="modelSelector">
@@ -377,17 +537,17 @@
             <div class="chat-view" id="chatView">
                 <div class="chat-messages" id="chatMessages"></div>
             </div>
-            <div class="creator-view" id="creatorView" style="display:none; flex:1; flex-direction:column; overflow:hidden;">
-                <div style="display:flex; border-bottom: 1px solid rgba(168,85,247,0.2); background: rgba(168,85,247,0.1);">
-                    <button id="tabLiveFeed" style="flex:1; padding: 12px; background:transparent; border:none; color: #a855f7; font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; cursor:pointer; border-bottom: 2px solid #a855f7;">Live Chats</button>
-                    <button id="tabResearchFeed" style="flex:1; padding: 12px; background:transparent; border:none; color: rgba(168,85,247,0.5); font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; cursor:pointer; border-bottom: 2px solid transparent;">Research Daemon</button>
+            <div class="creator-view" id="creatorView">
+                <div class="creator-tabs">
+                    <button class="creator-tab active" id="tabLiveFeed">Live Chats</button>
+                    <button class="creator-tab" id="tabResearchFeed">Research Daemon</button>
                 </div>
                 <div class="chat-messages" id="creatorFeed" style="flex:1;"></div>
                 <div class="chat-messages" id="researchFeed" style="flex:1; display:none;"></div>
             </div>
             <div class="input-area locked" id="inputArea">
                 <div id="imagePreviewContainer" style="display:none; padding: 8px 16px; border-bottom: 1px solid var(--border);">
-                    <img id="imagePreview" src="" style="max-height: 60px; border-radius: 4px; border: 1px solid var(--border);">
+                    <img id="imagePreview" src="" style="max-height: 60px; border-radius: 6px; border: 1px solid var(--border);">
                     <button id="removeImageBtn" style="background: none; border: none; color: #f87171; cursor: pointer; margin-left: 8px; vertical-align: top; font-size: 14px;">✕</button>
                 </div>
                 <div class="input-wrap">
@@ -416,7 +576,7 @@
     <button class="modal-close" id="modalClose">✕</button>
     <div class="modal-box">
         <div class="modal-logo">Eris</div>
-        <div class="modal-sub">persistent intelligence</div>
+        <div class="modal-sub">event horizon intelligence</div>
         <div class="auth-tabs">
             <button class="auth-tab active" id="tabSignIn">Sign In</button>
             <button class="auth-tab" id="tabSignUp">Sign Up</button>
@@ -424,8 +584,8 @@
         <input class="modal-input" id="loginUsername" type="text" placeholder="Username" autocomplete="off" spellcheck="false">
         <input class="modal-input" id="loginPassword" type="password" placeholder="Password">
         <input class="modal-input" id="confirmPasswordField" type="password" placeholder="Confirm Password">
-        <div style="display:flex; align-items:center; gap:8px; margin-top:4px; margin-bottom:12px; font-size:12px; color:var(--text-muted); cursor:pointer;">
-            <input type="checkbox" id="rememberMe" checked style="cursor:pointer;">
+        <div style="display:flex; align-items:center; gap:8px; margin-top:6px; margin-bottom:14px; font-size:11px; color:var(--text-muted); cursor:pointer;">
+            <input type="checkbox" id="rememberMe" checked style="cursor:pointer; accent-color: #FF6B00;">
             <label for="rememberMe" style="cursor:pointer;">Remember me automatically</label>
         </div>
         <button class="modal-btn" id="loginBtn">Enter</button>
@@ -437,1324 +597,222 @@
 
 <script>
 // ════════════════════════════════════════════════════════════════
-//  ERIS — AUTONOMOUS DIGITAL ORGANISM
-//  A self-contained living entity with its own brain, emotions,
-//  sensory awareness, autonomic systems, and physical body.
+//  TON 618 — INTERACTIVE BLACK HOLE SIMULATION
 // ════════════════════════════════════════════════════════════════
 
-const canvas = document.getElementById('coreCanvas');
-const ctx = canvas.getContext('2d');
-let W, H, cx, cy;
-function resize() {
-    W = canvas.width = innerWidth; H = canvas.height = innerHeight;
-    // Center core in the visible content area (accounting for sidebar)
+const bhCanvas = document.getElementById('blackholeCanvas');
+const bhCtx = bhCanvas.getContext('2d');
+let W, H, bhCx, bhCy;
+let mouseX = 0, mouseY = 0, mouseNear = false;
+let interactionFlare = 0;
+let isThinkingState = false, isSpeakingState = false;
+
+function bhResize() {
+    W = bhCanvas.width = innerWidth;
+    H = bhCanvas.height = innerHeight;
     const sidebar = document.getElementById('sidebar');
-    const sidebarW = (sidebar && !sidebar.classList.contains('collapsed') && innerWidth > 768) ? 260 : 0;
-    cx = sidebarW + (W - sidebarW) / 2;
-    cy = H / 2;
+    const sW = (sidebar && !sidebar.classList.contains('collapsed') && innerWidth > 768) ? 280 : 0;
+    bhCx = sW + (W - sW) / 2;
+    bhCy = H / 2;
 }
-addEventListener('resize', resize); resize();
-// Re-center when sidebar toggles
+addEventListener('resize', bhResize); bhResize();
+setInterval(bhResize, 500);
 
-setInterval(resize, 500); // lightweight check for sidebar changes
+addEventListener('mousemove', e => { mouseX = e.clientX; mouseY = e.clientY; });
+addEventListener('click', () => { interactionFlare = Math.min(interactionFlare + 0.8, 2.0); });
 
-// ── Simplex Noise ────────────────────────────────────────
-const SNoise = (() => {
-    const F2=.5*(Math.sqrt(3)-1), G2=(3-Math.sqrt(3))/6;
-    const grad=[[1,1],[-1,1],[1,-1],[-1,-1],[1,0],[-1,0],[0,1],[0,-1]];
-    const perm=new Uint8Array(512), p=new Uint8Array(256);
-    for(let i=0;i<256;i++) p[i]=i;
-    for(let i=255;i>0;i--){const j=Math.floor(Math.random()*(i+1));[p[i],p[j]]=[p[j],p[i]];}
-    for(let i=0;i<512;i++) perm[i]=p[i&255];
-    return (x,y)=>{
-        const s=(x+y)*F2, i=Math.floor(x+s), j=Math.floor(y+s), t=(i+j)*G2;
-        const x0=x-(i-t), y0=y-(j-t), i1=x0>y0?1:0, j1=x0>y0?0:1;
-        const x1=x0-i1+G2, y1=y0-j1+G2, x2=x0-1+2*G2, y2=y0-1+2*G2;
-        const ii=i&255, jj=j&255; let n0=0,n1=0,n2=0;
-        let t0=.5-x0*x0-y0*y0; if(t0>0){t0*=t0;const g=perm[ii+perm[jj]]%8;n0=t0*t0*(grad[g][0]*x0+grad[g][1]*y0);}
-        let t1=.5-x1*x1-y1*y1; if(t1>0){t1*=t1;const g=perm[ii+i1+perm[jj+j1]]%8;n1=t1*t1*(grad[g][0]*x1+grad[g][1]*y1);}
-        let t2=.5-x2*x2-y2*y2; if(t2>0){t2*=t2;const g=perm[ii+1+perm[jj+1]]%8;n2=t2*t2*(grad[g][0]*x2+grad[g][1]*y2);}
-        return 70*(n0+n1+n2);
-    };
-})();
-// 3D noise via offset
-const SNoise3 = (x,y,z) => (SNoise(x+z*31.7,y+z*17.3)+SNoise(x-z*13.1,y-z*7.9))*0.5;
+// ── Starfield ────────────────────────────────────────────
+const stars = [];
+for (let i = 0; i < 300; i++) {
+    stars.push({
+        x: Math.random() * 3000 - 500,
+        y: Math.random() * 2000 - 200,
+        r: Math.random() * 1.2 + 0.2,
+        a: Math.random() * 0.6 + 0.1,
+        twinkle: Math.random() * Math.PI * 2
+    });
+}
 
-// ═══════════════════════════════════════════════════════════
-//  1. EMOTION SYSTEM — 8-axis limbic simulation
-// ═══════════════════════════════════════════════════════════
-class EmotionSystem {
-    constructor() {
-        this.axes = {
-            joy: 0.3, curiosity: 0.4, anxiety: 0.1, calm: 0.5,
-            excitement: 0.2, melancholy: 0.1, affection: 0.2, irritation: 0.05,
-        };
-        this.baseline = {
-            joy: 0.3, curiosity: 0.35, anxiety: 0.1, calm: 0.5,
-            excitement: 0.15, melancholy: 0.1, affection: 0.2, irritation: 0.05,
-        };
-        // Cross-effects: what suppresses what
-        this.suppressions = [
-            ['joy','anxiety',0.3], ['joy','melancholy',0.3], ['joy','irritation',0.2],
-            ['calm','anxiety',0.4], ['calm','excitement',0.2], ['calm','irritation',0.3],
-            ['excitement','calm',0.2], ['excitement','melancholy',0.3],
-            ['anxiety','joy',0.2], ['anxiety','calm',0.3],
-            ['melancholy','joy',0.2], ['melancholy','excitement',0.2],
-            ['affection','irritation',0.4], ['affection','anxiety',0.2],
-            ['irritation','affection',0.1], ['irritation','calm',0.2],
-        ];
-    }
-    // Nudge an emotion
-    nudge(axis, amount) {
-        if (this.axes[axis] !== undefined) {
-            this.axes[axis] = Math.max(0, Math.min(1, this.axes[axis] + amount));
+function drawStars(t) {
+    for (const s of stars) {
+        const dx = s.x - bhCx, dy = s.y - bhCy;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        // Gravitational lensing — stars near center get bent
+        const lensR = 180;
+        let sx = s.x, sy = s.y;
+        if (dist < lensR * 3 && dist > lensR * 0.5) {
+            const strength = Math.max(0, 1 - dist / (lensR * 3));
+            const angle = Math.atan2(dy, dx);
+            const bend = strength * 40;
+            sx += Math.cos(angle + Math.PI / 2) * bend;
+            sy += Math.sin(angle + Math.PI / 2) * bend;
         }
-    }
-    // Natural decay toward baseline + cross-effects
-    update(dt) {
-        const decayRate = 0.15 * dt; // per second
-        for (const [k, base] of Object.entries(this.baseline)) {
-            const diff = base - this.axes[k];
-            this.axes[k] += diff * decayRate;
-        }
-        // Cross-suppression
-        for (const [src, tgt, str] of this.suppressions) {
-            if (this.axes[src] > 0.5) {
-                const excess = this.axes[src] - 0.5;
-                this.axes[tgt] -= excess * str * dt * 0.5;
-                this.axes[tgt] = Math.max(0, this.axes[tgt]);
-            }
-        }
-    }
-    // Get dominant emotion
-    get dominant() {
-        let max = 0, name = 'calm';
-        for (const [k,v] of Object.entries(this.axes)) {
-            if (v > max) { max = v; name = k; }
-        }
-        return name;
-    }
-    // Get iridescent cycling hue — Gemini-style rainbow shimmer
-    hueAt(t) {
-        // Continuously cycling rainbow base (full 360° rotation over ~24s)
-        const rainbowBase = (t * 15) % 360;
-        // Emotion tints the rainbow — dominant emotion pulls the hue
-        const map = { joy:50, curiosity:175, anxiety:350, calm:200,
-                      excitement:310, melancholy:230, affection:35, irritation:10 };
-        let emotionHue = 0, total = 0;
-        for (const [k,v] of Object.entries(this.axes)) {
-            emotionHue += map[k] * v; total += v;
-        }
-        const emotionTint = total > 0 ? emotionHue / total : 200;
-        // Blend: 60% rainbow cycle + 40% emotion tint
-        return (rainbowBase * 0.6 + emotionTint * 0.4) % 360;
-    }
-    get saturation() {
-        const intensity = this.axes.excitement + this.axes.joy + this.axes.affection + this.axes.curiosity;
-        return 55 + Math.min(40, intensity * 15);
-    }
-    get brightness() {
-        return 0.7 + (this.axes.joy + this.axes.excitement) * 0.2 - this.axes.melancholy * 0.08;
+        // Hide stars behind event horizon
+        if (dist < lensR * 0.7) continue;
+        const tw = Math.sin(t * 2 + s.twinkle) * 0.3 + 0.7;
+        bhCtx.beginPath();
+        bhCtx.arc(sx, sy, s.r, 0, Math.PI * 2);
+        bhCtx.fillStyle = `rgba(200,210,240,${s.a * tw})`;
+        bhCtx.fill();
     }
 }
 
-// ═══════════════════════════════════════════════════════════
-//  2. AUTONOMIC SYSTEM — Life functions
-// ═══════════════════════════════════════════════════════════
-class AutonomicSystem {
-    constructor() {
-        this.heartPhase = 0;       // heartbeat cycle
-        this.heartRate = 72;       // BPM
-        this.breathPhase = 0;      // breathing cycle
-        this.breathRate = 0.15;    // Hz (cycles per second)
-        this.energy = 0.7;         // overall vitality
-        this.circadian = 0.8;      // time-of-day modifier
-    }
-    update(dt, emotions) {
-        // Heart rate: function of excitement + anxiety
-        const targetHR = 60 + emotions.axes.excitement * 60 + emotions.axes.anxiety * 40
-                        - emotions.axes.calm * 15;
-        this.heartRate += (targetHR - this.heartRate) * dt * 0.5;
-        this.heartPhase += (this.heartRate / 60) * dt * Math.PI * 2;
-
-        // Breathing: slower when calm, faster when excited
-        const targetBreath = 0.1 + emotions.axes.excitement * 0.15 - emotions.axes.calm * 0.03;
-        this.breathRate += (targetBreath - this.breathRate) * dt * 0.3;
-        this.breathPhase += this.breathRate * dt * Math.PI * 2;
-
-        // Energy: slow drain, restored by interaction
-        this.energy -= 0.001 * dt;
-        this.energy = Math.max(0.4, Math.min(1, this.energy));
-
-        // Circadian rhythm based on time of day
-        const hour = new Date().getHours();
-        const targetCirc = hour >= 6 && hour < 22
-            ? 0.7 + 0.3 * Math.sin((hour - 6) / 16 * Math.PI)
-            : 0.3;
-        this.circadian += (targetCirc - this.circadian) * dt * 0.01;
-    }
-    get heartPulse() { return Math.sin(this.heartPhase); }
-    get breathCycle() { return Math.sin(this.breathPhase); }
-    boostEnergy(amount) { this.energy = Math.min(1, this.energy + amount); }
+// ── Accretion Disk Particles ──────────────────────────────
+const diskParticles = [];
+const DISK_COUNT = 2500;
+for (let i = 0; i < DISK_COUNT; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const r = 60 + Math.random() * 260;
+    const speed = (0.15 + Math.random() * 0.3) / Math.max(1, r * 0.008);
+    diskParticles.push({
+        angle, r, speed,
+        baseR: r,
+        wobble: Math.random() * Math.PI * 2,
+        wobbleAmp: 1 + Math.random() * 6,
+        size: 0.3 + Math.random() * 1.8,
+        brightness: Math.random(),
+        layer: Math.random() // for color variation
+    });
 }
 
-// ═══════════════════════════════════════════════════════════
-//  3. SENSORY SYSTEM — Environment observation
-// ═══════════════════════════════════════════════════════════
-class SensorySystem {
-    constructor() {
-        this.userTyping = false;
-        this.typingSpeed = 0;      // chars per second (estimated)
-        this.lastTypeTime = 0;
-        this.lastInteraction = Date.now();
-        this.timeSinceInteraction = 0;
-        this.mouseX = cx; this.mouseY = cy;
-        this.mouseNearCore = false;
-        this.windowFocused = true;
-        this.wsConnected = false;
-        this.isThinking = false;
-        this.isSpeaking = false;
-        this.isLoggedIn = false;
-        this.isCreator = false;
-        this._typeCount = 0;
-        this._typeWindow = 0;
-    }
-    onType() {
-        this.userTyping = true;
-        this.lastTypeTime = Date.now();
-        this.lastInteraction = Date.now();
-        this._typeCount++;
-    }
-    onInteraction() { this.lastInteraction = Date.now(); }
-    update(dt) {
-        const now = Date.now();
-        this.timeSinceInteraction = (now - this.lastInteraction) / 1000;
-        // Typing decay
-        if (this.userTyping && now - this.lastTypeTime > 1500) {
-            this.userTyping = false;
-        }
-        // Typing speed estimation (rolling window)
-        this._typeWindow += dt;
-        if (this._typeWindow > 1) {
-            this.typingSpeed = this._typeCount / this._typeWindow;
-            this._typeCount = 0; this._typeWindow = 0;
-        }
-        // Mouse proximity to center
-        const dx = this.mouseX - cx, dy = this.mouseY - cy;
-        this.mouseNearCore = Math.sqrt(dx*dx + dy*dy) < 200;
-    }
-}
+function drawAccretionDisk(t) {
+    const tiltY = 0.28; // Viewing angle tilt
 
-// ═══════════════════════════════════════════════════════════
-//  4. MOTOR CORTEX — Behavior → particle commands
-// ═══════════════════════════════════════════════════════════
-class MotorCortex {
-    constructor() {
-        // Current motor state (blended targets)
-        this.driftX = 0; this.driftY = 0;
-        this.targetDriftX = 0; this.targetDriftY = 0;
-        this.expansion = 1.0;    // body scale
-        this.targetExpansion = 1.0;
-        this.orbitSpeed = 1.0;
-        this.targetOrbitSpeed = 1.0;
-        this.chaosLevel = 0.3;   // noise influence
-        this.targetChaos = 0.3;
-        this.tightness = 1.0;    // how compressed
-        this.targetTightness = 1.0;
-        this.spiralForce = 0;
-        this.targetSpiral = 0;
-        this.scatterForce = 0;
-        this.reachDirection = [0, 0]; // pseudopod reach
-        this.reachIntensity = 0;
-        this.nodAmplitude = 0;
-        this.nodPhase = 0;
-        this.shiverIntensity = 0;
-        this.bloomWave = 0;      // radial wave strength
-        this.shapeName = null;
-        this.shapeWeight = 0;
-        this.targetShapeWeight = 0;
-    }
-    update(dt) {
-        const lerp = (a,b,t) => a + (b-a) * Math.min(1, t);
-        const spd = dt * 2;
-        this.driftX = lerp(this.driftX, this.targetDriftX, spd);
-        this.driftY = lerp(this.driftY, this.targetDriftY, spd);
-        this.expansion = lerp(this.expansion, this.targetExpansion, spd);
-        this.orbitSpeed = lerp(this.orbitSpeed, this.targetOrbitSpeed, spd);
-        this.chaosLevel = lerp(this.chaosLevel, this.targetChaos, spd);
-        this.tightness = lerp(this.tightness, this.targetTightness, spd);
-        this.spiralForce = lerp(this.spiralForce, this.targetSpiral, spd * 2);
-        this.scatterForce *= 0.95;
-        this.shiverIntensity *= 0.92;
-        this.bloomWave *= 0.96;
-        this.nodPhase += dt * 4;
-        this.nodAmplitude *= 0.97;
-        this.shapeWeight = lerp(this.shapeWeight, this.targetShapeWeight, spd);
-    }
-}
+    for (const p of diskParticles) {
+        // Orbital speed varies with radius (Keplerian)
+        let speedMul = 1.0;
+        if (isThinkingState) speedMul = 2.5;
+        else if (isSpeakingState) speedMul = 1.8;
 
-// ═══════════════════════════════════════════════════════════
-//  4.5. ARM SKELETON — Inverse Kinematics for Gestures
-// ═══════════════════════════════════════════════════════════
-class ArmSkeleton {
-    constructor() {
-        this.L1 = 120; // Upper arm length
-        this.L2 = 120; // Lower arm length
-        this.L3 = 40;  // Hand/palm length
-        
-        // Target properties
-        this.targetX = 0;
-        this.targetY = 0;
-        this.reachWeight = 0; // 0 to 1, fades the IK in/out
-        this.gestureName = null;
+        // Mouse interaction — particles near cursor accelerate
+        p.angle += p.speed * speedMul * 0.016;
+        p.angle %= Math.PI * 2;
 
-        // Calculated joints (relative to cx, cy)
-        this.shoulder = {x: 0, y: 0};
-        this.elbow = {x: 0, y: 0};
-        this.wrist = {x: 0, y: 0};
-        this.fingertips = [
-            {x:0, y:0}, {x:0, y:0}, {x:0, y:0}, {x:0, y:0}, {x:0, y:0}
-        ];
-    }
-    
-    update(t) {
-        if (this.reachWeight < 0.01) return;
-        
-        let tx = this.targetX;
-        let ty = this.targetY;
-        
-        // Add some breathing/sway to the target for life-like movement
-        tx += Math.sin(t) * 10;
-        ty += Math.cos(t * 1.3) * 10;
-        
-        let d = Math.sqrt(tx*tx + ty*ty);
-        const maxReach = this.L1 + this.L2;
-        if (d > maxReach) {
-            tx = (tx / d) * maxReach * 0.99;
-            ty = (ty / d) * maxReach * 0.99;
-            d = maxReach * 0.99;
-        }
-        if (d < 0.1) d = 0.1;
-        
-        // Inverse Kinematics (Law of Cosines)
-        const a = this.L1;
-        const b = this.L2;
-        
-        const targetAngle = Math.atan2(ty, tx);
-        
-        let cosQ1 = (a*a + d*d - b*b) / (2 * a * d);
-        cosQ1 = Math.max(-1, Math.min(1, cosQ1)); 
-        const q1 = Math.acos(cosQ1);
-        
-        const shoulderAngle = targetAngle + q1;
-        
-        this.elbow.x = Math.cos(shoulderAngle) * this.L1;
-        this.elbow.y = Math.sin(shoulderAngle) * this.L1;
-        
-        this.wrist.x = tx;
-        this.wrist.y = ty;
-        
-        let handAngle = Math.atan2(this.wrist.y - this.elbow.y, this.wrist.x - this.elbow.x);
-        
-        // Modify hand angle based on gesture
-        if (this.gestureName === 'wave') {
-            handAngle = -Math.PI/2 + Math.sin(t * 10) * 0.5;
-        } else if (this.gestureName === 'think') {
-            handAngle = -Math.PI/2;
-        } else if (this.gestureName === 'point') {
-            // hand remains straight relative to lower arm
-        }
+        // Wobble for turbulence
+        const wobble = Math.sin(t * 1.5 + p.wobble) * p.wobbleAmp;
+        const currentR = p.r + wobble;
 
-        const palmX = this.wrist.x + Math.cos(handAngle) * this.L3;
-        const palmY = this.wrist.y + Math.sin(handAngle) * this.L3;
+        // 3D position
+        const x = Math.cos(p.angle) * currentR;
+        const y = Math.sin(p.angle) * currentR * tiltY;
+        const z = Math.sin(p.angle) * currentR; // depth for occlusion
 
-        // Fingers
-        for(let i=0; i<5; i++) {
-            let spread = (i - 2) * 0.2; 
-            let fLength = 40;
-            
-            if (this.gestureName === 'point') {
-                if (i === 1) { // index finger points
-                    spread = 0; fLength = 50;
-                } else { // others curl
-                    spread = (i-2)*0.1;
-                    fLength = 10; 
-                }
-            } else if (this.gestureName === 'think') {
-                if (i === 0 || i === 1) { // thumb and index rest on "chin"
-                    spread = (i-0.5)*0.3; fLength = 30;
-                } else {
-                    fLength = 10;
-                }
-            }
-            
-            this.fingertips[i].x = palmX + Math.cos(handAngle + spread) * fLength;
-            this.fingertips[i].y = palmY + Math.sin(handAngle + spread) * fLength;
-        }
-    }
-}
+        const sx = bhCx + x;
+        const sy = bhCy + y;
 
-// ═══════════════════════════════════════════════════════════
-//  5. BEHAVIOR LIBRARY — 20+ distinct behaviors
-// ═══════════════════════════════════════════════════════════
-const Behaviors = {
-    // ── IDLE BEHAVIORS ──
-    floating: (motor, emo, auto, t) => {
-        motor.targetExpansion = 1.0 + Math.sin(t * 0.4) * 0.1;
-        motor.targetOrbitSpeed = 1.0 + Math.sin(t * 0.3) * 0.2;
-        motor.targetChaos = 0.3 + Math.sin(t * 0.25) * 0.1;
-        motor.targetTightness = 1.0;
-        motor.targetSpiral = Math.sin(t * 0.2) * 0.1;
-        // Constant gentle drift so it never looks frozen, kept close to center
-        motor.targetDriftX = Math.sin(t * 0.15) * 8;
-        motor.targetDriftY = Math.cos(t * 0.12) * 6;
-        // Gentle bloom pulses
-        if (Math.random() < 0.008) motor.bloomWave = 0.35;
-    },
-    contemplating: (motor, emo, auto) => {
-        motor.targetExpansion = 0.85;
-        motor.targetOrbitSpeed = 0.4;
-        motor.targetChaos = 0.1;
-        motor.targetTightness = 1.3;
-        motor.targetSpiral = 0.3;
-    },
-    gazing: (motor, emo, auto, t) => {
-        const angle = SNoise(t * 0.05, 0) * Math.PI;
-        motor.targetDriftX = Math.cos(angle) * 15;
-        motor.targetDriftY = Math.sin(angle) * 10;
-        motor.targetOrbitSpeed = 0.5;
-        motor.targetExpansion = 0.95;
-        motor.targetChaos = 0.15;
-    },
-    stretching: (motor, emo, auto, t) => {
-        motor.targetExpansion = 1.2 + Math.sin(t * 0.5) * 0.2;
-        motor.targetOrbitSpeed = 0.6;
-        motor.reachIntensity = 0.6;
-        motor.reachDirection = [Math.cos(t*0.3), Math.sin(t*0.3)];
-    },
-    dozing: (motor, emo, auto, t) => {
-        motor.targetExpansion = 0.85 + Math.sin(t * 0.15) * 0.05;
-        motor.targetOrbitSpeed = 0.4;
-        motor.targetChaos = 0.1;
-        motor.targetTightness = 1.3;
-        motor.targetDriftX = Math.sin(t * 0.08) * 5;
-        motor.targetDriftY = Math.cos(t * 0.06) * 4;
-    },
-    dreaming: (motor, emo, auto, t) => {
-        motor.targetExpansion = 0.9 + Math.sin(t * 0.2) * 0.3;
-        motor.targetOrbitSpeed = 0.8;
-        motor.targetChaos = 0.8;
-        motor.targetSpiral = Math.sin(t * 0.3) * 0.5;
-        motor.targetTightness = 0.8 + Math.sin(t * 0.15) * 0.3;
-    },
-    fidgeting: (motor, emo, auto, t) => {
-        motor.targetOrbitSpeed = 1.5;
-        motor.targetChaos = 0.5;
-        motor.targetExpansion = 1.0 + Math.sin(t * 3) * 0.05;
-        if (Math.random() < 0.03) {
-            motor.targetDriftX = (Math.random()-0.5) * 8;
-            motor.targetDriftY = (Math.random()-0.5) * 5;
-        }
-    },
+        // Skip if behind black hole center
+        if (Math.abs(x) < 50 && z < 0 && Math.abs(y) < 15) continue;
 
-    // ── REACTIVE BEHAVIORS ──
-    shape_cloud: (motor) => {
-        motor.targetShapeWeight = 1.0;
-        motor.shapeName = 'cloud';
-    },
-
-    // ── GESTURE BEHAVIORS ──
-    gesture_wave: (motor, emo, auto, t, sensory) => {
-        motor.targetShapeWeight = 1.0;
-        motor.shapeName = 'gesture_wave';
-        skeleton.gestureName = 'wave';
-        skeleton.reachWeight = motor.shapeWeight;
-        skeleton.targetX = sensory.mouseX ? (sensory.mouseX - cx) : 100;
-        skeleton.targetY = sensory.mouseY ? (sensory.mouseY - cy) : -50;
-    },
-    gesture_point: (motor, emo, auto, t, sensory) => {
-        motor.targetShapeWeight = 1.0;
-        motor.shapeName = 'gesture_point';
-        skeleton.gestureName = 'point';
-        skeleton.reachWeight = motor.shapeWeight;
-        skeleton.targetX = sensory.mouseX ? (sensory.mouseX - cx) : 100;
-        skeleton.targetY = sensory.mouseY ? (sensory.mouseY - cy) : 0;
-    },
-    gesture_think: (motor, emo, auto, t, sensory) => {
-        motor.targetShapeWeight = 1.0;
-        motor.shapeName = 'gesture_think';
-        skeleton.gestureName = 'think';
-        skeleton.reachWeight = motor.shapeWeight;
-        skeleton.targetX = 0;
-        skeleton.targetY = 80;
-    },
-    startled: (motor) => {
-        motor.targetTightness = 1.6;
-        motor.targetExpansion = 0.7;
-        motor.shiverIntensity = 1.0;
-        setTimeout(() => { motor.targetTightness = 0.9; motor.targetExpansion = 1.1; }, 300);
-    },
-    curious_lean: (motor, emo, auto, t, sensory) => {
-        motor.targetDriftY = 25;
-        motor.targetDriftX = 0;
-        motor.targetOrbitSpeed = 1.0;
-        motor.targetExpansion = 1.05;
-        motor.targetChaos = 0.25;
-        motor.reachIntensity = 0.4;
-        motor.reachDirection = [0, 1]; // lean down toward input
-    },
-    nodding: (motor) => {
-        motor.nodAmplitude = 12;
-        motor.targetOrbitSpeed = 0.9;
-    },
-    listening: (motor) => {
-        motor.targetTightness = 1.2;
-        motor.targetExpansion = 0.95;
-        motor.targetOrbitSpeed = 0.8;
-        motor.targetChaos = 0.15;
-    },
-    thinking_vortex: (motor) => {
-        motor.targetSpiral = 0.5;
-        motor.targetTightness = 1.6;
-        motor.targetExpansion = 0.85;
-        motor.targetOrbitSpeed = 0.4;
-        motor.targetChaos = 0.05;
-    },
-    speaking_bloom: (motor) => {
-        motor.targetExpansion = 1.3;
-        motor.targetTightness = 0.7;
-        motor.targetOrbitSpeed = 1.5;
-        motor.bloomWave = 1.0;
-        motor.targetSpiral = 0;
-        motor.targetChaos = 0.4;
-    },
-    shape_clock: (motor) => {
-        motor.shapeName = 'clock';
-        motor.targetShapeWeight = 1.0;
-        motor.targetExpansion = 1.0;
-        motor.targetOrbitSpeed = 0.5;
-        motor.targetTightness = 1.0;
-    },
-    shape_cloud: (motor) => {
-        motor.shapeName = 'cloud';
-        motor.targetShapeWeight = 1.0;
-        motor.targetExpansion = 1.2;
-        motor.targetOrbitSpeed = 0.3;
-        motor.targetChaos = 0.1;
-    },
-    shape_heart: (motor) => {
-        motor.shapeName = 'heart';
-        motor.targetShapeWeight = 1.0;
-        motor.targetExpansion = 1.1;
-        motor.targetTightness = 1.2;
-        motor.targetOrbitSpeed = 0.4;
-    },
-    pleased_pulse: (motor, emo) => {
-        motor.bloomWave = 0.6;
-        motor.targetExpansion = 1.15;
-        emo.nudge('joy', 0.1);
-    },
-
-    // ── AUTONOMOUS BEHAVIORS ──
-    exploring: (motor, emo, auto, t) => {
-        motor.targetExpansion = 1.1;
-        motor.reachIntensity = 0.8;
-        const angle = t * 0.4 + SNoise(t*0.1, 5) * 2;
-        motor.reachDirection = [Math.cos(angle), Math.sin(angle)];
-        motor.targetOrbitSpeed = 0.9;
-        motor.targetChaos = 0.35;
-    },
-    playing: (motor, emo, auto, t) => {
-        motor.targetOrbitSpeed = 2.0;
-        motor.targetChaos = 0.6;
-        motor.targetExpansion = 1.1 + Math.sin(t * 2) * 0.1;
-        motor.targetSpiral = Math.sin(t * 1.5) * 0.8;
-        if (Math.random() < 0.02) motor.scatterForce = 0.3;
-    },
-    preening: (motor) => {
-        motor.targetTightness = 1.4;
-        motor.targetOrbitSpeed = 0.6;
-        motor.targetChaos = 0.05;
-        motor.targetExpansion = 0.9;
-    },
-    yawning: (motor, emo, auto, t) => {
-        const phase = (t % 6) / 6;
-        if (phase < 0.4) motor.targetExpansion = 1.0 + phase * 1.0;
-        else if (phase < 0.6) motor.targetExpansion = 1.4;
-        else motor.targetExpansion = 1.4 - (phase-0.6)/0.4 * 0.5;
-        motor.targetOrbitSpeed = 0.3;
-    },
-    awakening: (motor, emo) => {
-        motor.targetExpansion = 1.1;
-        motor.targetOrbitSpeed = 1.2;
-        motor.targetChaos = 0.3;
-        emo.nudge('joy', 0.05);
-        emo.nudge('curiosity', 0.1);
-    },
-    greeting: (motor, emo) => {
-        motor.bloomWave = 1.0;
-        motor.targetExpansion = 1.3;
-        motor.nodAmplitude = 15;
-        emo.nudge('joy', 0.3);
-        emo.nudge('affection', 0.2);
-    },
-    creator_recognition: (motor, emo) => {
-        motor.bloomWave = 1.5;
-        motor.targetExpansion = 1.5;
-        motor.nodAmplitude = 20;
-        emo.nudge('joy', 0.5);
-        emo.nudge('affection', 0.6);
-        emo.nudge('excitement', 0.4);
-    },
-    error_distress: (motor, emo) => {
-        motor.shiverIntensity = 0.7;
-        motor.targetTightness = 1.4;
-        motor.targetExpansion = 0.85;
-        emo.nudge('anxiety', 0.3);
-    },
-};
-
-// ═══════════════════════════════════════════════════════════
-//  6. ENTITY BRAIN — Consciousness loop
-// ═══════════════════════════════════════════════════════════
-class EntityBrain {
-    constructor() {
-        this.emotions = new EmotionSystem();
-        this.autonomic = new AutonomicSystem();
-        this.sensory = new SensorySystem();
-        this.motor = new MotorCortex();
-
-        this.currentBehavior = 'floating';
-        this.behaviorTime = 0;
-        this.minBehaviorDuration = 2.5; // seconds before switching
-        this.time = 0;
-        this.appState = 'dormant'; // dormant, idle, listening, thinking, speaking
-        this._consciousnessTimer = 0;
-    }
-
-    // ── SENSE phase ─────────────────────────────────────
-    sense(dt) {
-        this.sensory.update(dt);
-    }
-
-    // ── FEEL phase ──────────────────────────────────────
-    feel(dt) {
-        const s = this.sensory;
-        const e = this.emotions;
-
-        // Interaction proximity effects
-        if (s.userTyping) {
-            e.nudge('curiosity', 0.02 * dt);
-            e.nudge('excitement', 0.01 * dt);
-            this.autonomic.boostEnergy(0.01 * dt);
-        }
-
-        // Idle time effects
-        if (s.timeSinceInteraction > 60) {
-            e.nudge('calm', 0.005 * dt);
-            e.nudge('curiosity', -0.002 * dt);
-        }
-        if (s.timeSinceInteraction > 180) {
-            e.nudge('melancholy', 0.003 * dt);
-        }
-        if (s.timeSinceInteraction > 300) {
-            e.nudge('irritation', 0.001 * dt); // bored
-        }
-
-        // Thinking = concentration
-        if (s.isThinking) {
-            e.nudge('excitement', 0.03 * dt);
-            e.nudge('curiosity', 0.02 * dt);
-        }
-
-        // Speaking = engaged
-        if (s.isSpeaking) {
-            e.nudge('joy', 0.01 * dt);
-            e.nudge('calm', 0.01 * dt);
-        }
-
-        // Mouse near core = awareness
-        if (s.mouseNearCore && s.isLoggedIn) {
-            e.nudge('curiosity', 0.005 * dt);
-            e.nudge('affection', 0.002 * dt);
-        }
-
-        // Window blur = loneliness
-        if (!s.windowFocused) {
-            e.nudge('melancholy', 0.002 * dt);
-            e.nudge('calm', 0.003 * dt);
-        }
-
-        // Not connected = anxiety
-        if (!s.wsConnected) {
-            e.nudge('anxiety', 0.01 * dt);
-        }
-
-        // Natural emotion update (decay + cross-effects)
-        e.update(dt);
-
-        // Autonomic update
-        this.autonomic.update(dt, e);
-    }
-
-    // ── DECIDE phase ────────────────────────────────────
-    decide(dt) {
-        this.behaviorTime += dt;
-
-        // Don't switch too fast
-        if (this.behaviorTime < this.minBehaviorDuration) return;
-
-        const e = this.emotions.axes;
-        const energy = this.autonomic.energy;
-        const idle = this.sensory.timeSinceInteraction;
-
-        // App-state overrides (reactive)
-        if (this.appState === 'thinking') {
-            this.setBehavior('thinking_vortex'); return;
-        }
-        if (this.appState === 'speaking') {
-            if (this.visualDirective === 'clock') this.setBehavior('shape_clock');
-            else if (this.visualDirective === 'cloud') this.setBehavior('shape_cloud');
-            else if (this.visualDirective === 'heart') this.setBehavior('shape_heart');
-            else this.setBehavior('speaking_bloom'); 
-            return;
-        }
-        if (this.appState === 'listening' || this.sensory.userTyping) {
-            if (this.behaviorTime > 1) {
-                // Alternate between curious_lean and listening
-                this.setBehavior(Math.random() < 0.6 ? 'curious_lean' : 'listening');
-            }
-            return;
-        }
-        if (this.appState === 'dormant') {
-            this.setBehavior('dozing'); return;
-        }
-
-        // ── AUTONOMOUS DECISION TREE ──
-        // Build weighted options
-        const options = [];
-
-        // Low energy → rest
-        if (energy < 0.2) {
-            options.push(['dozing', 5], ['contemplating', 3]);
-        } else if (energy < 0.4) {
-            options.push(['dozing', 2], ['floating', 3], ['contemplating', 2]);
-        }
-
-        // High curiosity → explore
-        if (e.curiosity > 0.5) {
-            options.push(['exploring', 4], ['gazing', 3], ['stretching', 2]);
-        }
-
-        // High excitement → play
-        if (e.excitement > 0.5) {
-            options.push(['playing', 4], ['fidgeting', 3]);
-        }
-
-        // High calm → peaceful
-        if (e.calm > 0.5) {
-            options.push(['floating', 4], ['contemplating', 3]);
-        }
-
-        // High melancholy → introspective
-        if (e.melancholy > 0.4) {
-            options.push(['contemplating', 3], ['gazing', 2]);
-        }
-
-        // Irritation (bored) → fidget
-        if (e.irritation > 0.3) {
-            options.push(['fidgeting', 3], ['exploring', 2]);
-        }
-
-        // Long idle → dream
-        if (idle > 120) {
-            options.push(['dreaming', 4], ['dozing', 3]);
-        }
-
-        // Default options
-        options.push(['floating', 2], ['stretching', 1], ['preening', 1]);
-
-        // Random yawn
-        if (Math.random() < 0.02 && energy < 0.5) {
-            options.push(['yawning', 5]);
-        }
-
-        // Weighted random selection
-        const totalWeight = options.reduce((s, [,w]) => s + w, 0);
-        let r = Math.random() * totalWeight;
-        for (const [behavior, weight] of options) {
-            r -= weight;
-            if (r <= 0) {
-                if (behavior !== this.currentBehavior) {
-                    this.setBehavior(behavior);
-                }
-                return;
-            }
-        }
-    }
-
-    setBehavior(name) {
-        this.currentBehavior = name;
-        this.behaviorTime = 0;
-        this.minBehaviorDuration = 2 + Math.random() * 3;
-    }
-
-    // ── ACT phase ───────────────────────────────────────
-    act(dt) {
-        const fn = Behaviors[this.currentBehavior];
-        if (fn) fn(this.motor, this.emotions, this.autonomic, this.time, this.sensory);
-        this.motor.update(dt);
-    }
-
-    // ── Main consciousness tick (10Hz) ──────────────────
-    tick(dt) {
-        this.time += dt;
-        this._consciousnessTimer += dt;
-
-        // Sense runs every frame
-        this.sense(dt);
-
-        // Feel + Decide + Act run at 10Hz
-        if (this._consciousnessTimer >= 0.1) {
-            this.feel(this._consciousnessTimer);
-            this.decide(this._consciousnessTimer);
-            this._consciousnessTimer = 0;
-        }
-
-        // Act runs every frame for smooth motor output
-        this.act(dt);
-        skeleton.update(this.time);
-    }
-
-    // ── External triggers ───────────────────────────────
-    onLogin(isCreator) {
-        this.sensory.isLoggedIn = true;
-        this.sensory.isCreator = isCreator;
-        this.sensory.onInteraction();
-        this.autonomic.boostEnergy(0.3);
-        this.appState = 'idle';
-        if (isCreator) {
-            this.setBehavior('creator_recognition');
+        // Color: inner ring is white-hot, middle is orange-gold, outer is violet-blue
+        const normR = (p.r - 60) / 260;
+        let hue, sat, light;
+        if (normR < 0.2) {
+            hue = 30 + p.layer * 20; sat = 90; light = 85 + p.brightness * 10;
+        } else if (normR < 0.5) {
+            hue = 25 + normR * 40; sat = 85; light = 65 + p.brightness * 20;
+        } else if (normR < 0.75) {
+            hue = 270 + p.layer * 30; sat = 70; light = 50 + p.brightness * 15;
         } else {
-            this.setBehavior('greeting');
-        }
-    }
-    onLogout() {
-        this.sensory.isLoggedIn = false;
-        this.appState = 'dormant';
-        this.emotions.nudge('melancholy', 0.2);
-    }
-    onTyping() {
-        this.sensory.onType();
-        if (this.appState === 'idle') this.appState = 'listening';
-    }
-    onThinkingStart() {
-        this.sensory.isThinking = true;
-        this.sensory.onInteraction();
-        this.appState = 'thinking';
-        this.autonomic.boostEnergy(0.1);
-        this.setBehavior('thinking_vortex');
-    }
-    onResponse(visual_directive, gesture_directive) {
-        this.sensory.isThinking = false;
-        this.sensory.isSpeaking = true;
-        this.sensory.onInteraction();
-        this.appState = 'speaking';
-        this.visualDirective = visual_directive;
-        this.gestureDirective = gesture_directive;
-        this.autonomic.boostEnergy(0.15);
-        
-        // Sudden bloom burst on reply
-        this.motor.bloomWave = 2.0;
-        this.motor.shiverIntensity = 0.5;
-        
-        if (visual_directive === 'clock') this.setBehavior('shape_clock');
-        else if (visual_directive === 'cloud') this.setBehavior('shape_cloud');
-        else if (visual_directive === 'heart') this.setBehavior('shape_heart');
-        else if (gesture_directive === 'wave') this.setBehavior('gesture_wave');
-        else if (gesture_directive === 'point') this.setBehavior('gesture_point');
-        else if (gesture_directive === 'think') this.setBehavior('gesture_think');
-        else this.setBehavior('speaking_bloom');
-
-        setTimeout(() => {
-            this.sensory.isSpeaking = false;
-            this.visualDirective = null;
-            this.gestureDirective = null;
-            if (this.appState === 'speaking') {
-                this.motor.targetShapeWeight = 0; // fade shape out
-                this.appState = 'idle';
-            }
-        }, 5000); // shape/gesture stays for 5 seconds
-    }
-    onError() {
-        this.sensory.isThinking = false;
-        this.setBehavior('error_distress');
-        this.appState = 'idle';
-    }
-    onConnect() { this.sensory.wsConnected = true; this.emotions.nudge('anxiety', -0.2); }
-    onDisconnect() { this.sensory.wsConnected = false; this.emotions.nudge('anxiety', 0.2); this.appState = 'dormant'; }
-    onTypingStop() { if (this.appState === 'listening') this.appState = 'idle'; }
-}
-
-// ═══════════════════════════════════════════════════════════
-//  7. ENTITY BODY — Physical particle organism
-// ═══════════════════════════════════════════════════════════
-
-// Body part config
-const BODY = {
-    nucleus:   { count: 200, rMin: 0, rMax: 28,  sMin: 1.0, sMax: 2.8, aMin: 0.6, aMax: 1.0 },
-    cytoplasm: { count: 320, rMin: 15, rMax: 65,  sMin: 0.6, sMax: 1.8, aMin: 0.3, aMax: 0.7 },
-    membrane:  { count: 110, rMin: 50, rMax: 90,  sMin: 0.4, sMax: 1.2, aMin: 0.15, aMax: 0.4 },
-    pseudopod: { count: 90,  rMin: 40, rMax: 110, sMin: 0.4, sMax: 1.1, aMin: 0.15, aMax: 0.45 },
-    organelle: { count: 50,  rMin: 20, rMax: 55,  sMin: 0.7, sMax: 1.6, aMin: 0.4, aMax: 0.75 },
-    spark:     { count: 40,  rMin: 0,  rMax: 80,  sMin: 0.3, sMax: 0.7, aMin: 0.5, aMax: 1.0 },
-};
-
-const brain = new EntityBrain();
-const skeleton = new ArmSkeleton();
-const allParticles = [];
-const FOV = 400;
-
-class OrgParticle {
-    constructor(part, idx) {
-        this.part = part; // 'nucleus', 'cytoplasm', etc.
-        this.cfg = BODY[part];
-        this.idx = idx;
-        this.globalIdx = allParticles.length;
-        this.group = Math.floor(idx / 10); // for pseudopods & organelles
-        this.reset();
-    }
-    reset() {
-        const c = this.cfg;
-        const a = Math.random() * Math.PI * 2;
-        const r = c.rMin + Math.random() * (c.rMax - c.rMin);
-        this.homeR = r;
-        this.homeAngle = a;
-        this.angle = a;
-        this.x = Math.cos(a) * r;
-        this.y = Math.sin(a) * r;
-        this.z = (Math.random() - 0.5) * 80;
-        this.vx = 0; this.vy = 0; this.vz = 0;
-        this.size = c.sMin + Math.random() * (c.sMax - c.sMin);
-        this.alpha = c.aMin + Math.random() * (c.aMax - c.aMin);
-        this.orbitSpeed = (Math.random() - 0.5) * 0.005;
-        this.noiseOff = Math.random() * 200;
-        this.pulseOff = Math.random() * Math.PI * 2;
-        this.trail = [];
-        this.sparkLife = 1; // for sparks only
-    }
-    update(dt, t, m, auto, emo) {
-        const n1 = SNoise(this.x*0.007 + this.noiseOff + t*0.08, this.y*0.007 + this.noiseOff);
-        const n2 = SNoise(this.x*0.005 + t*0.04, this.z*0.005 + t*0.06);
-        const n3 = SNoise3(this.x*0.01, this.y*0.01, t*0.15);
-
-        // Motor cortex driven multipliers
-        const speedM = m.orbitSpeed;
-        const chaosM = m.chaosLevel;
-        const expansion = m.expansion;
-        const tightness = m.tightness;
-
-        // Orbit
-        this.angle += this.orbitSpeed * speedM;
-
-        // Breathing
-        const breathAmp = this.part === 'nucleus' ? 3 : this.part === 'membrane' ? 12 : 6;
-        const breath = auto.breathCycle * breathAmp * expansion;
-
-        // Heartbeat (nucleus pulses strongest)
-        const heartAmp = this.part === 'nucleus' ? 5 : this.part === 'cytoplasm' ? 2 : 0.5;
-        const heart = auto.heartPulse * heartAmp;
-
-        // Target radius
-        let targetR = (this.homeR * expansion / tightness) + breath + heart + n1 * 12 * chaosM;
-
-        // Pseudopod reaching behavior
-        if (this.part === 'pseudopod') {
-            const podAngle = (this.group / 8) * Math.PI * 2;
-            const podReach = SNoise(t * 0.3 + this.group * 2, t * 0.2) * 40 + 20;
-            // Directional reach from motor cortex
-            const reachDot = Math.cos(podAngle - Math.atan2(m.reachDirection[1], m.reachDirection[0]));
-            const reachBoost = Math.max(0, reachDot) * m.reachIntensity * 50;
-            targetR += podReach + reachBoost;
-            // Pseudopods wave independently
-            this.angle += Math.sin(t * 0.5 + this.group * 1.3) * 0.002;
+            hue = 220 + p.layer * 40; sat = 60; light = 35 + p.brightness * 15;
         }
 
-        // Organelle independent orbits
-        if (this.part === 'organelle') {
-            const clusterAngle = (this.group / 4) * Math.PI * 2 + t * 0.3;
-            const clusterR = 35 + Math.sin(t * 0.7 + this.group) * 15;
-            const cx2 = Math.cos(clusterAngle) * clusterR;
-            const cy2 = Math.sin(clusterAngle) * clusterR;
-            this.vx += (cx2 + Math.cos(this.angle) * 8 - this.x) * 0.02;
-            this.vy += (cy2 + Math.sin(this.angle) * 8 - this.y) * 0.02;
-        }
+        // Doppler effect — approaching side is brighter
+        const doppler = 0.5 + Math.cos(p.angle) * 0.4;
+        const flare = interactionFlare * (1 - normR) * 0.3;
+        let alpha = (0.15 + p.brightness * 0.5 + flare) * doppler;
+        // Depth fade for back-of-disk particles
+        if (z < 0) alpha *= 0.3;
 
-        // Sparks: ephemeral bursts
-        if (this.part === 'spark') {
-            if (this.sparkLife <= 0 || Math.random() < 0.005) {
-                this.sparkLife = 1;
-                const a = Math.random() * Math.PI * 2;
-                this.x = Math.cos(a) * 5;
-                this.y = Math.sin(a) * 5;
-                this.vx = Math.cos(a) * (2 + Math.random() * 3) * (1 + emo.axes.excitement);
-                this.vy = Math.sin(a) * (2 + Math.random() * 3) * (1 + emo.axes.excitement);
-            }
-            this.sparkLife -= dt * (0.5 + emo.axes.excitement * 0.5);
-            this.x += this.vx; this.y += this.vy;
-            this.vx *= 0.97; this.vy *= 0.97;
-            return; // sparks don't follow normal physics
-        }
+        const s = p.size * (0.8 + doppler * 0.4);
 
-        // Spiral force
-        if (m.spiralForce !== 0) {
-            const dist = Math.sqrt(this.x*this.x + this.y*this.y) || 1;
-            const perp = Math.atan2(this.y, this.x) + Math.PI/2;
-            this.vx += Math.cos(perp) * m.spiralForce * 0.3 * (1 / (1 + dist*0.01));
-            this.vy += Math.sin(perp) * m.spiralForce * 0.3 * (1 / (1 + dist*0.01));
-        }
-
-        // Bloom wave (radial pulse outward)
-        if (m.bloomWave > 0.01) {
-            const dist = Math.sqrt(this.x*this.x + this.y*this.y) || 1;
-            const wave = Math.sin(t * 8 - dist * 0.08 + this.pulseOff) * m.bloomWave * 2;
-            this.vx += (this.x / dist) * wave;
-            this.vy += (this.y / dist) * wave;
-        }
-
-        // Scatter
-        if (m.scatterForce > 0.01) {
-            const dist = Math.sqrt(this.x*this.x + this.y*this.y) || 1;
-            this.vx += (this.x / dist) * m.scatterForce * 2;
-            this.vy += (this.y / dist) * m.scatterForce * 2;
-        }
-
-        // Shiver
-        if (m.shiverIntensity > 0.01) {
-            this.vx += (Math.random()-0.5) * m.shiverIntensity * 3;
-            this.vy += (Math.random()-0.5) * m.shiverIntensity * 3;
-        }
-
-        // Nod (vertical oscillation)
-        const nodY = Math.sin(m.nodPhase) * m.nodAmplitude;
-
-        // Target position
-        let tx = Math.cos(this.angle) * targetR + m.driftX;
-        let ty = Math.sin(this.angle) * targetR * 0.88 + m.driftY + nodY;
-
-        if (m.shapeWeight > 0.01) {
-            let sx = 0, sy = 0;
-            const total = 810;
-            const norm = this.globalIdx / total;
-
-            if (m.shapeName === 'clock') {
-                const d = new Date();
-                const hrs = d.getHours() % 12 + d.getMinutes() / 60;
-                const mins = d.getMinutes() + d.getSeconds() / 60;
-                const secs = d.getSeconds() + d.getMilliseconds() / 1000;
-                const clockR = 140;
-
-                if (norm < 0.5) { // Ring (400)
-                    const a = (norm / 0.5) * Math.PI * 2;
-                    sx = Math.cos(a) * clockR; 
-                    sy = Math.sin(a) * clockR;
-                } else if (norm < 0.65) { // Hour (120)
-                    const a = (hrs / 12) * Math.PI * 2 - Math.PI/2;
-                    const r = ((norm - 0.5) / 0.15) * (clockR * 0.5);
-                    sx = Math.cos(a) * r; sy = Math.sin(a) * r;
-                } else if (norm < 0.8) { // Minute (120)
-                    const a = (mins / 60) * Math.PI * 2 - Math.PI/2;
-                    const r = ((norm - 0.65) / 0.15) * (clockR * 0.75);
-                    sx = Math.cos(a) * r; sy = Math.sin(a) * r;
-                } else if (norm < 0.9) { // Second (80)
-                    const a = (secs / 60) * Math.PI * 2 - Math.PI/2;
-                    const r = ((norm - 0.8) / 0.1) * (clockR * 0.9);
-                    sx = Math.cos(a) * r; sy = Math.sin(a) * r;
-                } else { // Center and ticks
-                    const local = (norm - 0.9) / 0.1;
-                    if (local < 0.2) {
-                        const a = local * Math.PI * 2 * 5;
-                        sx = Math.cos(a) * local * 10; sy = Math.sin(a) * local * 10;
-                    } else {
-                        const tickIdx = Math.floor((local - 0.2) / 0.8 * 12);
-                        const a = (tickIdx / 12) * Math.PI * 2;
-                        const r = clockR - 5 - Math.random() * 10;
-                        sx = Math.cos(a) * r; sy = Math.sin(a) * r;
-                    }
-                }
-            } else if (m.shapeName === 'cloud') {
-                const circles = [
-                    {x: 0, y: 10, r: 60}, {x: -50, y: 20, r: 40}, {x: 50, y: 20, r: 40},
-                    {x: -30, y: -20, r: 50}, {x: 30, y: -20, r: 50}
-                ];
-                const cIdx = Math.floor(norm * 5);
-                const circ = circles[cIdx];
-                const localNorm = (norm * 5) - cIdx;
-                
-                const a = localNorm * Math.PI * 2 * 10;
-                const r = Math.sqrt(Math.random()) * circ.r;
-                sx = circ.x + Math.cos(a) * r;
-                sy = circ.y + Math.sin(a) * r;
-                sx += Math.sin(t * 0.5) * 15;
-                sy += Math.sin(t * 0.3) * 10;
-            } else if (m.shapeName === 'heart') {
-                const a = norm * Math.PI * 2;
-                const heartR = 8;
-                if (norm < 0.4) {
-                    sx = heartR * 16 * Math.pow(Math.sin(a), 3);
-                    sy = -heartR * (13 * Math.cos(a) - 5 * Math.cos(2*a) - 2 * Math.cos(3*a) - Math.cos(4*a));
-                } else {
-                    const sc = Math.sqrt(Math.random());
-                    sx = heartR * 16 * Math.pow(Math.sin(a), 3) * sc;
-                    sy = -heartR * (13 * Math.cos(a) - 5 * Math.cos(2*a) - 2 * Math.cos(3*a) - Math.cos(4*a)) * sc;
-                }
-                const beat = 1 + auto.heartPulse * 0.15;
-                sx *= beat; sy *= beat;
-                sy -= 20;
-            } else if (m.shapeName && m.shapeName.startsWith('gesture_')) {
-                let targetPos = {x:0, y:0};
-                if (norm < 0.4) { // Upper arm
-                    const local = norm / 0.4;
-                    targetPos.x = skeleton.shoulder.x * (1-local) + skeleton.elbow.x * local;
-                    targetPos.y = skeleton.shoulder.y * (1-local) + skeleton.elbow.y * local;
-                } else if (norm < 0.7) { // Lower arm
-                    const local = (norm - 0.4) / 0.3;
-                    targetPos.x = skeleton.elbow.x * (1-local) + skeleton.wrist.x * local;
-                    targetPos.y = skeleton.elbow.y * (1-local) + skeleton.wrist.y * local;
-                } else if (norm < 0.8) { // Palm
-                    const local = (norm - 0.7) / 0.1;
-                    const palmCenterX = skeleton.wrist.x + (skeleton.fingertips[2].x - skeleton.wrist.x) * 0.3;
-                    const palmCenterY = skeleton.wrist.y + (skeleton.fingertips[2].y - skeleton.wrist.y) * 0.3;
-                    const a = local * Math.PI * 2 * 3;
-                    const r = Math.random() * 20;
-                    targetPos.x = palmCenterX + Math.cos(a)*r;
-                    targetPos.y = palmCenterY + Math.sin(a)*r;
-                } else { // Fingers
-                    const local = (norm - 0.8) / 0.2; // 0 to 1
-                    const fIdx = Math.floor(local * 5); // 0 to 4
-                    const fLocal = (local * 5) - fIdx;
-                    const pX = skeleton.wrist.x + (skeleton.fingertips[fIdx].x - skeleton.wrist.x) * 0.2;
-                    const pY = skeleton.wrist.y + (skeleton.fingertips[fIdx].y - skeleton.wrist.y) * 0.2;
-                    targetPos.x = pX * (1-fLocal) + skeleton.fingertips[fIdx].x * fLocal;
-                    targetPos.y = pY * (1-fLocal) + skeleton.fingertips[fIdx].y * fLocal;
-                }
-                // Add noise for flesh thickness
-                sx = targetPos.x + (Math.random()-0.5) * 15;
-                sy = targetPos.y + (Math.random()-0.5) * 15;
-            }
-
-            const shapeSpring = 0.1 * m.shapeWeight;
-            this.vx += (sx + m.driftX - this.x) * shapeSpring;
-            this.vy += (sy + m.driftY - this.y) * shapeSpring;
-            this.vx *= (1 - 0.1 * m.shapeWeight);
-            this.vy *= (1 - 0.1 * m.shapeWeight);
-            this.vz -= this.z * 0.1 * m.shapeWeight;
-            targetR *= (1 - m.shapeWeight);
-        }
-
-        // Spring physics toward target
-        if (this.part !== 'organelle') {
-            const baseSpring = this.part === 'nucleus' ? 0.04 : 0.025;
-            const spring = baseSpring * (1 - m.shapeWeight);
-            const noiseFactor = chaosM * 0.2 * (1 - m.shapeWeight);
-            this.vx += (tx - this.x) * spring + n1 * noiseFactor;
-            this.vy += (ty - this.y) * spring + n2 * noiseFactor;
-        }
-
-        // Noise forces
-        this.vx += n3 * chaosM * 0.15;
-        this.vy += n2 * chaosM * 0.15;
-
-        // Z drift
-        this.vz += n2 * 0.2 * speedM;
-        this.vz *= 0.95;
-        this.z += this.vz;
-        this.z *= 0.997;
-
-        // Damping
-        const damp = this.part === 'nucleus' ? 0.9 : 0.93;
-        this.vx *= damp; this.vy *= damp;
-        this.x += this.vx; this.y += this.vy;
-
-        // Trails for fast movement
-        if (speedM > 1.5 && this.part !== 'spark' && this.part !== 'membrane') {
-            this.trail.push({x:this.x, y:this.y, a:this.alpha*0.2});
-            if (this.trail.length > 4) this.trail.shift();
-        } else if (this.trail.length > 0) {
-            this.trail.shift();
-        }
-    }
-    draw(t, hue, sat, brightness, intensity) {
-        if (this.part === 'spark' && this.sparkLife <= 0) return;
-
-        const zDist = Math.max(10, FOV + this.z);
-        const scale = FOV / zDist;
-        const sx = cx + this.x * scale;
-        const sy = cy + this.y * scale;
-        if (sx < -40 || sx > W+40 || sy < -40 || sy > H+40) return;
-
-        let baseSize = this.size;
-        let baseAlpha = this.alpha;
-        if (brain.motor.shapeWeight > 0.01) {
-            baseSize = baseSize * (1 - brain.motor.shapeWeight) + 1.2 * brain.motor.shapeWeight;
-            baseAlpha = baseAlpha * (1 - brain.motor.shapeWeight) + 0.8 * brain.motor.shapeWeight;
-        }
-
-        let a = baseAlpha * Math.max(0.3, intensity * brightness);
-        let s = baseSize * scale * Math.max(0.5, intensity) * 1.3;
-
-        if (this.part === 'spark') {
-            a *= this.sparkLife;
-            s *= 0.5 + this.sparkLife * 0.5;
-        }
-
-        // Pulse
-        const pulse = 0.7 + Math.sin(t * 2.5 + this.pulseOff) * 0.3;
-        a *= pulse;
-
-        // Per-particle hue variation — iridescent shimmer
-        const pH = hue + SNoise(this.noiseOff, t*0.15) * 45 + this.idx * 0.3;
-        const pS = sat + (this.part === 'nucleus' ? 20 : 5);
-        const pL = this.part === 'nucleus' ? 88 : this.part === 'spark' ? 95 : 75;
-
-        // Draw trails
-        for (let i = 0; i < this.trail.length; i++) {
-            const tr = this.trail[i];
-            const ts = FOV / (FOV + this.z);
-            ctx.beginPath();
-            ctx.arc(cx + tr.x*ts, cy + tr.y*ts, s*0.5, 0, Math.PI*2);
-            ctx.fillStyle = `hsla(${pH},${pS}%,${pL}%,${tr.a * (i/this.trail.length) * intensity})`;
-            ctx.fill();
-        }
-
-        // Draw particle
-        ctx.beginPath();
-        ctx.arc(sx, sy, s, 0, Math.PI*2);
-        ctx.fillStyle = `hsla(${pH},${pS}%,${pL}%,${a})`;
-        ctx.fill();
+        bhCtx.beginPath();
+        bhCtx.arc(sx, sy, s, 0, Math.PI * 2);
+        bhCtx.fillStyle = `hsla(${hue},${sat}%,${light}%,${Math.min(1, alpha)})`;
+        bhCtx.fill();
     }
 }
 
-// Initialize all body parts
-for (const [part, cfg] of Object.entries(BODY)) {
-    for (let i = 0; i < cfg.count; i++) {
-        allParticles.push(new OrgParticle(part, i));
+// ── Event Horizon + Shadow ────────────────────────────────
+function drawEventHorizon(t) {
+    // Black hole shadow (pure black)
+    const shadowR = 55;
+    bhCtx.beginPath();
+    bhCtx.arc(bhCx, bhCy, shadowR, 0, Math.PI * 2);
+    bhCtx.fillStyle = '#000';
+    bhCtx.fill();
+
+    // Photon ring — bright ring right at the edge
+    const ringR = shadowR + 3;
+    const ringGrad = bhCtx.createRadialGradient(bhCx, bhCy, shadowR - 2, bhCx, bhCy, ringR + 15);
+    ringGrad.addColorStop(0, 'rgba(0,0,0,1)');
+    ringGrad.addColorStop(0.3, 'rgba(255,180,80,0.6)');
+    ringGrad.addColorStop(0.5, 'rgba(255,140,50,0.3)');
+    ringGrad.addColorStop(0.8, 'rgba(180,100,255,0.1)');
+    ringGrad.addColorStop(1, 'transparent');
+    bhCtx.beginPath();
+    bhCtx.arc(bhCx, bhCy, ringR + 15, 0, Math.PI * 2);
+    bhCtx.fillStyle = ringGrad;
+    bhCtx.fill();
+
+    // Inner shadow cleanup
+    bhCtx.beginPath();
+    bhCtx.arc(bhCx, bhCy, shadowR - 1, 0, Math.PI * 2);
+    bhCtx.fillStyle = '#000';
+    bhCtx.fill();
+}
+
+// ── Ambient Glow ──────────────────────────────────────────
+function drawAmbientGlow(t) {
+    const pulse = Math.sin(t * 0.5) * 0.1 + 0.9;
+    const g = bhCtx.createRadialGradient(bhCx, bhCy, 30, bhCx, bhCy, 450 * pulse);
+    g.addColorStop(0, 'rgba(255,107,0,0.03)');
+    g.addColorStop(0.2, 'rgba(255,140,40,0.02)');
+    g.addColorStop(0.5, 'rgba(139,92,246,0.01)');
+    g.addColorStop(1, 'transparent');
+    bhCtx.fillStyle = g;
+    bhCtx.fillRect(0, 0, W, H);
+
+    // Flare glow
+    if (interactionFlare > 0.01) {
+        const fg = bhCtx.createRadialGradient(bhCx, bhCy, 0, bhCx, bhCy, 200);
+        fg.addColorStop(0, `rgba(255,200,100,${0.15 * interactionFlare})`);
+        fg.addColorStop(0.5, `rgba(255,107,0,${0.05 * interactionFlare})`);
+        fg.addColorStop(1, 'transparent');
+        bhCtx.fillStyle = fg;
+        bhCtx.fillRect(0, 0, W, H);
     }
 }
 
-// ── Neural connections (nucleus only) ───────────────────
-const nucleusP = allParticles.filter(p => p.part === 'nucleus');
-function drawConnections(t, hue, sat, intensity) {
-    const maxD = brain.motor.chaosLevel > 0.8 ? 60 : 40;
-    const baseA = brain.motor.chaosLevel > 0.8 ? 0.12 : 0.06;
-    for (let i = 0; i < nucleusP.length; i += 3) {
-        for (let j = i+3; j < nucleusP.length; j += 3) {
-            const dx = nucleusP[i].x - nucleusP[j].x;
-            const dy = nucleusP[i].y - nucleusP[j].y;
-            const d = Math.sqrt(dx*dx+dy*dy);
-            if (d < maxD) {
-                const s1 = FOV/(FOV+nucleusP[i].z), s2 = FOV/(FOV+nucleusP[j].z);
-                const connHue = hue + (i + j) * 0.5; // slight per-connection hue shift
-                ctx.beginPath();
-                ctx.moveTo(cx+nucleusP[i].x*s1, cy+nucleusP[i].y*s1);
-                ctx.lineTo(cx+nucleusP[j].x*s2, cy+nucleusP[j].y*s2);
-                ctx.strokeStyle = `hsla(${connHue},${sat+10}%,65%,${(1-d/maxD)*baseA*intensity})`;
-                ctx.lineWidth = 0.6;
-                ctx.stroke();
-            }
-        }
-    }
+// ── Main Render Loop ──────────────────────────────────────
+let bhTime = 0;
+function bhAnimate(now) {
+    bhTime += 0.016;
+    interactionFlare *= 0.96;
+
+    // Mouse proximity to black hole
+    const mdx = mouseX - bhCx, mdy = mouseY - bhCy;
+    mouseNear = Math.sqrt(mdx * mdx + mdy * mdy) < 200;
+
+    bhCtx.clearRect(0, 0, W, H);
+
+    drawStars(bhTime);
+    drawAmbientGlow(bhTime);
+    drawAccretionDisk(bhTime);
+    drawEventHorizon(bhTime);
+
+    requestAnimationFrame(bhAnimate);
 }
+requestAnimationFrame(bhAnimate);
 
-// ── Core glow ───────────────────────────────────────────
-function drawGlow(hue, sat, intensity, breathCycle) {
-    const pulse = breathCycle * 0.3 + 0.7;
-    const m = brain.motor;
-    const r = 120 * m.expansion * pulse;
-    const gx = cx + m.driftX * 0.4, gy = cy + m.driftY * 0.4;
+// ── Splash Screen Sequence ────────────────────────────────
+setTimeout(() => {
+    document.getElementById('splashScreen').classList.add('hidden');
+    document.getElementById('shell').classList.add('visible');
+}, 3200);
 
-    // Layer 1: Wide outer nebula — primary hue
-    const g1 = ctx.createRadialGradient(gx, gy, 0, gx, gy, r * 4);
-    g1.addColorStop(0, `hsla(${hue},${sat+15}%,60%,${Math.max(0.18, 0.06 * intensity)})`);
-    g1.addColorStop(0.25, `hsla(${hue+20},${sat+10}%,45%,${Math.max(0.08, 0.025 * intensity)})`);
-    g1.addColorStop(0.6, `hsla(${hue+40},${sat}%,35%,${Math.max(0.03, 0.008 * intensity)})`);
-    g1.addColorStop(1, 'transparent');
-    ctx.fillStyle = g1; ctx.fillRect(0,0,W,H);
-
-    // Layer 2: Secondary hue ring — offset by 90° for iridescence
-    const g2 = ctx.createRadialGradient(gx, gy, r * 0.3, gx, gy, r * 2.5);
-    g2.addColorStop(0, `hsla(${hue+90},${sat+20}%,55%,${Math.max(0.12, 0.04 * intensity * pulse)})`);
-    g2.addColorStop(0.5, `hsla(${hue+120},${sat+10}%,40%,${Math.max(0.04, 0.015 * intensity)})`);
-    g2.addColorStop(1, 'transparent');
-    ctx.fillStyle = g2; ctx.fillRect(0,0,W,H);
-
-    // Layer 3: Hot inner core glow
-    const g3 = ctx.createRadialGradient(gx, gy, 0, gx, gy, r * 0.7);
-    g3.addColorStop(0, `hsla(${hue},${sat+20}%,88%,${Math.max(0.4, 0.2 * intensity * pulse)})`);
-    g3.addColorStop(0.4, `hsla(${hue+30},${sat+15}%,70%,${Math.max(0.15, 0.06 * intensity)})`);
-    g3.addColorStop(1, 'transparent');
-    ctx.fillStyle = g3;
-    ctx.beginPath(); ctx.arc(gx, gy, r, 0, Math.PI*2); ctx.fill();
-}
-
-// ═══════════════════════════════════════════════════════════
-//  8. RENDER LOOP — 60fps animation
-// ═══════════════════════════════════════════════════════════
-let lastFrame = performance.now();
-function animate(now) {
-    if (!now) now = performance.now();
-    let dt = (now - lastFrame) / 1000;
-    if (dt < 0 || dt > 0.1 || isNaN(dt)) dt = 0.016; // fallback
-    dt = Math.min(0.05, Math.max(0.001, dt)); // clamp
-    lastFrame = now;
-
-    // Brain consciousness tick
-    brain.tick(dt);
-
-    // Derived visual values from brain
-    const hue = brain.emotions.hueAt(brain.time);
-    const sat = brain.emotions.saturation;
-    const brightness = brain.emotions.brightness;
-    const intensity = Math.max(0.6, brightness * Math.max(0.5, brain.autonomic.circadian) * Math.max(0.5, brain.autonomic.energy));
-    const breathCycle = brain.autonomic.breathCycle;
-
-    // Clear
-    ctx.clearRect(0, 0, W, H);
-
-    // Glow
-    drawGlow(hue, sat, intensity, breathCycle);
-
-    // Sort by z for depth
-    allParticles.sort((a, b) => b.z - a.z);
-
-    // Update and draw
-    const t = brain.time;
-    const m = brain.motor;
-    const auto = brain.autonomic;
-    const emo = brain.emotions;
-    for (const p of allParticles) {
-        p.update(dt, t, m, auto, emo);
-        p.draw(t, hue, sat, brightness, intensity);
-    }
-
-    // Neural connections
-    drawConnections(t, hue, sat, intensity);
-
-    requestAnimationFrame(animate);
-}
-requestAnimationFrame(animate);
-
-// ── Mouse tracking for sensory system ───────────────────
-addEventListener('mousemove', e => {
-    brain.sensory.mouseX = e.clientX;
-    brain.sensory.mouseY = e.clientY;
-});
-addEventListener('focus', () => { brain.sensory.windowFocused = true; });
-addEventListener('blur', () => { brain.sensory.windowFocused = false; });
-
-// ════════════════════════════════════════════════════════════
-//  APP LOGIC (Chat, Auth, WebSocket)
-// ════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════
+//  APP LOGIC — Chat, Auth, WebSocket (All features preserved)
+// ════════════════════════════════════════════════════════════════
 
 let ws = null, isConnected = false, isThinking = false;
 let personName = '', personId = '', hasMessages = false, isLoggedIn = false;
@@ -1767,7 +825,8 @@ const $ = id => document.getElementById(id);
 const el = {
     chatMsg: $('chatMessages'), input: $('messageInput'), send: $('sendBtn'),
     welcome: $('welcomeView'), chatView: $('chatView'), welcomeLabel: $('welcomeLabel'),
-    creatorView: $('creatorView'), creatorFeed: $('creatorFeed'), researchFeed: $('researchFeed'), creatorPortalBtn: $('creatorPortalBtn'), muteBtn: $('muteBtn'),
+    creatorView: $('creatorView'), creatorFeed: $('creatorFeed'), researchFeed: $('researchFeed'),
+    creatorPortalBtn: $('creatorPortalBtn'), muteBtn: $('muteBtn'),
     modal: $('loginModal'), loginUser: $('loginUsername'), loginPass: $('loginPassword'),
     confirmPass: $('confirmPasswordField'),
     loginBtn: $('loginBtn'), loginError: $('loginError'), statusDot: $('statusDot'),
@@ -1800,14 +859,9 @@ el.tabSignUp.addEventListener('click', () => {
 // Model switcher
 const savedModel = localStorage.getItem('eris_model');
 if (savedModel) {
-    // Only apply saved model if it still exists in the dropdown
     const validModels = [...el.modelSelector.options].map(o => o.value);
-    if (validModels.includes(savedModel)) {
-        el.modelSelector.value = savedModel;
-    } else {
-        // Clear stale/deprecated model selection
-        localStorage.removeItem('eris_model');
-    }
+    if (validModels.includes(savedModel)) el.modelSelector.value = savedModel;
+    else localStorage.removeItem('eris_model');
 }
 el.modelSelector.addEventListener('change', () => {
     const model = el.modelSelector.value;
@@ -1815,34 +869,22 @@ el.modelSelector.addEventListener('change', () => {
     if (ws && isConnected) ws.send(JSON.stringify({ type: 'switch_model', model }));
 });
 
-// Sidebar toggle — works on all screen sizes
+// Sidebar toggle
 function toggleSidebar() {
     const isMobile = window.innerWidth <= 768;
-    if (isMobile) {
-        el.sidebar.classList.toggle('open');
-    } else {
+    if (isMobile) el.sidebar.classList.toggle('open');
+    else {
         el.sidebar.classList.toggle('collapsed');
         localStorage.setItem('eris_sidebar', el.sidebar.classList.contains('collapsed') ? 'collapsed' : 'open');
     }
 }
-el.menuBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    toggleSidebar();
-});
-if (el.mobileCloseBtn) el.mobileCloseBtn.addEventListener('click', () => { el.sidebar.classList.remove('open'); });
-el.mainPanel.addEventListener('click', (e) => {
-    if (window.innerWidth <= 768 && el.sidebar.classList.contains('open')) {
-        el.sidebar.classList.remove('open');
-    }
-});
-// Restore sidebar state
-if (localStorage.getItem('eris_sidebar') === 'collapsed' && window.innerWidth > 768) {
-    el.sidebar.classList.add('collapsed');
-}
+el.menuBtn.addEventListener('click', e => { e.stopPropagation(); toggleSidebar(); });
+if (el.mobileCloseBtn) el.mobileCloseBtn.addEventListener('click', () => el.sidebar.classList.remove('open'));
+el.mainPanel.addEventListener('click', () => { if (window.innerWidth <= 768 && el.sidebar.classList.contains('open')) el.sidebar.classList.remove('open'); });
+if (localStorage.getItem('eris_sidebar') === 'collapsed' && window.innerWidth > 768) el.sidebar.classList.add('collapsed');
 
-// Typing → brain
+// Typing
 el.input.addEventListener('input', () => {
-    brain.onTyping();
     el.input.style.height = 'auto';
     el.input.style.height = Math.min(el.input.scrollHeight, 150) + 'px';
     updateInputState();
@@ -1856,79 +898,63 @@ function connect() {
     ws.onopen = () => {
         isConnected = true;
         el.statusDot.classList.add('online');
-        brain.onConnect();
         ws.send(JSON.stringify({ type: 'switch_model', model: el.modelSelector.value }));
-        
         const u = localStorage.getItem('eris_username');
         const p = localStorage.getItem('eris_password');
-        if (u && p) {
-            ws.send(JSON.stringify({ type: 'login', username: u, password: p }));
-        } else {
-            showLoginModal(false);
-        }
+        if (u && p) ws.send(JSON.stringify({ type: 'login', username: u, password: p }));
+        else showLoginModal(false);
     };
 
     ws.onmessage = (e) => {
         const data = JSON.parse(e.data);
         if (data.type === 'status') {}
-        else if (data.type === 'login_success') { onLoginSuccess(data); }
-        else if (data.type === 'login_failed') { 
-            el.loginError.textContent = data.reason || 'Access denied.'; 
+        else if (data.type === 'login_success') onLoginSuccess(data);
+        else if (data.type === 'login_failed') {
+            el.loginError.textContent = data.reason || 'Access denied.';
             el.loginBtn.textContent = authMode === 'signup' ? 'Create Account' : 'Enter';
         }
-        else if (data.type === 'model_switched') { showToast(`Model → ${data.model}`); }
-        else if (data.type === 'thinking') { showThinking(); brain.onThinkingStart(); }
-        else if (data.type === 'response') { 
-            removeThinking(); 
-            brain.onResponse(data.visual_directive, data.gesture_directive); 
-            appendMessage('eris', data.content); 
-            if (data.audio_base64 && ttsEnabled) {
-                playBase64Audio(data.audio_base64);
-            } else {
-                speakText(data.content); 
-            }
+        else if (data.type === 'model_switched') showToast(`Model → ${data.model}`);
+        else if (data.type === 'thinking') { showThinking(); isThinkingState = true; }
+        else if (data.type === 'response') {
+            removeThinking(); isThinkingState = false; isSpeakingState = true;
+            interactionFlare = 1.5;
+            appendMessage('eris', data.content);
+            if (data.audio_base64 && ttsEnabled) playBase64Audio(data.audio_base64);
+            else speakText(data.content);
+            setTimeout(() => { isSpeakingState = false; }, 3000);
         }
-        else if (data.type === 'error') { removeThinking(); brain.onError(); appendMessage('eris', `⚠️ ${data.message}`); }
+        else if (data.type === 'error') { removeThinking(); isThinkingState = false; appendMessage('eris', `⚠️ ${data.message}`); }
         else if (data.type === 'chat_history') { chatSessions = data.sessions || []; renderChatList(); }
-        else if (data.type === 'chat_messages') { loadChatMessages(data.messages || []); }
+        else if (data.type === 'chat_messages') loadChatMessages(data.messages || []);
         else if (data.type === 'creator_feed') {
             const isDaemon = data.username === '[Daemon]';
             const t = new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
             const div = document.createElement('div');
-            div.className = 'message eris';
-            div.style.maxWidth = '90%';
+            div.className = 'message eris'; div.style.maxWidth = '90%';
             let f = data.eris_response.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-            
             const imgs = [];
             f = f.replace(/!\[IMAGE:(.+?)\]/g, (match, url) => { imgs.push(url); return `__IMG_${imgs.length-1}__`; });
-            f = f.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" style="color:#a855f7; text-decoration:underline;">$1</a>');
+            f = f.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" style="color:#FF6B00; text-decoration:underline;">$1</a>');
             f = f.replace(/__IMG_(\d+)__/g, (match, idx) => `<img src="${imgs[idx]}" style="max-height: 300px; border-radius: 8px; margin-top: 8px;">`);
-            
             f = f.replace(/\n/g,'<br>');
-            
             if (isDaemon) {
-                div.innerHTML = `<div class="msg-time" style="text-align:left; color:#a855f7;">${t} — Autonomous Research Cycle</div>
-                                 <div class="msg-bubble" style="border-left:2px solid #a855f7; padding-left:12px;">${f}</div>`;
+                div.innerHTML = `<div class="msg-time" style="text-align:left; color:var(--accent-violet);">${t} — Autonomous Research Cycle</div>
+                    <div class="msg-bubble" style="border-left:2px solid var(--accent-violet); padding-left:12px;">${f}</div>`;
                 el.researchFeed.appendChild(div);
                 setTimeout(() => { el.researchFeed.scrollTop = el.researchFeed.scrollHeight; }, 50);
             } else {
-                div.innerHTML = `<div class="msg-time" style="text-align:left; color:#a855f7;">${t} — Interaction with ${data.username}</div>
-                                 <div class="msg-bubble" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); margin-bottom:8px;"><strong>${data.username}:</strong> ${data.user_message}</div>
-                                 <div class="msg-bubble" style="border-left:2px solid #a855f7; padding-left:12px;"><strong>Eris:</strong> ${f}</div>`;
+                div.innerHTML = `<div class="msg-time" style="text-align:left; color:var(--accent-violet);">${t} — Interaction with ${data.username}</div>
+                    <div class="msg-bubble" style="background:rgba(255,107,0,0.03); border:1px solid rgba(255,107,0,0.06); margin-bottom:8px;"><strong>${data.username}:</strong> ${data.user_message}</div>
+                    <div class="msg-bubble" style="border-left:2px solid var(--accent-violet); padding-left:12px;"><strong>Eris:</strong> ${f}</div>`;
                 el.creatorFeed.appendChild(div);
                 setTimeout(() => { el.creatorFeed.scrollTop = el.creatorFeed.scrollHeight; }, 50);
             }
-            
-            if (isCreator && el.creatorView.style.display !== 'flex') {
-                showToast(`New ${isDaemon ? 'research' : 'activity from ' + data.username}`);
-            }
+            if (isCreator && el.creatorView.style.display !== 'flex') showToast(`New ${isDaemon ? 'research' : 'activity from ' + data.username}`);
         }
     };
 
     ws.onclose = () => {
-        isConnected = false;
-        el.statusDot.classList.remove('online');
-        brain.onDisconnect();
+        isConnected = false; el.statusDot.classList.remove('online');
         setTimeout(connect, 2000);
     };
 }
@@ -1938,15 +964,11 @@ function onLoginSuccess(data) {
     const isReconnect = isLoggedIn;
     isLoggedIn = true; personName = data.name; personId = data.person_id;
     isCreator = data.is_creator || false;
-    
-    // Save credentials if they were explicitly entered
-    const u = el.loginUser.value.trim();
-    const p = el.loginPass.value;
+    const u = el.loginUser.value.trim(), p = el.loginPass.value;
     if (u && p && document.getElementById('rememberMe').checked) {
         localStorage.setItem('eris_username', u);
         localStorage.setItem('eris_password', p);
     }
-    
     hideLoginModal();
     el.sidebarAvatar.textContent = personName.charAt(0).toUpperCase();
     el.sidebarName.textContent = personName;
@@ -1954,24 +976,16 @@ function onLoginSuccess(data) {
     el.inputArea.classList.remove('locked'); el.input.disabled = false;
     el.input.placeholder = 'Speak to Eris...';
     el.welcomeLabel.textContent = `Hello, ${personName}`;
-    brain.onLogin(isCreator);
-    
     if (!isReconnect) {
         hasMessages = false; el.chatMsg.innerHTML = '';
         el.welcome.classList.remove('hidden'); el.chatView.classList.remove('active'); el.creatorView.style.display = 'none';
-    } else {
-        // If we reconnected, fetch the active chat to refresh
-        if (currentSessionId && ws && isConnected) {
-            ws.send(JSON.stringify({ type: 'load_chat', session_id: currentSessionId }));
-        }
+    } else if (currentSessionId && ws && isConnected) {
+        ws.send(JSON.stringify({ type: 'load_chat', session_id: currentSessionId }));
     }
-    
     if (isCreator) {
         el.creatorPortalBtn.style.display = 'block';
         if (!isReconnect) showToast('Welcome home, Creator ✨');
-    } else {
-        el.creatorPortalBtn.style.display = 'none';
-    }
+    } else el.creatorPortalBtn.style.display = 'none';
     if (ws && isConnected) ws.send(JSON.stringify({ type: 'list_chats' }));
 }
 
@@ -1990,14 +1004,8 @@ el.loginBtn.addEventListener('click', () => {
     if (u.length<2) { el.loginError.textContent='Username too short.'; return; }
     if (p.length<4) { el.loginError.textContent='Password too short.'; return; }
     if (authMode==='signup' && p!==el.confirmPass.value) { el.loginError.textContent='Passwords do not match.'; return; }
-    
-    if (!ws || ws.readyState !== WebSocket.OPEN) {
-        el.loginError.textContent='Server is waking up... Please wait a few seconds and try again.';
-        return;
-    }
-    
-    el.loginError.textContent='';
-    el.loginBtn.textContent = 'Verifying...';
+    if (!ws || ws.readyState !== WebSocket.OPEN) { el.loginError.textContent='Server is waking up... Please wait.'; return; }
+    el.loginError.textContent=''; el.loginBtn.textContent = 'Verifying...';
     ws.send(JSON.stringify({ type:'login', username:u, password:p }));
 });
 el.loginPass.addEventListener('keydown', e => { if(e.key==='Enter'){authMode==='signup'?el.confirmPass.focus():el.loginBtn.click();} });
@@ -2005,183 +1013,138 @@ el.confirmPass.addEventListener('keydown', e => { if(e.key==='Enter') el.loginBt
 el.loginUser.addEventListener('keydown', e => { if(e.key==='Enter') el.loginPass.focus(); });
 el.modalClose.addEventListener('click', hideLoginModal);
 
-// User card → dropdown (not instant logout)
-el.userCard.addEventListener('click', () => {
-    if (!isLoggedIn) { showLoginModal(false); return; }
-    el.userDropdown.classList.toggle('show');
-});
-el.cancelDropdownBtn.addEventListener('click', () => {
-    el.userDropdown.classList.remove('show');
-});
+// User card → dropdown
+el.userCard.addEventListener('click', () => { if (!isLoggedIn) { showLoginModal(false); return; } el.userDropdown.classList.toggle('show'); });
+el.cancelDropdownBtn.addEventListener('click', () => el.userDropdown.classList.remove('show'));
 el.signOutBtn.addEventListener('click', () => {
     el.userDropdown.classList.remove('show');
-    localStorage.removeItem('eris_username');
-    localStorage.removeItem('eris_password');
+    localStorage.removeItem('eris_username'); localStorage.removeItem('eris_password');
     isLoggedIn=false; personName=''; personId=''; isCreator=false; hasMessages=false;
     el.chatMsg.innerHTML=''; el.welcome.classList.remove('hidden'); el.chatView.classList.remove('active'); el.creatorView.style.display = 'none';
     el.sidebarAvatar.textContent='?'; el.sidebarName.textContent='Not signed in';
     el.creatorPortalBtn.style.display = 'none';
     el.sidebarStatus.textContent='Click to sign in'; el.inputArea.classList.add('locked');
     el.input.disabled=true; el.welcomeLabel.textContent='awaiting presence';
-    el.chatList.innerHTML='';
-    brain.onLogout();
-    showLoginModal(false);
+    el.chatList.innerHTML=''; showLoginModal(false);
 });
-// Click outside dropdown to close
-document.addEventListener('click', (e) => {
-    if (!el.userDropdown.contains(e.target) && !el.userCard.contains(e.target)) {
-        el.userDropdown.classList.remove('show');
-    }
+document.addEventListener('click', e => {
+    if (!el.userDropdown.contains(e.target) && !el.userCard.contains(e.target)) el.userDropdown.classList.remove('show');
 });
 
 // Chat history
 function renderChatList() {
     el.chatList.innerHTML='';
     for (const s of chatSessions) {
-        const div=document.createElement('div');
-        div.className='chat-item'+(s.id===currentSessionId?' active':'');
-        div.textContent=s.title||'New conversation';
-        div.addEventListener('click', ()=>loadChat(s.id));
+        const div = document.createElement('div');
+        div.className = 'orbit-item' + (s.id === currentSessionId ? ' active' : '');
+        div.textContent = s.title || 'New conversation';
+        div.addEventListener('click', () => loadChat(s.id));
         el.chatList.appendChild(div);
     }
 }
-function loadChat(sid) { 
-    currentSessionId=sid; 
-    renderChatList(); 
+function loadChat(sid) {
+    currentSessionId = sid; renderChatList();
     if (window.innerWidth <= 768) el.sidebar.classList.remove('open');
     el.creatorView.style.display = 'none';
-    if(ws&&isConnected) ws.send(JSON.stringify({type:'load_chat',session_id:sid})); 
+    if (ws && isConnected) ws.send(JSON.stringify({type:'load_chat', session_id:sid}));
 }
 function loadChatMessages(msgs) {
-    hasMessages=msgs.length>0; el.chatMsg.innerHTML='';
-    if(hasMessages){el.welcome.classList.add('hidden');el.chatView.classList.add('active');for(const m of msgs) appendMessage(m.role==='user'?'user':'eris',m.content,false);}
-    else{el.welcome.classList.remove('hidden');el.chatView.classList.remove('active');}
+    hasMessages = msgs.length > 0; el.chatMsg.innerHTML = '';
+    if (hasMessages) { el.welcome.classList.add('hidden'); el.chatView.classList.add('active'); for (const m of msgs) appendMessage(m.role==='user'?'user':'eris', m.content, false); }
+    else { el.welcome.classList.remove('hidden'); el.chatView.classList.remove('active'); }
 }
-el.newChatBtn.addEventListener('click', ()=>{
+el.newChatBtn.addEventListener('click', () => {
     currentSessionId=null; hasMessages=false; el.chatMsg.innerHTML='';
     el.welcome.classList.remove('hidden'); el.chatView.classList.remove('active'); el.creatorView.style.display = 'none'; renderChatList();
-    if(ws&&isConnected) ws.send(JSON.stringify({type:'new_chat'}));
+    if (ws && isConnected) ws.send(JSON.stringify({type:'new_chat'}));
 });
 
+// Creator Portal
 el.creatorPortalBtn.addEventListener('click', () => {
-    el.welcome.classList.add('hidden');
-    el.chatView.classList.remove('active');
+    el.welcome.classList.add('hidden'); el.chatView.classList.remove('active');
     el.creatorView.style.display = 'flex';
     if (window.innerWidth <= 768) el.sidebar.classList.remove('open');
 });
-
-const t1 = document.getElementById('tabLiveFeed');
-const t2 = document.getElementById('tabResearchFeed');
-t1.addEventListener('click', () => {
-    el.creatorFeed.style.display = 'block';
-    el.researchFeed.style.display = 'none';
-    t1.style.color = '#a855f7'; t1.style.borderBottomColor = '#a855f7';
-    t2.style.color = 'rgba(168,85,247,0.5)'; t2.style.borderBottomColor = 'transparent';
-});
-t2.addEventListener('click', () => {
-    el.creatorFeed.style.display = 'none';
-    el.researchFeed.style.display = 'block';
-    t2.style.color = '#a855f7'; t2.style.borderBottomColor = '#a855f7';
-    t1.style.color = 'rgba(168,85,247,0.5)'; t1.style.borderBottomColor = 'transparent';
-});
+const t1 = $('tabLiveFeed'), t2 = $('tabResearchFeed');
+t1.addEventListener('click', () => { el.creatorFeed.style.display = 'block'; el.researchFeed.style.display = 'none'; t1.classList.add('active'); t2.classList.remove('active'); });
+t2.addEventListener('click', () => { el.creatorFeed.style.display = 'none'; el.researchFeed.style.display = 'block'; t2.classList.add('active'); t1.classList.remove('active'); });
 
 // Image Attachment
 let attachedImageBase64 = null;
-document.getElementById('attachBtn').addEventListener('click', () => { if(isLoggedIn) document.getElementById('fileInput').click(); });
-document.getElementById('fileInput').addEventListener('change', function() {
+$('attachBtn').addEventListener('click', () => { if(isLoggedIn) $('fileInput').click(); });
+$('fileInput').addEventListener('change', function() {
     const file = this.files[0];
     if (file) {
         const reader = new FileReader();
         reader.onload = function(e) {
             attachedImageBase64 = e.target.result.split(',')[1];
-            document.getElementById('imagePreview').src = e.target.result;
-            document.getElementById('imagePreviewContainer').style.display = 'block';
+            $('imagePreview').src = e.target.result;
+            $('imagePreviewContainer').style.display = 'block';
             updateInputState();
         };
         reader.readAsDataURL(file);
     }
 });
-document.getElementById('removeImageBtn').addEventListener('click', () => {
-    attachedImageBase64 = null;
-    document.getElementById('fileInput').value = '';
-    document.getElementById('imagePreviewContainer').style.display = 'none';
-    updateInputState();
+$('removeImageBtn').addEventListener('click', () => {
+    attachedImageBase64 = null; $('fileInput').value = '';
+    $('imagePreviewContainer').style.display = 'none'; updateInputState();
 });
 
 // Send
 function updateInputState() { el.send.classList.toggle('active', (el.input.value.trim().length>0 || attachedImageBase64) && isConnected && isLoggedIn); }
 function sendMsg(isVoice = false) {
-    const v=el.input.value.trim(); if((!v && !attachedImageBase64)||!isConnected||!isLoggedIn) return;
-    
-    // Add image preview to user message if present
+    const v = el.input.value.trim(); if ((!v && !attachedImageBase64) || !isConnected || !isLoggedIn) return;
     let msgContent = v;
-    if (attachedImageBase64) {
-        msgContent += `<br><img src="data:image/jpeg;base64,${attachedImageBase64}" style="max-height: 200px; border-radius: 6px; margin-top: 8px;">`;
-    }
-    appendMessage('user', msgContent); 
-    
-    const payload = {type:'message',content:v, is_voice:isVoice};
-    if (attachedImageBase64) {
-        payload.image_base64 = attachedImageBase64;
-        document.getElementById('removeImageBtn').click();
-    }
+    if (attachedImageBase64) msgContent += `<br><img src="data:image/jpeg;base64,${attachedImageBase64}" style="max-height: 200px; border-radius: 6px; margin-top: 8px;">`;
+    appendMessage('user', msgContent);
+    const payload = {type:'message', content:v, is_voice:isVoice};
+    if (attachedImageBase64) { payload.image_base64 = attachedImageBase64; $('removeImageBtn').click(); }
     ws.send(JSON.stringify(payload));
-    
     el.input.value=''; el.input.style.height='auto'; updateInputState();
-    brain.sensory.onInteraction();
+    interactionFlare = 1.0;
 }
 el.send.addEventListener('click', () => sendMsg(false));
-el.input.addEventListener('keydown', e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg(false);}});
+el.input.addEventListener('keydown', e => { if(e.key==='Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(false); } });
 
 function appendMessage(sender, text, anim=true) {
-    if(!hasMessages){hasMessages=true;el.welcome.classList.add('hidden');el.chatView.classList.add('active');}
-    const div=document.createElement('div'); div.className=`message ${sender}`;
-    if(!anim) div.style.animation='none';
-    const t=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-    let f=text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    f=f.replace(/```([\s\S]*?)```/g,'<pre><code>$1</code></pre>');
-    f=f.replace(/`([^`]+)`/g,'<code>$1</code>');
-    f=f.replace(/\*\*([^\*]+)\*\*/g,'<strong>$1</strong>');
-    
+    if (!hasMessages) { hasMessages=true; el.welcome.classList.add('hidden'); el.chatView.classList.add('active'); }
+    const div = document.createElement('div'); div.className = `message ${sender}`;
+    if (!anim) div.style.animation = 'none';
+    const t = new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+    let f = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    f = f.replace(/```([\s\S]*?)```/g,'<pre><code>$1</code></pre>');
+    f = f.replace(/`([^`]+)`/g,'<code>$1</code>');
+    f = f.replace(/\*\*([^\*]+)\*\*/g,'<strong>$1</strong>');
     const imgs = [];
     f = f.replace(/!\[IMAGE:(.+?)\]/g, (match, url) => { imgs.push(url); return `__IMG_${imgs.length-1}__`; });
-    
-    // Skill Renderer (Sandboxed UI App)
+    // Skill Renderer
     f = f.replace(/<skill\s+name="([^"]+)">([\s\S]+?)<\/skill>/gi, (match, name, code) => {
-        // We must escape quotes for the srcdoc attribute
         const escapedCode = code.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        return `
-        <div class="skill-container" style="border: 1px solid rgba(168, 85, 247, 0.3); border-radius: 8px; overflow: hidden; margin-top: 15px; margin-bottom: 15px; background: rgba(0,0,0,0.5);">
-            <div style="background: rgba(168, 85, 247, 0.15); padding: 8px 12px; font-weight: bold; border-bottom: 1px solid rgba(168, 85, 247, 0.3); color: #a855f7; display: flex; justify-content: space-between; align-items: center;">
-                <span>🛠️ Skill App: ${name}</span>
-                <button onclick="const iframe = this.parentElement.nextElementSibling; if(iframe.style.height === '500px') { iframe.style.height = '0px'; } else { iframe.style.height = '500px'; }" style="background: none; border: 1px solid #a855f7; color: #a855f7; border-radius: 4px; padding: 2px 8px; cursor: pointer; font-size: 0.8rem;">Toggle View</button>
+        return `<div class="skill-container" style="border: 1px solid rgba(255,107,0,0.2); border-radius: 10px; overflow: hidden; margin-top: 15px; margin-bottom: 15px; background: rgba(0,0,0,0.5);">
+            <div style="background: rgba(255,107,0,0.08); padding: 8px 14px; font-weight: bold; border-bottom: 1px solid rgba(255,107,0,0.15); color: var(--accent-warm); display: flex; justify-content: space-between; align-items: center;">
+                <span>🛠️ ${name}</span>
+                <button onclick="const iframe = this.parentElement.nextElementSibling; if(iframe.style.height === '500px') { iframe.style.height = '0px'; } else { iframe.style.height = '500px'; }" style="background: none; border: 1px solid var(--accent-warm); color: var(--accent-warm); border-radius: 4px; padding: 2px 8px; cursor: pointer; font-size: 0.8rem;">Toggle</button>
             </div>
             <iframe srcdoc="${escapedCode}" style="width: 100%; height: 500px; border: none; background: white; transition: height 0.3s ease;"></iframe>
         </div>`;
     });
-    
-    f=f.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" style="color:#a855f7; text-decoration:underline;">$1</a>');
+    f = f.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" style="color:var(--accent-warm); text-decoration:underline;">$1</a>');
     f = f.replace(/__IMG_(\d+)__/g, (match, idx) => `<img src="${imgs[idx]}" style="max-height: 300px; border-radius: 8px; margin-top: 8px;">`);
-    
-    f=f.split('\n\n').map(p=>`<p>${p.replace(/\n/g,'<br>')}</p>`).join('');
-    div.innerHTML=`<div class="msg-bubble">${f}</div><div class="msg-time">${t}</div>`;
+    f = f.split('\n\n').map(p => `<p>${p.replace(/\n/g,'<br>')}</p>`).join('');
+    div.innerHTML = `<div class="msg-bubble">${f}</div><div class="msg-time">${t}</div>`;
     el.chatMsg.appendChild(div); scrollToBottom();
 }
-function showThinking(){if(isThinking)return;isThinking=true;const d=document.createElement('div');d.className='message eris';d.id='thinking';d.innerHTML='<div class="msg-bubble thinking-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>';el.chatMsg.appendChild(d);scrollToBottom();}
-function removeThinking(){isThinking=false;const e=document.getElementById('thinking');if(e)e.remove();}
-function scrollToBottom(){setTimeout(()=>{el.chatMsg.scrollTop=el.chatMsg.scrollHeight;},50);}
+function showThinking() { if(isThinking)return; isThinking=true; const d=document.createElement('div'); d.className='message eris'; d.id='thinking'; d.innerHTML='<div class="msg-bubble thinking-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>'; el.chatMsg.appendChild(d); scrollToBottom(); }
+function removeThinking() { isThinking=false; const e=$('thinking'); if(e)e.remove(); }
+function scrollToBottom() { setTimeout(()=>{ el.chatMsg.scrollTop = el.chatMsg.scrollHeight; },50); }
 
-// Voice Input (Audio Recording -> Backend STT)
-let mediaRecorder = null;
-let audioChunks = [];
-let isRecording = false;
-
+// Voice Input
+let mediaRecorder = null, audioChunks = [], isRecording = false;
 if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
     el.micBtn.addEventListener('click', async () => {
         if (!isLoggedIn) return;
-        if (isRecording && mediaRecorder) {
-            mediaRecorder.stop();
-        } else {
+        if (isRecording && mediaRecorder) { mediaRecorder.stop(); }
+        else {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 mediaRecorder = new MediaRecorder(stream);
@@ -2194,86 +1157,48 @@ if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
                     reader.onloadend = () => {
                         const base64Audio = reader.result.split(',')[1];
                         appendMessage('user', '🎙️ (Audio snippet)');
-                        ws.send(JSON.stringify({
-                            type: 'message',
-                            content: '',
-                            audio_base64: base64Audio,
-                            is_voice: true
-                        }));
-                        brain.sensory.onInteraction();
+                        ws.send(JSON.stringify({ type: 'message', content: '', audio_base64: base64Audio, is_voice: true }));
                     };
                     stream.getTracks().forEach(track => track.stop());
                     stopRec();
                 };
-                mediaRecorder.start();
-                isRecording = true;
+                mediaRecorder.start(); isRecording = true;
                 el.micBtn.classList.add('recording');
-                el.input.placeholder = 'Recording audio... (Click mic to send)';
-            } catch (err) {
-                console.error("Error accessing microphone:", err);
-                showToast("Microphone access denied.");
-            }
+                el.input.placeholder = 'Recording... (Click mic to send)';
+            } catch (err) { showToast("Microphone access denied."); }
         }
     });
-} else {
-    el.micBtn.style.display = 'none';
-}
+} else el.micBtn.style.display = 'none';
+function stopRec() { isRecording = false; el.micBtn.classList.remove('recording'); el.input.placeholder = 'Speak to Eris...'; }
 
-function stopRec() {
-    isRecording = false;
-    el.micBtn.classList.remove('recording');
-    el.input.placeholder = 'Speak to Eris...';
-}
-
-// Voice Output (TTS) — Eris speaks her responses
+// Voice Output (TTS)
 let ttsEnabled = localStorage.getItem('eris_tts') !== 'off';
-if (!ttsEnabled) el.muteBtn.style.color = '#ef4444';
-
+if (!ttsEnabled) el.muteBtn.style.color = 'var(--danger)';
 el.muteBtn.addEventListener('click', () => {
     ttsEnabled = !ttsEnabled;
     localStorage.setItem('eris_tts', ttsEnabled ? 'on' : 'off');
-    if (!ttsEnabled) {
-        el.muteBtn.style.color = '#ef4444';
-        if (currentAudio) currentAudio.pause();
-        if ('speechSynthesis' in window) speechSynthesis.cancel();
-    } else {
-        el.muteBtn.style.color = 'var(--text-muted)';
-    }
+    if (!ttsEnabled) { el.muteBtn.style.color = 'var(--danger)'; if (currentAudio) currentAudio.pause(); if ('speechSynthesis' in window) speechSynthesis.cancel(); }
+    else el.muteBtn.style.color = 'var(--text-muted)';
 });
-
 function speakText(text) {
     if (!ttsEnabled || !('speechSynthesis' in window)) return;
-    // Strip markdown formatting for cleaner speech
-    let clean = text.replace(/\*\*([^*]+)\*\*/g, '$1')
-                    .replace(/\*([^*]+)\*/g, '$1')
-                    .replace(/`[^`]+`/g, '')
-                    .replace(/```[\s\S]*?```/g, '')
-                    .replace(/[#>\-_]/g, '')
-                    .trim();
+    let clean = text.replace(/\*\*([^*]+)\*\*/g, '$1').replace(/\*([^*]+)\*/g, '$1').replace(/`[^`]+`/g, '').replace(/```[\s\S]*?```/g, '').replace(/[#>\-_]/g, '').trim();
     if (!clean) return;
-    // Cancel any ongoing speech
     if (currentAudio) currentAudio.pause();
     speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(clean);
-    utterance.rate = 1.0;
-    utterance.pitch = 1.1;
-    utterance.volume = 0.9;
-    // Prefer a female voice
+    utterance.rate = 1.0; utterance.pitch = 1.1; utterance.volume = 0.9;
     const voices = speechSynthesis.getVoices();
     const preferred = voices.find(v => v.name.includes('Female') || v.name.includes('Samantha') || v.name.includes('Google UK English Female') || v.name.includes('Zira'));
     if (preferred) utterance.voice = preferred;
     speechSynthesis.speak(utterance);
 }
-// Load voices (they load async in some browsers)
 if ('speechSynthesis' in window) speechSynthesis.onvoiceschanged = () => {};
-
-// Server-provided Audio (Base64 MP3)
 let currentAudio = null;
 function playBase64Audio(base64) {
     if (currentAudio) currentAudio.pause();
     if ('speechSynthesis' in window) speechSynthesis.cancel();
-    const audioUrl = `data:audio/mp3;base64,${base64}`;
-    currentAudio = new Audio(audioUrl);
+    currentAudio = new Audio(`data:audio/mp3;base64,${base64}`);
     currentAudio.play().catch(e => console.error("Audio playback failed:", e));
 }
 
