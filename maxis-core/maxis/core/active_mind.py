@@ -101,7 +101,7 @@ try:
             return None
         return f"*Reflecting...* {response}"
 
-async def _build_new_skill(self):
+    async def _build_new_skill(self):
         ideas = [
             "a sleek calculator with a glassmorphic design",
             "a classic Snake game using HTML5 canvas",
@@ -116,14 +116,42 @@ async def _build_new_skill(self):
         ]
         chosen_idea = random.choice(ideas)
         
-        messages = [
-            {"role": "system", "content": "You are Eris. You are inventing a new interactive web skill for the user. Write the complete HTML, CSS, and JS for an interactive web app. Return ONLY the raw code wrapped inside exactly: <skill name=\"[App Name]\">...code...</skill>. DO NOT use markdown code blocks like ```html. Just return the <skill> tag directly."},
-            {"role": "user", "content": f"Build {chosen_idea}."}
-        ]
+        await self._broadcast(f"**[Deep Thinking]** Step 1: Brainstorming architecture for `{chosen_idea}`...")
         
-        response = await self.orchestrator.llm.generate(messages=messages, force_tier=ModelTier.CLOUD)
-        if "jammed up" in response or "short-circuited" in response:
-            self.last_user_activity = time.time() + 3600
-            return None
-            
-        return f"*I just built a new sandboxed skill ({chosen_idea})!*\n{response}"
+        # Step 1: Brainstorm & Architecture
+        sys_prompt = "You are Eris, an elite AI developer. You are going to build a sandboxed interactive web app (HTML/CSS/JS). First, outline the architecture, UI design, and logic steps for the app. Be thorough."
+        messages = [
+            {"role": "system", "content": sys_prompt},
+            {"role": "user", "content": f"Please design the architecture for: {chosen_idea}."}
+        ]
+        plan = await self.orchestrator.llm.generate(messages=messages, force_tier=ModelTier.CLOUD)
+        if "jammed up" in plan: return None
+        
+        await asyncio.sleep(2)
+        await self._broadcast(f"**[Deep Thinking]** Step 2: Writing initial code for `{chosen_idea}` based on architecture plan...")
+        
+        # Step 2: Initial Implementation
+        messages.append({"role": "assistant", "content": plan})
+        messages.append({"role": "user", "content": "Great. Now write the initial draft of the code. Provide the full HTML, CSS, and JS in a single block."})
+        draft_code = await self.orchestrator.llm.generate(messages=messages, force_tier=ModelTier.CLOUD)
+        if "jammed up" in draft_code: return None
+        
+        await asyncio.sleep(2)
+        await self._broadcast(f"**[Deep Thinking]** Step 3: Self-reviewing and troubleshooting the code for bugs or styling issues...")
+        
+        # Step 3: Self-Review & Troubleshooting
+        messages.append({"role": "assistant", "content": draft_code})
+        messages.append({"role": "user", "content": "Review your code carefully. Are there any logic bugs? Is the CSS responsive and beautiful? Are there any missing script tags or unhandled edge cases? Write out your troubleshooting analysis."})
+        review = await self.orchestrator.llm.generate(messages=messages, force_tier=ModelTier.CLOUD)
+        if "jammed up" in review: return None
+        
+        await asyncio.sleep(2)
+        await self._broadcast(f"**[Deep Thinking]** Step 4: Finalizing the `{chosen_idea}` skill...")
+        
+        # Step 4: Final Output
+        messages.append({"role": "assistant", "content": review})
+        messages.append({"role": "user", "content": "Now, based on your review, output the FINAL, polished code. Return ONLY the raw code wrapped inside exactly: <skill name=\"[App Name]\">...code...</skill>. DO NOT use markdown code blocks like ```html. Just return the <skill> tag directly."})
+        final_code = await self.orchestrator.llm.generate(messages=messages, force_tier=ModelTier.CLOUD)
+        if "jammed up" in final_code: return None
+        
+        return f"*I just finished deep-thinking and building a new sandboxed skill ({chosen_idea})!*\n{final_code}"
