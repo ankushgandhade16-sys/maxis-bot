@@ -73,6 +73,16 @@ class LLMRouter:
             )
             self._cloud_available = True
 
+        
+        # Initialize xAI API
+        if hasattr(self._config, 'xai') and self._config.xai.api_key:
+            self._xai_client = httpx.AsyncClient(
+                base_url=self._config.xai.base_url,
+                headers={"Authorization": f"Bearer {self._config.xai.api_key}"},
+                timeout=120.0,
+            )
+            self._cloud_available = True
+
         # Initialize OpenRouter API
         if self._config.openrouter.api_key:
             self._openrouter_client = httpx.AsyncClient(
@@ -246,6 +256,11 @@ class LLMRouter:
             if not self._groq_client:
                 raise ValueError("Groq client not initialized (check API key)")
             return await self._generate_groq(messages, temperature)
+        
+        elif self._active_cloud_model.startswith("grok"):
+            if not self._xai_client:
+                raise ValueError("xAI (Grok) client not initialized (check API key)")
+            return await self._generate_xai(messages, temperature)
         else:
             if not self._openrouter_client:
                 raise ValueError("OpenRouter client not initialized (check API key)")
@@ -483,5 +498,33 @@ class LLMRouter:
         }
 
         resp = await self._groq_client.post("/chat/completions", json=payload)
+        resp.raise_for_status()
+        return resp.json()["choices"][0]["message"]["content"]
+
+
+    async def _generate_xai(
+        self,
+        messages: list[dict],
+        temperature: float | None = None,
+    ) -> str:
+        """Generate via xAI (Grok) API."""
+        model_name = self._active_cloud_model
+            
+        clean_messages = []
+        for m in messages:
+            content = m["content"]
+            if isinstance(content, list):
+                text_parts = [p["text"] for p in content if p.get("type") == "text"]
+                content = " ".join(text_parts)
+            clean_messages.append({"role": m["role"], "content": content})
+
+        payload = {
+            "model": model_name,
+            "messages": clean_messages,
+            "temperature": temperature if temperature is not None else self._config.xai.temperature,
+            "stream": False
+        }
+
+        resp = await self._xai_client.post("/chat/completions", json=payload)
         resp.raise_for_status()
         return resp.json()["choices"][0]["message"]["content"]

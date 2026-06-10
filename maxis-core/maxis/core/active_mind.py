@@ -21,8 +21,8 @@ class ActiveMind:
         self.last_user_activity = time.time()
         self._loop_delay_seconds = 60  # Run every 1 minute when idle
         
-        # Use gemma free via OpenRouter to avoid depleting premium tokens
-        self.active_mind_model = "google/gemma-4-31b-it:free"
+        # Use Grok for background tasks (requires XAI_API_KEY)
+        self.active_mind_model = "grok-beta"
         
         self.tasks = []
 

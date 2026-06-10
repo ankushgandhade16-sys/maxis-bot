@@ -133,6 +133,15 @@ class GeminiConfig(BaseSettings):
     max_daily_tokens: int = 1_000_000
 
 
+
+class XaiConfig(BaseSettings):
+    """Configuration for xAI Grok API."""
+    api_key: str = Field(default="", description="xAI API key")
+    model: str = "grok-beta"
+    base_url: str = "https://api.x.ai/v1"
+    temperature: float = 0.7
+
+
 class OpenRouterConfig(BaseSettings):
     """Configuration for OpenRouter API."""
     api_key: str = Field(default="", description="OpenRouter API key")
@@ -154,6 +163,7 @@ class MaxisConfig(BaseSettings):
     groq: GroqConfig = GroqConfig()
     gemini: GeminiConfig = GeminiConfig()
     openrouter: OpenRouterConfig = OpenRouterConfig()
+    xai: XaiConfig = XaiConfig()
     memory: MemoryConfig = MemoryConfig()
     voice: VoiceConfig = VoiceConfig()
     vision: VisionConfig = VisionConfig()
