@@ -75,11 +75,35 @@ class EpisodicMemory:
         if self._initialized:
             return
 
+
+        if not self._index:
+            # Local fallback search (dumb keyword search)
+            results = []
+            q = query.lower()
+            for ep in reversed(self._local_episodes):
+                if q in ep["content"].lower() or "research" in ep["content"].lower():
+                    results.append({"id": ep["id"], "content": ep["content"], "distance": 0.5, "metadata": {}})
+                    if len(results) >= k:
+                        break
+            return results
+
         config = get_config()
         
+
+        self._local_file = "data/episodic.json"
+        self._local_episodes = []
+        if os.path.exists(self._local_file):
+            try:
+                with open(self._local_file, "r") as lf:
+                    self._local_episodes = json.load(lf)
+            except Exception:
+                pass
+        
         if not config.cloud.pinecone_api_key:
-            logger.warning("No Pinecone API key configured. Episodic memory will be disabled.")
+            logger.warning("No Pinecone API key configured. Episodic memory will use local JSON fallback.")
+            self._initialized = True
             return
+
 
         # Initialize Pinecone
         from pinecone import Pinecone
@@ -113,7 +137,19 @@ class EpisodicMemory:
         """Store a new episode in memory."""
         if not self._initialized or not self._index:
             await self.initialize()
-            if not self._index: return
+
+
+        if not self._index:
+            # Local fallback
+            self._local_episodes.append({
+                "id": episode.id,
+                "content": episode.content,
+                "timestamp": episode.timestamp,
+            })
+            with open(self._local_file, "w") as lf:
+                json.dump(self._local_episodes, lf)
+            logger.debug(f"Stored episode locally {episode.id[:8]}: {episode.content[:80]}...")
+            return
 
         # 1. Generate embedding
         doc_text = episode.to_document()
@@ -148,7 +184,18 @@ class EpisodicMemory:
         """
         if not self._initialized or not self._index:
             await self.initialize()
-            if not self._index: return []
+
+
+        if not self._index:
+            # Local fallback search (dumb keyword search)
+            results = []
+            q = query.lower()
+            for ep in reversed(self._local_episodes):
+                if q in ep["content"].lower() or "research" in ep["content"].lower():
+                    results.append({"id": ep["id"], "content": ep["content"], "distance": 0.5, "metadata": {}})
+                    if len(results) >= k:
+                        break
+            return results
 
         config = get_config()
         k = top_k or config.memory.episodic_top_k
@@ -202,7 +249,6 @@ class EpisodicMemory:
         """Delete episodes by ID (used by compression)."""
         if not self._initialized or not self._index:
             await self.initialize()
-            if not self._index: return
 
         if episode_ids:
             try:

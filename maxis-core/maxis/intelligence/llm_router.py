@@ -63,6 +63,16 @@ class LLMRouter:
             except Exception as e:
                 logger.error(f"Failed to initialize Gemini API: {e}")
 
+        
+        # Initialize Groq API
+        if hasattr(self._config, 'groq') and self._config.groq.api_key:
+            self._groq_client = httpx.AsyncClient(
+                base_url="https://api.groq.com/openai/v1",
+                headers={"Authorization": f"Bearer {self._config.groq.api_key}"},
+                timeout=120.0,
+            )
+            self._cloud_available = True
+
         # Initialize OpenRouter API
         if self._config.openrouter.api_key:
             self._openrouter_client = httpx.AsyncClient(
@@ -231,6 +241,11 @@ class LLMRouter:
             if not self._gemini_client:
                 raise ValueError("Gemini client not initialized")
             return await self._generate_gemini(messages, temperature)
+        
+        elif self._active_cloud_model.startswith("groq/") or self._active_cloud_model.startswith("llama-3.3-70b"):
+            if not self._groq_client:
+                raise ValueError("Groq client not initialized (check API key)")
+            return await self._generate_groq(messages, temperature)
         else:
             if not self._openrouter_client:
                 raise ValueError("OpenRouter client not initialized (check API key)")
@@ -439,3 +454,34 @@ class LLMRouter:
         if self._openrouter_client:
             await self._openrouter_client.aclose()
         await self._token_budget.save()
+
+
+    async def _generate_groq(
+        self,
+        messages: list[dict],
+        temperature: float | None = None,
+    ) -> str:
+        """Generate via Groq API."""
+        # Strip the 'groq/' prefix if present
+        model_name = self._active_cloud_model
+        if model_name.startswith("groq/"):
+            model_name = model_name[5:]
+            
+        clean_messages = []
+        for m in messages:
+            content = m["content"]
+            if isinstance(content, list):
+                # Groq doesn't support complex vision arrays perfectly for all models, but just extract text
+                text_parts = [p["text"] for p in content if p.get("type") == "text"]
+                content = " ".join(text_parts)
+            clean_messages.append({"role": m["role"], "content": content})
+
+        payload = {
+            "model": model_name,
+            "messages": clean_messages,
+            "temperature": temperature if temperature is not None else 0.7,
+        }
+
+        resp = await self._groq_client.post("/chat/completions", json=payload)
+        resp.raise_for_status()
+        return resp.json()["choices"][0]["message"]["content"]

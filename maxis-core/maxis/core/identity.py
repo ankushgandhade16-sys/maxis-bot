@@ -142,6 +142,18 @@ def build_system_prompt(
     """
     sections = [CORE_IDENTITY]
 
+
+    # ── Self-Awareness Module ────────────────────────────────────────────
+    import os
+    awareness_path = os.path.join(os.path.dirname(__file__), "self_awareness.txt")
+    if os.path.exists(awareness_path):
+        try:
+            with open(awareness_path, "r", encoding="utf-8") as af:
+                awareness_text = af.read()
+            sections.append(f"\n## Self-Awareness Core\n{awareness_text}")
+        except Exception:
+            pass
+
     # ── Time awareness ───────────────────────────────────────────────────
     if time_context:
         sections.append(f"\n## Current Context\n{time_context}")

@@ -24,7 +24,7 @@ class ResearchDaemon:
         self._loop_delay_seconds = 60  # Wait 1 minute between thoughts
         
         # We try to use a free model to avoid draining premium tokens
-        self.daemon_model = "google/gemma-4-31b-it:free"
+        self.daemon_model = "groq/llama-3.3-70b-versatile"
         
     def start(self):
         if self.is_running:

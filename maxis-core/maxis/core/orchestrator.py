@@ -25,7 +25,7 @@ import re
 from maxis.config import get_config, DATA_DIR
 from maxis.system.os_tools import get_system_stats, execute_command, fetch_url
 from maxis.system.screen import capture_screen_base64
-from maxis.core.daemon import ResearchDaemon
+from maxis.core.active_mind import ActiveMind
 from maxis.core.identity import build_system_prompt
 from maxis.emotion.state import EmotionalState
 from maxis.emotion.engine import EmotionEngine
@@ -56,7 +56,7 @@ class Orchestrator:
         # Current session state
         self._current_person_id: Optional[str] = None
         # Initialize the autonomous research daemon
-        self.daemon = ResearchDaemon(self)
+        self.active_mind = ActiveMind(self)
 
         self._session_start: float = time.time()
         self._initialized = False
@@ -103,7 +103,7 @@ class Orchestrator:
 
         self._initialized = True
         # Start the autonomous research daemon
-        self.daemon.start()
+        self.active_mind.start()
 
         logger.info("═" * 60)
         logger.info("  MAXIS — Online and ready.")
