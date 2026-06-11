@@ -156,21 +156,28 @@ float hash2(vec2 p){return fract(sin(dot(p,vec2(41.1,17.4)))*43758.5453);}
 float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);}
 float fbm3(vec2 p){float v=0.,a=.5;for(int i=0;i<3;i++){v+=a*noise(p);p=p*2.1+vec2(1.7,9.2);a*=.5;}return v;}
 
-// SDF box for station detail
-float sdBox(vec2 p,vec2 b){vec2 d=abs(p)-b;return length(max(d,0.))+min(max(d.x,d.y),0.);}
-
 void main(){
     vec2 uv=(gl_FragCoord.xy-.5*u_res)/u_res.y;
     float t=u_time;
 
-    // ── Camera — slow constant drift + sidebar zoom ──
-    float camZ=mix(-18.,-10.,u_zoom);
-    float camY=mix(1.5,.6,u_zoom);
-    vec3 ro=vec3(
-        .4*sin(t*.04)+.15*sin(t*.11),
-        camY+.2*sin(t*.06),
-        camZ+.3*sin(t*.03)
-    );
+    // ── Station orbit ──
+    float stAngle=t*.05;
+    float stOrbitR=20.;
+    vec3 stPos=vec3(stOrbitR*cos(stAngle),.3+.12*sin(t*.12),stOrbitR*sin(stAngle));
+    float stR=.5;
+    vec3 stVelDir=normalize(vec3(-sin(stAngle),0.,cos(stAngle))); // orbital velocity dir
+
+    // ── Chase camera: behind station, looking at BH ──
+    vec3 toBH=normalize(-stPos);
+    vec3 camSide=normalize(cross(toBH,vec3(0,1,0)));
+    vec3 roBase=stPos-toBH*6.+vec3(0.,.8,0.);
+    // Gentle drift
+    roBase+=camSide*.25*sin(t*.07);
+    roBase.y+=.12*sin(t*.09);
+    // Sidebar zoom: closer to station surface
+    vec3 roZoom=stPos-toBH*2.+vec3(0.,.3,0.)+camSide*.4;
+    vec3 ro=mix(roBase,roZoom,u_zoom);
+
     vec3 ta=vec3(0.);
     vec3 fwd=normalize(ta-ro);
     vec3 right=normalize(cross(fwd,vec3(0,1,0)));
@@ -178,130 +185,156 @@ void main(){
     float fov=mix(1.8,1.2,u_zoom);
     vec3 rd=normalize(fwd*fov+right*uv.x+up*uv.y);
 
-    float rs=1.;
-    float diskIn=3.;
-    float diskOut=14.;
-
-    vec3 pos=ro;
-    vec3 vel=rd;
     vec3 col=vec3(0.);
-    bool absorbed=false;
-
-    // ── Space station orbit params ──
-    float stOrbitR=7.5;
-    float stAngle=t*.07;
-    vec3 stPos=vec3(stOrbitR*cos(stAngle),.25+.1*sin(t*.15),stOrbitR*sin(stAngle));
-    float stR=.18;
     bool hitStation=false;
-    vec3 stHitNorm=vec3(0.);
-    vec3 stHitP=vec3(0.);
 
-    // ── Ray march through Schwarzschild spacetime ──
-    for(int i=0;i<250;i++){
-        float rl=length(pos);
-        float h=max(.03,min(.5,rl*.06));
-        vec3 prev=pos;
-        pos+=vel*h;
-        float r2=dot(pos,pos);
-        float rn=sqrt(r2);
-
-        if(rn<rs*.5){absorbed=true;break;}
-
-        // Schwarzschild geodesic
-        vec3 L=cross(pos,vel);
-        float L2=dot(L,L);
-        vel+=-1.5*L2*pos/(r2*r2*rn)*h;
-        vel=normalize(vel);
-
-        // Station check
-        if(!hitStation){
-            float dSt=length(pos-stPos);
-            if(dSt<stR){
+    // ═══ STATION — straight ray, NO gravity ═══
+    {
+        vec3 oc=ro-stPos;
+        float B=dot(oc,rd);
+        float C=dot(oc,oc)-stR*stR;
+        float D=B*B-C;
+        if(D>0.){
+            float tHit=-B-sqrt(D);
+            if(tHit>0.){
                 hitStation=true;
-                stHitNorm=normalize(pos-stPos);
-                stHitP=pos;
-            }
-        }
+                vec3 hp=ro+rd*tHit;
+                vec3 n=normalize(hp-stPos);
+                float su=atan(n.z,n.x);
+                float sv=asin(clamp(n.y,-1.,1.));
 
-        // Disk-plane crossing
-        if(prev.y*pos.y<0.){
-            float tt=prev.y/(prev.y-pos.y);
-            vec3 hp=mix(prev,pos,tt);
-            float hr=length(hp.xz);
-            if(hr>diskIn&&hr<diskOut){
-                float dn=(hr-diskIn)/(diskOut-diskIn);
-                float omega=1./pow(hr,.75);
-                float da=atan(hp.z,hp.x)+t*omega*.5;
-                vec3 dc;
-                if(dn<.08) dc=mix(vec3(1.,.97,.9),vec3(1.,.72,.18),dn/.08);
-                else if(dn<.25) dc=mix(vec3(1.,.72,.18),vec3(.88,.3,.04),(dn-.08)/.17);
-                else dc=mix(vec3(.88,.3,.04),vec3(.12,.02,0.),clamp((dn-.25)/.75,0.,1.));
-                vec3 orbV=normalize(vec3(-hp.z,0.,hp.x));
-                float dop=1.+dot(vel.xz,orbV.xz)*2.2;
-                dop=clamp(dop,.08,3.5);
-                dop=pow(dop,2.);
-                float spiral=da+hr*.3;
-                float tex=fbm3(vec2(spiral*3.5,hr*2.));
-                float str=noise(vec2(da*8.+hr*.5,hr*4.));
-                tex=.3+.7*mix(tex,str,.35);
-                float opacity=smoothstep(diskOut,diskOut*.3,hr);
-                opacity*=.5+.5*(1.-dn);
-                col+=dc*dop*tex*opacity*2.2;
-            }
-        }
-        if(rn>35.)break;
-    }
+                // Hull base — cool metallic
+                vec3 hull=vec3(.38,.4,.44);
 
-    // ── Space station rendering ──
-    if(hitStation&&!absorbed){
-        // Surface coordinates for detail
-        vec3 stLocal=stHitP-stPos;
-        float stU=atan(stLocal.z,stLocal.x);
-        float stV=asin(clamp(stLocal.y/stR,-1.,1.));
-        // Hull: cool metallic
-        vec3 hull=vec3(.35,.38,.42);
-        // Panel lines grid
-        float panels=step(.92,abs(sin(stU*12.)))+step(.92,abs(sin(stV*8.)));
-        hull=mix(hull,vec3(.2,.22,.25),panels*.3);
-        // Solar panel wings (rectangular protrusions)
-        float wing=step(.85,abs(sin(stU*2.)))*step(.7,cos(stV*2.));
-        hull=mix(hull,vec3(.1,.15,.3),wing*.5);
-        // Lighting from accretion disk
-        vec3 diskDir=normalize(vec3(0.)-stPos);
-        float diskLight=max(0.,dot(stHitNorm,diskDir));
-        hull*=.15+diskLight*vec3(1.,.65,.2)*1.5;
-        // Fresnel edge glow
-        float fresnel=pow(1.-abs(dot(stHitNorm,normalize(ro-stHitP))),.8);
-        hull+=vec3(.3,.5,.7)*fresnel*.15;
-        // Running lights
-        float blink=step(.97,sin(t*4.+stU*6.));
-        hull+=vec3(.2,.8,1.)*blink*.3;
-        col=hull;
-    }
+                // Panel grid lines (structural seams)
+                float pgX=step(.94,abs(sin(su*14.)));
+                float pgY=step(.94,abs(sin(sv*10.)));
+                hull=mix(hull,vec3(.22,.24,.28),(pgX+pgY)*.3);
 
-    if(!absorbed&&!hitStation){
-        // ── Stars — realistic, subtle, barely twinkle ──
-        vec3 fd=normalize(vel);
-        float phi=atan(fd.z,fd.x);
-        float psi=asin(clamp(fd.y,-1.,1.));
-        vec2 sc=vec2(phi,psi);
-        for(float s=40.;s<=160.;s+=40.){
-            vec2 cell=floor(sc*s);
-            float hv=hash(cell);
-            if(hv>.985){
-                vec2 sp=(cell+vec2(hash2(cell),hash(cell+vec2(7.3,13.1))))/s;
-                float d=length(sc-sp)*s;
-                float pt=exp(-d*d*25.);
-                float b=pow((hv-.985)/.015,.6);
-                // Very subtle twinkle — barely perceptible
-                float tw=.93+.07*sin(t*.4+hv*120.);
-                vec3 starCol=mix(vec3(.7,.78,1.),vec3(1.,.95,.85),hash2(cell));
-                col+=starCol*pt*b*tw*.18;
+                // Solar panel wings (dark blue regions at sides)
+                float wing=step(.82,abs(sin(su*2.)))*smoothstep(.15,.4,abs(sv));
+                hull=mix(hull,vec3(.06,.08,.18),wing);
+                // Solar cell subdivisions
+                float cells=(step(.92,abs(sin(su*24.)))+step(.92,abs(sin(sv*16.))))*wing;
+                hull+=vec3(.02,.03,.06)*cells;
+
+                // Window rows (warm interior light)
+                float winMask=step(.8,cos(sv*5.))*(1.-wing);
+                float windows=step(.95,sin(su*36.))*winMask;
+                hull+=vec3(.5,.4,.15)*windows;
+
+                // Docking bay
+                float bay=smoothstep(.2,0.,abs(su-1.57))*smoothstep(.25,0.,abs(sv+.2));
+                hull=mix(hull,vec3(.08,.08,.1),bay*.6);
+                hull+=vec3(.3,.1,.04)*bay*.15;
+
+                // Communication dish
+                float dish=smoothstep(.18,0.,length(vec2(su+1.57,sv-.4)));
+                hull=mix(hull,vec3(.48,.5,.54),dish);
+
+                // Lighting from accretion disk
+                float diskLit=max(0.,dot(n,toBH));
+                hull*=.08+diskLit*vec3(1.,.6,.18)*2.;
+
+                // Ambient
+                hull+=vec3(.015,.02,.035);
+
+                // Fresnel rim
+                float fres=pow(1.-abs(dot(n,normalize(ro-hp))),1.5);
+                hull+=vec3(.15,.25,.4)*fres*.2;
+
+                // Navigation lights (red port, green starboard)
+                float navR=smoothstep(.08,0.,length(vec2(su-1.57,sv)))*step(0.,n.x);
+                float navG=smoothstep(.08,0.,length(vec2(su+1.57,sv)))*step(0.,-n.x);
+                hull+=vec3(.8,.1,.05)*navR*(step(.5,sin(t*2.))*.5+.5);
+                hull+=vec3(.05,.6,.1)*navG*(step(.5,sin(t*2.+3.14))*.5+.5);
+
+                // Blue running lights along equator
+                float runL=step(.96,sin(su*12.+t*2.))*smoothstep(.15,0.,abs(sv));
+                hull+=vec3(.1,.5,.9)*runL*.4;
+
+                // Engine glow (trailing side)
+                float engFace=max(0.,dot(n,-stVelDir));
+                float engGlow=pow(engFace,4.);
+                hull+=vec3(.15,.4,.9)*engGlow*.6*(.7+.3*sin(t*6.));
+
+                col=hull;
             }
         }
     }
 
-    // Dark space background
+    // ═══ BLACK HOLE — ray trace only if station missed ═══
+    if(!hitStation){
+        float rs=1.;
+        float diskIn=3.;
+        float diskOut=14.;
+        vec3 pos=ro;
+        vec3 vel=rd;
+        bool absorbed=false;
+
+        for(int i=0;i<250;i++){
+            float rl=length(pos);
+            float h=max(.03,min(.5,rl*.06));
+            vec3 prev=pos;
+            pos+=vel*h;
+            float r2=dot(pos,pos);
+            float rn=sqrt(r2);
+            if(rn<rs*.5){absorbed=true;break;}
+            vec3 L=cross(pos,vel);
+            float L2=dot(L,L);
+            vel+=-1.5*L2*pos/(r2*r2*rn)*h;
+            vel=normalize(vel);
+            if(prev.y*pos.y<0.){
+                float tt=prev.y/(prev.y-pos.y);
+                vec3 hp=mix(prev,pos,tt);
+                float hr=length(hp.xz);
+                if(hr>diskIn&&hr<diskOut){
+                    float dn=(hr-diskIn)/(diskOut-diskIn);
+                    float omega=1./pow(hr,.75);
+                    float da=atan(hp.z,hp.x)+t*omega*.5;
+                    vec3 dc;
+                    if(dn<.08) dc=mix(vec3(1.,.97,.9),vec3(1.,.72,.18),dn/.08);
+                    else if(dn<.25) dc=mix(vec3(1.,.72,.18),vec3(.88,.3,.04),(dn-.08)/.17);
+                    else dc=mix(vec3(.88,.3,.04),vec3(.12,.02,0.),clamp((dn-.25)/.75,0.,1.));
+                    vec3 orbV=normalize(vec3(-hp.z,0.,hp.x));
+                    float dop=1.+dot(vel.xz,orbV.xz)*2.2;
+                    dop=clamp(dop,.08,3.5);
+                    dop=pow(dop,2.);
+                    float spiral=da+hr*.3;
+                    float tex=fbm3(vec2(spiral*3.5,hr*2.));
+                    float str=noise(vec2(da*8.+hr*.5,hr*4.));
+                    tex=.3+.7*mix(tex,str,.35);
+                    float opacity=smoothstep(diskOut,diskOut*.3,hr);
+                    opacity*=.5+.5*(1.-dn);
+                    col+=dc*dop*tex*opacity*2.2;
+                }
+            }
+            if(rn>50.)break;
+        }
+
+        if(!absorbed){
+            // Stars — realistic, subtle
+            vec3 fd=normalize(vel);
+            float phi=atan(fd.z,fd.x);
+            float psi=asin(clamp(fd.y,-1.,1.));
+            vec2 sc=vec2(phi,psi);
+            for(float s=40.;s<=160.;s+=40.){
+                vec2 cell=floor(sc*s);
+                float hv=hash(cell);
+                if(hv>.985){
+                    vec2 sp=(cell+vec2(hash2(cell),hash(cell+vec2(7.3,13.1))))/s;
+                    float d=length(sc-sp)*s;
+                    float pt=exp(-d*d*25.);
+                    float b=pow((hv-.985)/.015,.6);
+                    float tw=.93+.07*sin(t*.4+hv*120.);
+                    vec3 starCol=mix(vec3(.7,.78,1.),vec3(1.,.95,.85),hash2(cell));
+                    col+=starCol*pt*b*tw*.18;
+                }
+            }
+        }
+    }
+
+    // Background
     col+=vec3(.005,.008,.016);
 
     // Warm atmospheric haze
@@ -404,7 +437,7 @@ gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_
 const aP=gl.getAttribLocation(prog,'a_pos');gl.enableVertexAttribArray(aP);gl.vertexAttribPointer(aP,2,gl.FLOAT,false,0,0);
 const uR=gl.getUniformLocation(prog,'u_res'),uT=gl.getUniformLocation(prog,'u_time'),uI=gl.getUniformLocation(prog,'u_interact'),uZ=gl.getUniformLocation(prog,'u_zoom');
 let interact=0,zoomTarget=0,zoomCurrent=0;
-function rsz(){const d=Math.min(devicePixelRatio,1.);cv.width=innerWidth*d;cv.height=innerHeight*d;cv.style.width=innerWidth+'px';cv.style.height=innerHeight+'px';gl.viewport(0,0,cv.width,cv.height)}
+function rsz(){const d=Math.max(devicePixelRatio,1.5);cv.width=innerWidth*d;cv.height=innerHeight*d;cv.style.width=innerWidth+'px';cv.style.height=innerHeight+'px';gl.viewport(0,0,cv.width,cv.height)}
 addEventListener('resize',rsz);rsz();
 addEventListener('click',()=>{interact=Math.min(interact+.5,1.5)});
 let t0=performance.now();
