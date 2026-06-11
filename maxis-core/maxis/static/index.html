@@ -157,36 +157,43 @@ float fbm3(vec2 p){float v=0.,a=.5;for(int i=0;i<3;i++){v+=a*noise(p);p=p*2.1+ve
 void main(){
     vec2 uv=(gl_FragCoord.xy-.5*u_res)/u_res.y;
 
-    // ── Camera ──
-    vec3 ro=vec3(0.,2.,-40.);
+    // ── Camera — close enough for rays to reach BH ──
+    vec3 ro=vec3(0.,1.5,-18.);
     vec3 ta=vec3(0.);
     vec3 fwd=normalize(ta-ro);
     vec3 right=normalize(cross(fwd,vec3(0,1,0)));
     vec3 up=cross(right,fwd);
-    vec3 rd=normalize(fwd*2.+right*uv.x+up*uv.y);
+    vec3 rd=normalize(fwd*1.8+right*uv.x+up*uv.y);
 
-    // ── Black hole params ──
-    float rs=1.;         // Schwarzschild radius
-    float diskIn=3.;     // ISCO
-    float diskOut=14.;   // outer disk edge
-    float STEP=.15;
+    float rs=1.;
+    float diskIn=3.;
+    float diskOut=14.;
 
     vec3 pos=ro;
     vec3 vel=rd;
     vec3 col=vec3(0.);
     bool absorbed=false;
 
-    // ── Ray march through curved spacetime ──
-    for(int i=0;i<200;i++){
+    // ── Ray march through Schwarzschild spacetime ──
+    for(int i=0;i<250;i++){
+        float rl=length(pos);
+
+        // Adaptive step: large far away, tiny near photon sphere
+        float h=max(.03,min(.5,rl*.06));
+
         vec3 prev=pos;
-        pos+=vel*STEP;
+        pos+=vel*h;
+
         float r2=dot(pos,pos);
-        float r=sqrt(r2);
+        float rn=sqrt(r2);
 
-        if(r<rs*.7){absorbed=true;break;}
+        if(rn<rs*.5){absorbed=true;break;}
 
-        // Schwarzschild geodesic acceleration
-        vel-=pos*(1.5*rs/(r2*r))*STEP;
+        // Schwarzschild geodesic — angular momentum form
+        // a = -1.5 * h² / r⁵ * pos where h = |pos × vel|
+        vec3 L=cross(pos,vel);
+        float L2=dot(L,L);
+        vel+=-1.5*L2*pos/(r2*r2*rn)*h;
         vel=normalize(vel);
 
         // Disk-plane crossing (y=0)
@@ -198,63 +205,66 @@ void main(){
             if(hr>diskIn&&hr<diskOut){
                 float dn=(hr-diskIn)/(diskOut-diskIn);
 
-                // Keplerian rotation: omega ~ r^-1.5, angle += omega*time
+                // Keplerian rotation
                 float omega=1./pow(hr,.75);
                 float da=atan(hp.z,hp.x)+u_time*omega*.5;
 
                 // Temperature color
                 vec3 dc;
-                if(dn<.08) dc=mix(vec3(1.,.97,.9),vec3(1.,.7,.15),dn/.08);
-                else if(dn<.25) dc=mix(vec3(1.,.7,.15),vec3(.85,.28,.04),(dn-.08)/.17);
-                else dc=mix(vec3(.85,.28,.04),vec3(.12,.02,0.),clamp((dn-.25)/.75,0.,1.));
+                if(dn<.08) dc=mix(vec3(1.,.97,.9),vec3(1.,.72,.18),dn/.08);
+                else if(dn<.25) dc=mix(vec3(1.,.72,.18),vec3(.88,.3,.04),(dn-.08)/.17);
+                else dc=mix(vec3(.88,.3,.04),vec3(.12,.02,0.),clamp((dn-.25)/.75,0.,1.));
 
-                // Doppler beaming from orbital velocity
-                vec3 orbVel=normalize(vec3(-hp.z,0.,hp.x));
-                float dop=1.+dot(vel.xz,orbVel.xz)*2.5;
-                dop=clamp(dop,.08,4.);
-                dop=pow(dop,2.5);
+                // Doppler beaming from orbital velocity dot product
+                vec3 orbV=normalize(vec3(-hp.z,0.,hp.x));
+                float dop=1.+dot(vel.xz,orbV.xz)*2.2;
+                dop=clamp(dop,.08,3.5);
+                dop=pow(dop,2.);
 
-                // Gas texture — spiraling streaks
-                float spiral=da+hr*.35;
-                float tex=fbm3(vec2(spiral*4.,hr*2.5));
-                float streaks=noise(vec2(da*10.+hr*.8,hr*5.));
-                tex=.25+.75*mix(tex,streaks,.35);
+                // Spiraling gas texture
+                float spiral=da+hr*.3;
+                float tex=fbm3(vec2(spiral*3.5,hr*2.));
+                float str=noise(vec2(da*8.+hr*.5,hr*4.));
+                tex=.3+.7*mix(tex,str,.35);
 
-                // Opacity falloff at outer edge
-                float opacity=smoothstep(diskOut,diskIn+(diskOut-diskIn)*.1,hr);
-                opacity*=.6+.4*(1.-dn);
+                // Opacity — inner brighter, outer fades
+                float opacity=smoothstep(diskOut,diskOut*.3,hr);
+                opacity*=.5+.5*(1.-dn);
 
-                col+=dc*dop*tex*opacity*2.5;
+                col+=dc*dop*tex*opacity*2.2;
             }
         }
-        if(r>50.)break;
+        if(rn>35.)break;
     }
 
     if(!absorbed){
-        // ── Stars from final ray direction ──
+        // ── Stars from final lensed ray direction ──
         vec3 fd=normalize(vel);
         float phi=atan(fd.z,fd.x);
         float psi=asin(clamp(fd.y,-1.,1.));
         vec2 sc=vec2(phi,psi);
-        for(float s=20.;s<=80.;s+=20.){
+        for(float s=30.;s<=90.;s+=30.){
             vec2 cell=floor(sc*s);
-            float h=hash(cell);
-            if(h>.993){
+            float hv=hash(cell);
+            if(hv>.994){
                 vec2 sp=(cell+vec2(hash2(cell),hash(cell+vec2(7.3,13.1))))/s;
-                float d=length(sc*s-sp*s);
-                float pt=exp(-d*d*6.);
-                float b=pow((h-.993)/.007,.3);
-                float tw=.7+.3*sin(u_time*(2.+h*4.)+h*50.);
-                col+=mix(vec3(.65,.75,1.),vec3(1.,.92,.75),hash2(cell))*pt*b*tw*.35;
+                float d=length(sc-sp)*s;
+                float pt=exp(-d*d*15.);
+                float b=pow((hv-.994)/.006,.3);
+                float tw=.7+.3*sin(u_time*(2.+hv*4.)+hv*50.);
+                col+=mix(vec3(.65,.75,1.),vec3(1.,.92,.75),hash2(cell))*pt*b*tw*.4;
             }
         }
     }
 
-    // Subtle background
+    // Dark space background
     col+=vec3(.005,.008,.016);
 
-    // Click interaction glow
+    // Warm atmospheric haze around disk plane
     float sr=length(uv);
+    col+=vec3(.25,.08,.02)*exp(-uv.y*uv.y*40.)*exp(-sr*1.5)*.1;
+
+    // Click interaction
     col+=vec3(1.,.5,.12)*u_interact*exp(-sr*sr*12.)*.3;
 
     // Tone map
