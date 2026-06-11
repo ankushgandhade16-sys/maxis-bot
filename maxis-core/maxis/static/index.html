@@ -329,10 +329,11 @@ void main(){
                             float rAng=atan(rlp.y,rlp.x);
                             // Dense window grid
                             float wRow=step(.85,sin(rAng*20.))*step(.85,sin(rlp.z*40.+rAng*2.));
-                            hull+=vec3(.55,.42,.18)*wRow*.4;
                             // Subtle panel seams
                             float seam=step(.95,abs(sin(rAng*12.)));
                             hull=mix(hull,vec3(.2,.22,.26),seam*.25);
+                            // Ring outer running lights
+                            float ringRun=step(.94,sin(rAng*16.+t*1.5))*smoothstep(.01,0.,abs(length(rlp.xy)-.27));
 
                         } else if(hubD<.005||modD<.005||topD<.005||crossD<.005){
                             // Pressurized modules — metallic with warm windows
@@ -341,12 +342,10 @@ void main(){
                             // Structural seams
                             float seam=step(.95,abs(sin(lp.z*28.)));
                             hull=mix(hull,vec3(.22,.24,.28),seam*.3);
-                            // Window rows — warm amber glow
+                            // Window rows — warm amber glow (emissive, computed below)
                             float winRow=step(.88,sin(ang*10.))*step(.88,sin(lp.z*22.));
-                            hull+=vec3(.5,.38,.14)*winRow*.35;
                             // Ring of lights at module joints
                             float joint=step(.97,abs(sin(lp.z*14.)))*smoothstep(.08,.04,abs(length(lp.xy)-.06));
-                            hull+=vec3(.25,.3,.4)*joint*.3;
 
                         } else {
                             // Truss / struts / antenna — structural gray
@@ -355,26 +354,55 @@ void main(){
                             hull=mix(hull,vec3(.18,.2,.24),tSeam*.3);
                         }
 
-                        // ── Lighting ──
-                        // Accretion disk warm illumination
+                        // ── Lighting (diffuse + emissive separation) ──
                         float diskLit=max(0.,dot(wn,toBH));
-                        hull*=.05+diskLit*vec3(1.,.6,.18)*2.4;
+                        // Backscatter fill (disk light wraps around)
+                        float backFill=max(0.,dot(wn,-toBH))*.15;
+                        // Diffuse lighting with higher ambient
+                        hull*=.2+diskLit*vec3(1.,.6,.18)*2.2+backFill*vec3(.8,.5,.15);
+
+                        // ── Emissive lights (NOT affected by shadow) ──
+                        vec3 emit=vec3(0.);
+
+                        // Window emission on ring
+                        if(rnD<.005){
+                            vec3 rlp2=lp;rlp2.z+=.05;
+                            float rAng2=atan(rlp2.y,rlp2.x);
+                            float wRow2=step(.85,sin(rAng2*20.))*step(.85,sin(rlp2.z*40.+rAng2*2.));
+                            emit+=vec3(.6,.48,.2)*wRow2*.5;
+                            // Ring running lights
+                            float ringRun2=step(.94,sin(rAng2*16.+t*1.5))*smoothstep(.01,0.,abs(length(rlp2.xy)-.27));
+                            emit+=vec3(.2,.35,.55)*ringRun2*.4;
+                        }
+
+                        // Window emission on modules
+                        if(hubD<.005||modD<.005||topD<.005||crossD<.005){
+                            float ang2=atan(lp.y,lp.x);
+                            float winRow2=step(.88,sin(ang2*10.))*step(.88,sin(lp.z*22.));
+                            emit+=vec3(.55,.42,.18)*winRow2*.45;
+                            // Joint lights
+                            float joint2=step(.97,abs(sin(lp.z*14.)))*smoothstep(.08,.04,abs(length(lp.xy)-.06));
+                            emit+=vec3(.3,.38,.5)*joint2*.35;
+                        }
 
                         // Cool ambient fill
-                        hull+=vec3(.01,.014,.025);
+                        hull+=vec3(.025,.03,.05);
 
-                        // Fresnel rim — subtle blue-white
-                        float fres=pow(1.-abs(dot(wn,normalize(ro-wp))),2.);
-                        hull+=vec3(.1,.15,.28)*fres*.15;
+                        // Fresnel rim — stronger blue-white
+                        float fres=pow(1.-abs(dot(wn,normalize(ro-wp))),2.5);
+                        hull+=vec3(.12,.18,.32)*fres*.25;
 
-                        // White accent lights along truss at intervals
+                        // White accent lights along truss
                         float trussLit=step(.96,sin(lp.z*18.))*smoothstep(.025,.01,length(lp.xy));
-                        hull+=vec3(.3,.35,.4)*trussLit*.25;
+                        emit+=vec3(.35,.4,.5)*trussLit*.3;
 
-                        // Engine exhaust glow (soft blue bloom)
+                        // Engine exhaust glow
                         float exDist=length(lp.xz)*8.;
                         float exGlow=smoothstep(.6,0.,lp.z+.55)*exp(-exDist*exDist)*(1.-step(-.48,lp.z));
-                        hull+=vec3(.06,.18,.5)*exGlow*(.6+.4*sin(t*7.));
+                        emit+=vec3(.08,.22,.6)*exGlow*(.6+.4*sin(t*7.));
+
+                        // Combine diffuse + emissive
+                        hull+=emit;
 
                         col=hull;
                         break;
