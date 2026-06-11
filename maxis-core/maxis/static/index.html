@@ -102,33 +102,34 @@
         .ib.recording{background:var(--danger);color:#fff;animation:recP 1s infinite}
         @keyframes recP{0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.4)}50%{box-shadow:0 0 0 8px rgba(239,68,68,0)}}
 
-        /* ═══ Drawer ═══ */
-        .drawer-bg{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.55);display:none;backdrop-filter:blur(5px)}
+        /* ═══ Drawer — minimal ═══ */
+        .drawer-bg{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.4);display:none;backdrop-filter:blur(8px);transition:opacity .4s}
         .drawer-bg.show{display:block}
-        .drawer{position:fixed;top:0;bottom:0;left:0;z-index:90;width:280px;background:rgba(8,4,18,.97);border-right:1px solid rgba(255,107,0,.04);transform:translateX(-100%);transition:transform .35s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column}
+        .drawer{position:fixed;top:0;bottom:0;left:0;z-index:90;width:240px;background:rgba(4,2,10,.92);backdrop-filter:blur(40px);border-right:1px solid rgba(255,107,0,.03);transform:translateX(-100%);transition:transform .5s cubic-bezier(.25,.1,.25,1);display:flex;flex-direction:column}
         .drawer.open{transform:translateX(0)}
-        .dr-header{padding:18px;border-bottom:1px solid rgba(255,107,0,.04);display:flex;align-items:center;justify-content:space-between}
-        .dr-logo{font-family:'Outfit',sans-serif;font-size:13px;font-weight:200;letter-spacing:7px;background:linear-gradient(90deg,#FF6B00,#FFB800);background-clip:text;-webkit-background-clip:text;color:transparent}
-        .dr-close{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:14px;padding:4px 8px}
-        .dr-new{margin:10px 14px;padding:10px;text-align:center;border:1px dashed rgba(255,107,0,.08);border-radius:8px;color:var(--accent);font-size:10px;letter-spacing:2px;cursor:pointer;transition:all .2s}
-        .dr-new:hover{background:rgba(255,107,0,.03);border-style:solid}
-        .dr-list{flex:1;overflow-y:auto;padding:4px 10px;scrollbar-width:thin;scrollbar-color:rgba(255,107,0,.06) transparent}
-        .dr-list::-webkit-scrollbar{width:2px}
-        .dr-item{padding:10px 12px;border-radius:7px;cursor:pointer;font-size:12px;color:var(--text-dim);transition:all .15s;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-left:2px solid transparent}
-        .dr-item:hover{background:rgba(255,107,0,.03);color:var(--text)}
-        .dr-item.active{border-left-color:var(--accent);background:rgba(255,107,0,.04);color:var(--text)}
-        .dr-portal{display:none;margin:6px 14px;padding:10px;text-align:center;border-radius:8px;cursor:pointer;font-size:10px;letter-spacing:2px;color:var(--violet);border:1px solid rgba(139,92,246,.12);background:rgba(139,92,246,.02);transition:all .2s}
-        .dr-portal:hover{background:rgba(139,92,246,.05)}
-        .dr-footer{padding:12px 14px;border-top:1px solid rgba(255,107,0,.04);position:relative}
-        .dr-user{display:flex;align-items:center;gap:10px;padding:8px;border-radius:8px;cursor:pointer;transition:background .2s}
-        .dr-user:hover{background:rgba(255,107,0,.03)}
-        .dr-avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,rgba(255,107,0,.1),rgba(139,92,246,.1));display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;border:1px solid rgba(255,107,0,.08)}
-        .dr-uname{font-size:11px;color:var(--text)}.dr-ustatus{font-size:9px;color:var(--text-muted)}
-        .dr-dropdown{position:absolute;bottom:56px;left:10px;right:10px;background:rgba(12,6,20,.95);border:1px solid rgba(255,107,0,.08);border-radius:8px;padding:4px;display:none;z-index:20}
+        .dr-header{padding:16px 14px;display:flex;align-items:center;justify-content:space-between}
+        .dr-logo{font-family:'Outfit',sans-serif;font-size:11px;font-weight:200;letter-spacing:8px;background:linear-gradient(90deg,#FF6B00,#FFB800);background-clip:text;-webkit-background-clip:text;color:transparent}
+        .dr-close{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:12px;padding:4px 6px;opacity:.5;transition:opacity .2s}
+        .dr-close:hover{opacity:1}
+        .dr-new{margin:4px 12px 8px;padding:8px;text-align:center;border:1px solid rgba(255,107,0,.06);border-radius:6px;color:var(--text-dim);font-size:9px;letter-spacing:3px;cursor:pointer;transition:all .2s}
+        .dr-new:hover{background:rgba(255,107,0,.04);color:var(--accent)}
+        .dr-list{flex:1;overflow-y:auto;padding:2px 8px;scrollbar-width:none}
+        .dr-list::-webkit-scrollbar{display:none}
+        .dr-item{padding:8px 10px;border-radius:5px;cursor:pointer;font-size:11px;color:var(--text-muted);transition:all .15s;margin-bottom:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .dr-item:hover{background:rgba(255,255,255,.03);color:var(--text-dim)}
+        .dr-item.active{background:rgba(255,107,0,.04);color:var(--text)}
+        .dr-portal{display:none;margin:4px 12px;padding:8px;text-align:center;border-radius:6px;cursor:pointer;font-size:9px;letter-spacing:2px;color:var(--violet);border:1px solid rgba(139,92,246,.08);transition:all .2s}
+        .dr-portal:hover{background:rgba(139,92,246,.04)}
+        .dr-footer{padding:10px 12px;border-top:1px solid rgba(255,255,255,.03);position:relative}
+        .dr-user{display:flex;align-items:center;gap:8px;padding:6px;border-radius:6px;cursor:pointer;transition:background .2s}
+        .dr-user:hover{background:rgba(255,255,255,.03)}
+        .dr-avatar{width:24px;height:24px;border-radius:50%;background:rgba(255,107,0,.06);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:500;color:var(--text-dim)}
+        .dr-uname{font-size:10px;color:var(--text-dim)}.dr-ustatus{font-size:8px;color:var(--text-muted)}
+        .dr-dropdown{position:absolute;bottom:50px;left:8px;right:8px;background:rgba(8,4,16,.95);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.04);border-radius:6px;padding:3px;display:none;z-index:20}
         .dr-dropdown.show{display:block}
-        .dd-item{display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:5px;cursor:pointer;font-size:11px;color:var(--text-dim);transition:all .15s;border:none;background:none;width:100%;text-align:left;font-family:'Inter',sans-serif}
-        .dd-item:hover{background:rgba(255,107,0,.04);color:var(--text)}
-        .dd-item.danger{color:#f87171}.dd-item.danger:hover{background:rgba(248,113,113,.05)}
+        .dd-item{display:flex;align-items:center;gap:6px;padding:8px 10px;border-radius:4px;cursor:pointer;font-size:10px;color:var(--text-muted);transition:all .15s;border:none;background:none;width:100%;text-align:left;font-family:'Inter',sans-serif}
+        .dd-item:hover{background:rgba(255,255,255,.03);color:var(--text-dim)}
+        .dd-item.danger{color:#f87171}.dd-item.danger:hover{background:rgba(248,113,113,.04)}
 
         /* Creator */
         .creator-panel{position:absolute;top:50px;right:0;bottom:80px;width:min(540px,100%);display:none;flex-direction:column;z-index:20;background:rgba(5,3,15,.8);backdrop-filter:blur(30px);border-left:1px solid rgba(139,92,246,.06)}
@@ -148,22 +149,34 @@ precision highp float;
 uniform vec2 u_res;
 uniform float u_time;
 uniform float u_interact;
+uniform float u_zoom;
 
 float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
 float hash2(vec2 p){return fract(sin(dot(p,vec2(41.1,17.4)))*43758.5453);}
 float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);}
 float fbm3(vec2 p){float v=0.,a=.5;for(int i=0;i<3;i++){v+=a*noise(p);p=p*2.1+vec2(1.7,9.2);a*=.5;}return v;}
 
+// SDF box for station detail
+float sdBox(vec2 p,vec2 b){vec2 d=abs(p)-b;return length(max(d,0.))+min(max(d.x,d.y),0.);}
+
 void main(){
     vec2 uv=(gl_FragCoord.xy-.5*u_res)/u_res.y;
+    float t=u_time;
 
-    // ── Camera — close enough for rays to reach BH ──
-    vec3 ro=vec3(0.,1.5,-18.);
+    // ── Camera — slow constant drift + sidebar zoom ──
+    float camZ=mix(-18.,-10.,u_zoom);
+    float camY=mix(1.5,.6,u_zoom);
+    vec3 ro=vec3(
+        .4*sin(t*.04)+.15*sin(t*.11),
+        camY+.2*sin(t*.06),
+        camZ+.3*sin(t*.03)
+    );
     vec3 ta=vec3(0.);
     vec3 fwd=normalize(ta-ro);
     vec3 right=normalize(cross(fwd,vec3(0,1,0)));
     vec3 up=cross(right,fwd);
-    vec3 rd=normalize(fwd*1.8+right*uv.x+up*uv.y);
+    float fov=mix(1.8,1.2,u_zoom);
+    vec3 rd=normalize(fwd*fov+right*uv.x+up*uv.y);
 
     float rs=1.;
     float diskIn=3.;
@@ -174,85 +187,116 @@ void main(){
     vec3 col=vec3(0.);
     bool absorbed=false;
 
+    // ── Space station orbit params ──
+    float stOrbitR=7.5;
+    float stAngle=t*.07;
+    vec3 stPos=vec3(stOrbitR*cos(stAngle),.25+.1*sin(t*.15),stOrbitR*sin(stAngle));
+    float stR=.18;
+    bool hitStation=false;
+    vec3 stHitNorm=vec3(0.);
+    vec3 stHitP=vec3(0.);
+
     // ── Ray march through Schwarzschild spacetime ──
     for(int i=0;i<250;i++){
         float rl=length(pos);
-
-        // Adaptive step: large far away, tiny near photon sphere
         float h=max(.03,min(.5,rl*.06));
-
         vec3 prev=pos;
         pos+=vel*h;
-
         float r2=dot(pos,pos);
         float rn=sqrt(r2);
 
         if(rn<rs*.5){absorbed=true;break;}
 
-        // Schwarzschild geodesic — angular momentum form
-        // a = -1.5 * h² / r⁵ * pos where h = |pos × vel|
+        // Schwarzschild geodesic
         vec3 L=cross(pos,vel);
         float L2=dot(L,L);
         vel+=-1.5*L2*pos/(r2*r2*rn)*h;
         vel=normalize(vel);
 
-        // Disk-plane crossing (y=0)
-        if(prev.y*pos.y<0.){
-            float t=prev.y/(prev.y-pos.y);
-            vec3 hp=mix(prev,pos,t);
-            float hr=length(hp.xz);
+        // Station check
+        if(!hitStation){
+            float dSt=length(pos-stPos);
+            if(dSt<stR){
+                hitStation=true;
+                stHitNorm=normalize(pos-stPos);
+                stHitP=pos;
+            }
+        }
 
+        // Disk-plane crossing
+        if(prev.y*pos.y<0.){
+            float tt=prev.y/(prev.y-pos.y);
+            vec3 hp=mix(prev,pos,tt);
+            float hr=length(hp.xz);
             if(hr>diskIn&&hr<diskOut){
                 float dn=(hr-diskIn)/(diskOut-diskIn);
-
-                // Keplerian rotation
                 float omega=1./pow(hr,.75);
-                float da=atan(hp.z,hp.x)+u_time*omega*.5;
-
-                // Temperature color
+                float da=atan(hp.z,hp.x)+t*omega*.5;
                 vec3 dc;
                 if(dn<.08) dc=mix(vec3(1.,.97,.9),vec3(1.,.72,.18),dn/.08);
                 else if(dn<.25) dc=mix(vec3(1.,.72,.18),vec3(.88,.3,.04),(dn-.08)/.17);
                 else dc=mix(vec3(.88,.3,.04),vec3(.12,.02,0.),clamp((dn-.25)/.75,0.,1.));
-
-                // Doppler beaming from orbital velocity dot product
                 vec3 orbV=normalize(vec3(-hp.z,0.,hp.x));
                 float dop=1.+dot(vel.xz,orbV.xz)*2.2;
                 dop=clamp(dop,.08,3.5);
                 dop=pow(dop,2.);
-
-                // Spiraling gas texture
                 float spiral=da+hr*.3;
                 float tex=fbm3(vec2(spiral*3.5,hr*2.));
                 float str=noise(vec2(da*8.+hr*.5,hr*4.));
                 tex=.3+.7*mix(tex,str,.35);
-
-                // Opacity — inner brighter, outer fades
                 float opacity=smoothstep(diskOut,diskOut*.3,hr);
                 opacity*=.5+.5*(1.-dn);
-
                 col+=dc*dop*tex*opacity*2.2;
             }
         }
         if(rn>35.)break;
     }
 
-    if(!absorbed){
-        // ── Stars from final lensed ray direction ──
+    // ── Space station rendering ──
+    if(hitStation&&!absorbed){
+        // Surface coordinates for detail
+        vec3 stLocal=stHitP-stPos;
+        float stU=atan(stLocal.z,stLocal.x);
+        float stV=asin(clamp(stLocal.y/stR,-1.,1.));
+        // Hull: cool metallic
+        vec3 hull=vec3(.35,.38,.42);
+        // Panel lines grid
+        float panels=step(.92,abs(sin(stU*12.)))+step(.92,abs(sin(stV*8.)));
+        hull=mix(hull,vec3(.2,.22,.25),panels*.3);
+        // Solar panel wings (rectangular protrusions)
+        float wing=step(.85,abs(sin(stU*2.)))*step(.7,cos(stV*2.));
+        hull=mix(hull,vec3(.1,.15,.3),wing*.5);
+        // Lighting from accretion disk
+        vec3 diskDir=normalize(vec3(0.)-stPos);
+        float diskLight=max(0.,dot(stHitNorm,diskDir));
+        hull*=.15+diskLight*vec3(1.,.65,.2)*1.5;
+        // Fresnel edge glow
+        float fresnel=pow(1.-abs(dot(stHitNorm,normalize(ro-stHitP))),.8);
+        hull+=vec3(.3,.5,.7)*fresnel*.15;
+        // Running lights
+        float blink=step(.97,sin(t*4.+stU*6.));
+        hull+=vec3(.2,.8,1.)*blink*.3;
+        col=hull;
+    }
+
+    if(!absorbed&&!hitStation){
+        // ── Stars — realistic, subtle, barely twinkle ──
         vec3 fd=normalize(vel);
         float phi=atan(fd.z,fd.x);
         float psi=asin(clamp(fd.y,-1.,1.));
         vec2 sc=vec2(phi,psi);
-        for(float s=30.;s<=90.;s+=30.){
+        for(float s=40.;s<=160.;s+=40.){
             vec2 cell=floor(sc*s);
             float hv=hash(cell);
-            if(hv>.994){
+            if(hv>.985){
                 vec2 sp=(cell+vec2(hash2(cell),hash(cell+vec2(7.3,13.1))))/s;
                 float d=length(sc-sp)*s;
-                float pt=exp(-d*d*15.);
-                float b=pow((hv-.994)/.006,.3);
-                float tw=.7+.3*sin(u_time*(2.+hv*4.)+hv*50.);
-                col+=mix(vec3(.65,.75,1.),vec3(1.,.92,.75),hash2(cell))*pt*b*tw*.4;
+                float pt=exp(-d*d*25.);
+                float b=pow((hv-.985)/.015,.6);
+                // Very subtle twinkle — barely perceptible
+                float tw=.93+.07*sin(t*.4+hv*120.);
+                vec3 starCol=mix(vec3(.7,.78,1.),vec3(1.,.95,.85),hash2(cell));
+                col+=starCol*pt*b*tw*.18;
             }
         }
     }
@@ -260,7 +304,7 @@ void main(){
     // Dark space background
     col+=vec3(.005,.008,.016);
 
-    // Warm atmospheric haze around disk plane
+    // Warm atmospheric haze
     float sr=length(uv);
     col+=vec3(.25,.08,.02)*exp(-uv.y*uv.y*40.)*exp(-sr*1.5)*.1;
 
@@ -358,13 +402,13 @@ gl.linkProgram(prog);gl.useProgram(prog);
 const buf=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buf);
 gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);
 const aP=gl.getAttribLocation(prog,'a_pos');gl.enableVertexAttribArray(aP);gl.vertexAttribPointer(aP,2,gl.FLOAT,false,0,0);
-const uR=gl.getUniformLocation(prog,'u_res'),uT=gl.getUniformLocation(prog,'u_time'),uI=gl.getUniformLocation(prog,'u_interact');
-let interact=0;
+const uR=gl.getUniformLocation(prog,'u_res'),uT=gl.getUniformLocation(prog,'u_time'),uI=gl.getUniformLocation(prog,'u_interact'),uZ=gl.getUniformLocation(prog,'u_zoom');
+let interact=0,zoomTarget=0,zoomCurrent=0;
 function rsz(){const d=Math.min(devicePixelRatio,1.);cv.width=innerWidth*d;cv.height=innerHeight*d;cv.style.width=innerWidth+'px';cv.style.height=innerHeight+'px';gl.viewport(0,0,cv.width,cv.height)}
 addEventListener('resize',rsz);rsz();
 addEventListener('click',()=>{interact=Math.min(interact+.5,1.5)});
 let t0=performance.now();
-function render(){const t=(performance.now()-t0)*.001;interact*=.97;gl.uniform2f(uR,cv.width,cv.height);gl.uniform1f(uT,t);gl.uniform1f(uI,interact);gl.drawArrays(gl.TRIANGLE_STRIP,0,4);requestAnimationFrame(render)}
+function render(){const t=(performance.now()-t0)*.001;interact*=.97;zoomCurrent+=(zoomTarget-zoomCurrent)*.025;gl.uniform2f(uR,cv.width,cv.height);gl.uniform1f(uT,t);gl.uniform1f(uI,interact);gl.uniform1f(uZ,zoomCurrent);gl.drawArrays(gl.TRIANGLE_STRIP,0,4);requestAnimationFrame(render)}
 requestAnimationFrame(render);
 
 // Splash
@@ -385,8 +429,8 @@ const savedModel=localStorage.getItem('eris_model');
 if(savedModel){const v=[...el.modelSelector.options].map(o=>o.value);if(v.includes(savedModel))el.modelSelector.value=savedModel;else localStorage.removeItem('eris_model')}
 el.modelSelector.addEventListener('change',()=>{const m=el.modelSelector.value;localStorage.setItem('eris_model',m);if(ws&&isConnected)ws.send(JSON.stringify({type:'switch_model',model:m}))});
 
-function openDrawer(){el.drawer.classList.add('open');el.drawerBg.classList.add('show')}
-function closeDrawer(){el.drawer.classList.remove('open');el.drawerBg.classList.remove('show')}
+function openDrawer(){el.drawer.classList.add('open');el.drawerBg.classList.add('show');zoomTarget=1}
+function closeDrawer(){el.drawer.classList.remove('open');el.drawerBg.classList.remove('show');zoomTarget=0}
 el.menuBtn.addEventListener('click',openDrawer);
 el.drawerClose.addEventListener('click',closeDrawer);
 el.drawerBg.addEventListener('click',closeDrawer);
