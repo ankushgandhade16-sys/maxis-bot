@@ -252,9 +252,7 @@ float mapSt(vec3 p){
     d=min(d,rcs);
     d=min(d,airlock);
     d=min(d,min(arm,armJ));
-    // Subtle surface displacement
-    d-=noise3(p*55.)*.0003;
-    return d*2.; // Scale up station 2x
+    return d*2.;
 }
 
 vec3 nrmSt(vec3 p){vec2 e=vec2(.0005,0.);return normalize(vec3(mapSt(p+e.xyy)-mapSt(p-e.xyy),mapSt(p+e.yxy)-mapSt(p-e.yxy),mapSt(p+e.yyx)-mapSt(p-e.yyx)));}
@@ -337,9 +335,6 @@ void main(){
                     if(sd<.001){
                         hitStation=true;
                         vec3 ln=nrmSt(lp);
-                        // Gentle bump mapping (structured, not noisy)
-                        ln=bumpN(ln,lp,20.,.06);
-                        ln=bumpN(ln,lp,50.,.02);
                         vec3 wn=stRt*ln.x+stUp*ln.y+stFwd*ln.z;
                         // Ambient occlusion
                         float ao=aoSt(lp,ln);
@@ -393,20 +388,19 @@ void main(){
                             metallic=.1;roughness=.03;
 
                         } else if(pnD<.004){
-                            // Solar panels
-                            hull=vec3(.02,.03,.08);
-                            float cx=step(.88,abs(sin(sp.x*55.)));
-                            float cz=step(.88,abs(sin(sp.z*45.)));
-                            hull+=vec3(.006,.01,.02)*(cx+cz);
-                            hull+=vec3(.015,.025,.06)*max(0.,ln.y)*.6;
-                            metallic=.15;roughness=.12;
+                            // Solar panels — dark blue
+                            hull=vec3(.015,.025,.07);
+                            float cx=step(.9,abs(sin(sp.x*55.)));
+                            float cz=step(.9,abs(sin(sp.z*45.)));
+                            hull+=vec3(.005,.008,.018)*(cx+cz);
+                            hull+=vec3(.02,.03,.07)*max(0.,ln.y)*.5;
+                            metallic=.2;roughness=.1;
 
                         } else if(radD<.004){
                             // Radiator — gold foil
-                            hull=vec3(.22,.13,.035);
-                            hull*=.92+noise3(sp*80.)*.12;
+                            hull=vec3(.24,.14,.04);
                             hull+=vec3(.04,.02,.005)*step(.93,abs(sin(sp.z*50.)));
-                            metallic=.8;roughness=.25;
+                            metallic=.85;roughness=.2;
 
                         } else if(enD<.005){
                             hull=vec3(.15,.17,.2);
@@ -426,29 +420,16 @@ void main(){
                             metallic=.5;roughness=.4;
 
                         } else if(isModule){
-                            hull=vec3(.42,.44,.47);
+                            hull=vec3(.52,.54,.57);
                             float ang=atan(sp.y,sp.x);
                             vec2 pF=abs(fract(vec2(ang*2.23,sp.z*3.82))-.5);
                             float frame=smoothstep(.46,.5,max(pF.x,pF.y));
-                            hull=mix(hull,hull*.5,frame*.4);
-                            hull=mix(hull,vec3(.22,.24,.28),step(.96,abs(sin(sp.z*28.)))*.25);
-                            metallic=.35;roughness=.5;
+                            hull=mix(hull,hull*.7,frame*.3);
+                            metallic=.3;roughness=.5;
 
                         } else {
-                            hull=vec3(.3,.32,.36);
-                            hull=mix(hull,vec3(.18,.2,.24),step(.94,abs(sin(sp.z*30.)))*.3);
-                            metallic=.6;roughness=.35;
-                        }
-
-                        // ── Surface micro-detail (cleaner) ──
-                        if(isWin<.5&&ringWin<.5&&domeD>.004){
-                            float mpX=step(.97,abs(sin(sp.x*65.)));
-                            float mpY=step(.97,abs(sin(sp.y*65.)));
-                            float mpZ=step(.97,abs(sin(sp.z*65.)));
-                            hull=mix(hull,hull*.6,(mpX+mpY+mpZ)*.04);
-                            vec3 cpF=abs(fract(sp*8.)-.5);
-                            hull=mix(hull,hull*.7,smoothstep(.47,.5,max(cpF.x,max(cpF.y,cpF.z)))*.08);
-                            hull*=.9+.2*noise3(sp*22.);
+                            hull=vec3(.35,.37,.42);
+                            metallic=.55;roughness=.35;
                         }
 
                         // ── PBR Lighting ──
