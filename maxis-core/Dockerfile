@@ -10,9 +10,14 @@ RUN apt-get update && apt-get install -y \
 
 COPY pyproject.toml .
 
-# Install uv and dependencies
-RUN pip install uv
-RUN uv pip install --system "google-genai" "fastapi" "uvicorn[standard]" "loguru" "websockets" "pydantic-settings" "chromadb" "sentence-transformers" "sqlalchemy" "psycopg2-binary" "pinecone" "edge-tts" "psutil" "mss" "Pillow" "httpx"
+# Install dependencies with extended timeout for Render free-tier
+RUN pip install --no-cache-dir --timeout=300 --retries=10 \
+    "google-genai" "fastapi" "uvicorn[standard]" "loguru" "websockets" \
+    "pydantic-settings" "sqlalchemy" "psycopg2-binary" "pinecone" \
+    "edge-tts" "psutil" "mss" "Pillow" "httpx"
+
+RUN pip install --no-cache-dir --timeout=300 --retries=10 \
+    "chromadb" "sentence-transformers"
 
 
 COPY . .
