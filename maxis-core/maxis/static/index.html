@@ -158,123 +158,106 @@ float noise3(vec3 p){return noise(p.xz+p.y*7.3);}
 float fbm3(vec2 p){float v=0.,a=.5;for(int i=0;i<3;i++){v+=a*noise(p);p=p*2.1+vec2(1.7,9.2);a*=.5;}return v;}
 
 float sdBox3(vec3 p,vec3 b){vec3 d=abs(p)-b;return length(max(d,0.))+min(max(d.x,max(d.y,d.z)),0.);}
+float sdRB(vec3 p,vec3 b,float r){vec3 q=abs(p)-b+r;return length(max(q,0.))-r;}
+float smin(float a,float b,float k){float h=clamp(.5+.5*(b-a)/k,0.,1.);return mix(b,a,h)-k*h*(1.-h);}
 
-// ═══ SPACE STATION SDF — HIGH DETAIL ═══
+// ═══ SPACE STATION SDF — PHOTOREALISTIC ═══
 float mapSt(vec3 p){
-    // ── Main truss spine ──
-    float truss=sdBox3(p,vec3(.015,.015,.52));
-    // Truss cross-bracing
-    vec3 cb=p;cb.z=mod(cb.z+.06,.12)-.06;
-    float brace1=sdBox3(cb,vec3(.018,.003,.003));
-    float brace2=sdBox3(cb,vec3(.003,.018,.003));
+    // ── Main truss (rounded) ──
+    float truss=sdRB(p,vec3(.012,.012,.55),.003);
+    vec3 cb=p;cb.z=mod(cb.z+.05,.1)-.05;
+    float br=min(sdRB(cb,vec3(.015,.002,.002),.001),sdRB(cb,vec3(.002,.015,.002),.001));
 
-    // ── Pressurized modules ──
-    float hub=max(length(p.xy)-.072,abs(p.z)-.15);
-    float fwdMod=max(length(p.xy)-.05,abs(p.z-.3)-.1);
-    float aftMod=max(length(p.xy)-.058,abs(p.z+.3)-.1);
-    float topLab=max(length(p.xz)-.038,abs(p.y-.12)-.075);
-    float crossMod=max(length(p.yz)-.032,abs(p.x)-.085);
-    // Smaller utility modules
-    float utilL=max(length(vec2(p.x-.06,p.y))-.02,abs(p.z-.15)-.04);
-    float utilR=max(length(vec2(p.x+.06,p.y))-.02,abs(p.z-.15)-.04);
+    // ── Pressurized modules (rounded cylinders) ──
+    float hub=sdRB(p,vec3(.058,.058,.13),.016);
+    float fwM=sdRB(p-vec3(0,0,.28),vec3(.038,.038,.1),.012);
+    float afM=sdRB(p+vec3(0,0,.28),vec3(.044,.044,.1),.013);
+    float topL=sdRB(vec3(p.x,p.z,p.y-.12),vec3(.03,.065,.03),.009);
+    float crM=sdRB(vec3(p.z,p.y,p.x),vec3(.026,.026,.08),.009);
+    float uL=sdRB(p-vec3(.055,0,.14),vec3(.015,.015,.035),.005);
+    float uR=sdRB(p+vec3(.055,0,-.14),vec3(.015,.015,.035),.005);
 
-    // ── Node connectors (spheres at junctions) ──
-    float nd1=length(p-vec3(0.,0.,.15))-.028;
-    float nd2=length(p-vec3(0.,0.,-.15))-.028;
-    float nd3=length(p-vec3(0.,.072,0.))-.022;
-    float nd4=length(p-vec3(.06,0.,.15))-.015;
-    float nd5=length(p-vec3(-.06,0.,.15))-.015;
+    // ── Node connectors ──
+    float nd=min(min(length(p-vec3(0,0,.15))-.025,length(p+vec3(0,0,.15))-.025),min(length(p-vec3(0,.064,0))-.02,min(length(p-vec3(.055,0,.14))-.013,length(p+vec3(.055,0,.14))-.013)));
 
-    // ── Habitat ring (torus) ──
+    // ── Habitat ring ──
     vec3 rp=p;rp.z+=.05;
-    float ringD=length(vec2(length(rp.xy)-.26,rp.z))-.032;
-    float sk1=sdBox3(rp,vec3(.26,.005,.005));
-    float sk2=sdBox3(rp,vec3(.005,.26,.005));
-    float sk3=sdBox3(vec3(rp.x*.707+rp.y*.707,rp.y*.707-rp.x*.707,rp.z),vec3(.26,.005,.005));
-    float sk4=sdBox3(vec3(rp.x*.707-rp.y*.707,rp.x*.707+rp.y*.707,rp.z),vec3(.26,.005,.005));
+    float ring=length(vec2(length(rp.xy)-.26,rp.z))-.03;
+    float spk=min(min(sdRB(rp,vec3(.26,.004,.004),.001),sdRB(rp,vec3(.004,.26,.004),.001)),min(sdRB(vec3(rp.x*.707+rp.y*.707,rp.y*.707-rp.x*.707,rp.z),vec3(.26,.004,.004),.001),sdRB(vec3(rp.x*.707-rp.y*.707,rp.x*.707+rp.y*.707,rp.z),vec3(.26,.004,.004),.001)));
 
-    // ── Solar arrays (4 large + 2 secondary) ──
-    float pa1=sdBox3(p-vec3(.52,0.,.22),vec3(.28,.002,.12));
-    float pa2=sdBox3(p-vec3(.52,0.,-.22),vec3(.28,.002,.12));
-    float pa3=sdBox3(p+vec3(.52,0.,.22),vec3(.28,.002,.12));
-    float pa4=sdBox3(p+vec3(.52,0.,-.22),vec3(.28,.002,.12));
-    // Secondary panels (smaller, angled near forward)
-    float sp1=sdBox3(p-vec3(.16,.09,.36),vec3(.07,.001,.04));
-    float sp2=sdBox3(p-vec3(-.16,.09,.36),vec3(.07,.001,.04));
-    // Panel struts
-    float ps1=sdBox3(p-vec3(.28,0.,.22),vec3(.22,.005,.005));
-    float ps2=sdBox3(p-vec3(.28,0.,-.22),vec3(.22,.005,.005));
-    float ps3=sdBox3(p+vec3(.28,0.,.22),vec3(.22,.005,.005));
-    float ps4=sdBox3(p+vec3(.28,0.,-.22),vec3(.22,.005,.005));
+    // ── Solar arrays ──
+    float sa=min(min(sdRB(p-vec3(.52,0,.22),vec3(.28,.001,.12),.001),sdRB(p-vec3(.52,0,-.22),vec3(.28,.001,.12),.001)),min(sdRB(p+vec3(.52,0,.22),vec3(.28,.001,.12),.001),sdRB(p+vec3(.52,0,-.22),vec3(.28,.001,.12),.001)));
+    float sSec=min(sdRB(p-vec3(.16,.088,.35),vec3(.065,.001,.038),.001),sdRB(p+vec3(.16,-.088,.35),vec3(.065,.001,.038),.001));
+    float pStr=min(min(sdRB(p-vec3(.28,0,.22),vec3(.22,.003,.003),.001),sdRB(p-vec3(.28,0,-.22),vec3(.22,.003,.003),.001)),min(sdRB(p+vec3(.28,0,.22),vec3(.22,.003,.003),.001),sdRB(p+vec3(.28,0,-.22),vec3(.22,.003,.003),.001)));
 
     // ── Radiator panels ──
-    float rd1=sdBox3(p-vec3(.12,0.,.22),vec3(.003,.075,.06));
-    float rd2=sdBox3(p+vec3(.12,0.,.22),vec3(.003,.075,.06));
-    float rd3=sdBox3(p-vec3(.12,0.,-.16),vec3(.003,.065,.045));
-    float rd4=sdBox3(p+vec3(.12,0.,-.16),vec3(.003,.065,.045));
+    float rad=min(min(sdRB(p-vec3(.12,0,.22),vec3(.002,.072,.058),.001),sdRB(p+vec3(.12,0,.22),vec3(.002,.072,.058),.001)),min(sdRB(p-vec3(.12,0,-.16),vec3(.002,.062,.042),.001),sdRB(p+vec3(.12,0,-.16),vec3(.002,.062,.042),.001)));
 
-    // ── Engine cluster (4 pods + housing + nozzle bells) ──
-    float en1=length(p-vec3(.04,.04,-.57))-.02;
-    float en2=length(p-vec3(-.04,.04,-.57))-.02;
-    float en3=length(p-vec3(.04,-.04,-.57))-.02;
-    float en4=length(p-vec3(-.04,-.04,-.57))-.02;
-    float eBox=sdBox3(p-vec3(0.,0.,-.54),vec3(.06,.06,.028));
-    // Nozzle bells (cones approx as tapered cylinders)
-    float nz1=max(length(p.xy-vec2(.04,.04))-.012,abs(p.z+.6)-.02);
-    float nz2=max(length(p.xy-vec2(-.04,.04))-.012,abs(p.z+.6)-.02);
-    float nz3=max(length(p.xy-vec2(.04,-.04))-.012,abs(p.z+.6)-.02);
-    float nz4=max(length(p.xy-vec2(-.04,-.04))-.012,abs(p.z+.6)-.02);
+    // ── Engine cluster ──
+    float eng=min(min(length(p-vec3(.04,.04,-.57))-.018,length(p-vec3(-.04,.04,-.57))-.018),min(length(p-vec3(.04,-.04,-.57))-.018,length(p-vec3(-.04,-.04,-.57))-.018));
+    float eB=sdRB(p-vec3(0,0,-.54),vec3(.055,.055,.025),.008);
+    float nzl=min(min(max(length(p.xy-vec2(.04,.04))-.012,abs(p.z+.6)-.018),max(length(p.xy-vec2(-.04,.04))-.012,abs(p.z+.6)-.018)),min(max(length(p.xy-vec2(.04,-.04))-.012,abs(p.z+.6)-.018),max(length(p.xy-vec2(-.04,-.04))-.012,abs(p.z+.6)-.018)));
 
-    // ── Fuel tanks (cylinders alongside aft) ──
-    float ft1=max(length(vec2(p.x-.075,p.y))-.022,abs(p.z+.36)-.09);
-    float ft2=max(length(vec2(p.x+.075,p.y))-.022,abs(p.z+.36)-.09);
+    // ── Fuel tanks ──
+    float ft=min(max(length(vec2(p.x-.075,p.y))-.022,abs(p.z+.36)-.09),max(length(vec2(p.x+.075,p.y))-.022,abs(p.z+.36)-.09));
 
-    // ── Comm array (forward) ──
-    float antM=max(length(p.xz)-.004,abs(p.y-.2)-.12);
-    float antD=length(p-vec3(0.,.34,0.))-.028;
-    float ca1=length(p-vec3(.035,.28,.03))-.012;
-    float ca2=length(p-vec3(-.035,.28,-.03))-.012;
-    float ca3=length(p-vec3(0.,.28,.04))-.01;
+    // ── Comm array ──
+    float ant=min(max(length(p.xz)-.003,abs(p.y-.2)-.13),length(p-vec3(0,.35,0))-.03);
+    float comms=min(min(length(p-vec3(.035,.3,.03))-.01,length(p-vec3(-.035,.3,-.03))-.01),length(p-vec3(0,.3,.04))-.008);
 
-    // ── Observatory dome (half-sphere on forward lab) ──
-    float dome=length(p-vec3(0.,.06,.32))-.025;
-    dome=max(dome,-(p.y-.06));
+    // ── Observatory dome ──
+    float dome=max(length(p-vec3(0,.06,.33))-.028,-(p.y-.06));
 
-    // ── Extra docking ports ──
-    float dk1=max(length(p.xz)-.03,abs(p.y+.12)-.025);
-    float dk2=max(length(p.yz)-.022,abs(p.x-.1)-.018);
-    float dk3=max(length(p.yz)-.022,abs(p.x+.1)-.018);
+    // ── Docking ports ──
+    float dk=min(max(length(p.xz)-.028,abs(p.y+.12)-.022),min(max(length(p.yz)-.02,abs(p.x-.1)-.016),max(length(p.yz)-.02,abs(p.x+.1)-.016)));
 
-    // ── Heat pipes along truss ──
-    float hp1=max(length(vec2(p.x-.025,p.y))-.004,abs(p.z)-.48);
-    float hp2=max(length(vec2(p.x+.025,p.y))-.004,abs(p.z)-.48);
-    float hp3=max(length(vec2(p.x,p.y-.025))-.004,abs(p.z)-.48);
+    // ── Heat pipes ──
+    float hp=min(max(length(vec2(p.x-.025,p.y))-.003,abs(p.z)-.5),min(max(length(vec2(p.x+.025,p.y))-.003,abs(p.z)-.5),max(length(vec2(p.x,p.y-.025))-.003,abs(p.z)-.5)));
 
-    // ── Combine all ──
+    // ── RCS thruster blocks ──
+    float rcs=min(min(min(sdRB(p-vec3(.052,.052,.37),vec3(.006,.006,.01),.002),sdRB(p-vec3(-.052,.052,.37),vec3(.006,.006,.01),.002)),min(sdRB(p-vec3(.052,-.052,.37),vec3(.006,.006,.01),.002),sdRB(p-vec3(-.052,-.052,.37),vec3(.006,.006,.01),.002))),min(sdRB(p+vec3(.052,.052,.37),vec3(.006,.006,.01),.002),sdRB(p+vec3(-.052,.052,.37),vec3(.006,.006,.01),.002)));
+
+    // ── Airlock ──
+    float airlock=max(length(vec2(p.x,p.y+.065))-.018,abs(p.z-.05)-.025);
+
+    // ── Robotic arm ──
+    float arm=min(sdRB(p-vec3(.03,.068,0),vec3(.003,.003,.12),.001),sdRB(p-vec3(.03,.068,.12),vec3(.003,.003,.08),.001));
+    float armJ=length(p-vec3(.03,.068,.12))-.007;
+
+    // ── Cupola frame ──
+    float cupR=length(vec2(length(vec2(p.x,(p.y-.06)))-.022,(p.z-.33)))-.003;
+    cupR=max(cupR,-(p.y-.06));
+
+    // ── Combine (smooth unions at module junctions) ──
     float d=truss;
-    d=min(d,min(brace1,brace2));
-    d=min(d,min(hub,min(fwdMod,min(aftMod,min(topLab,crossMod)))));
-    d=min(d,min(utilL,utilR));
-    d=min(d,min(min(nd1,nd2),min(min(nd3,nd4),nd5)));
-    d=min(d,min(ringD,min(min(sk1,sk2),min(sk3,sk4))));
-    d=min(d,min(min(pa1,pa2),min(pa3,pa4)));
-    d=min(d,min(sp1,sp2));
-    d=min(d,min(min(ps1,ps2),min(ps3,ps4)));
-    d=min(d,min(min(rd1,rd2),min(rd3,rd4)));
-    d=min(d,min(min(en1,en2),min(en3,en4)));
-    d=min(d,min(eBox,min(min(nz1,nz2),min(nz3,nz4))));
-    d=min(d,min(ft1,ft2));
-    d=min(d,min(antM,min(antD,min(ca1,min(ca2,ca3)))));
-    d=min(d,min(dome,min(dk1,min(dk2,dk3))));
-    d=min(d,min(hp1,min(hp2,hp3)));
-    // Micro surface displacement — hull plating texture
-    d-=noise3(p*55.)*.0006;
+    d=min(d,br);
+    d=smin(d,hub,.008);
+    d=smin(d,fwM,.005);
+    d=smin(d,afM,.005);
+    d=smin(d,topL,.004);
+    d=smin(d,crM,.004);
+    d=min(d,min(uL,uR));
+    d=smin(d,nd,.004);
+    d=min(d,min(ring,spk));
+    d=min(d,min(sa,sSec));
+    d=min(d,pStr);
+    d=min(d,rad);
+    d=min(d,min(eng,min(eB,nzl)));
+    d=min(d,ft);
+    d=min(d,min(ant,comms));
+    d=min(d,min(dome,cupR));
+    d=min(d,dk);
+    d=min(d,hp);
+    d=min(d,rcs);
+    d=min(d,airlock);
+    d=min(d,min(arm,armJ));
+    // Subtle surface displacement
+    d-=noise3(p*55.)*.0003;
     return d;
 }
 
 vec3 nrmSt(vec3 p){vec2 e=vec2(.0003,0.);return normalize(vec3(mapSt(p+e.xyy)-mapSt(p-e.xyy),mapSt(p+e.yxy)-mapSt(p-e.yxy),mapSt(p+e.yyx)-mapSt(p-e.yyx)));}
 
-// Bump-mapped normal (noise perturbation)
 vec3 bumpN(vec3 n,vec3 p,float s,float str){
     float e=.002;
     float b=noise3(p*s);
@@ -282,7 +265,6 @@ vec3 bumpN(vec3 n,vec3 p,float s,float str){
     return normalize(n-g*str);
 }
 
-// SDF ambient occlusion (5-tap)
 float aoSt(vec3 p,vec3 n){
     float ao=0.,s=1.;
     for(int i=1;i<=5;i++){
@@ -293,7 +275,6 @@ float aoSt(vec3 p,vec3 n){
     return clamp(1.-ao*6.,0.,1.);
 }
 
-// Environment color from reflected ray (approximate disk glow)
 vec3 envCol(vec3 rd){
     float dGlow=exp(-rd.y*rd.y*6.);
     float hue=.5+.5*rd.x;
@@ -347,180 +328,190 @@ void main(){
             float tFar=-B+sqrt(D);
             if(tFar>0.){
                 float tc=tNear+.001;
-                for(int i=0;i<80;i++){
+                for(int i=0;i<100;i++){
                     vec3 wp=ro+rd*tc;
                     vec3 dv=wp-stPos;
                     vec3 lp=vec3(dot(dv,stRt),dot(dv,stUp),dot(dv,stFwd));
                     float sd=mapSt(lp);
-                    if(sd<.0008){
+                    if(sd<.0006){
                         hitStation=true;
                         vec3 ln=nrmSt(lp);
-                        // Multi-frequency bump mapping
-                        ln=bumpN(ln,lp,45.,.12);
-                        ln=bumpN(ln,lp,120.,.04);
+                        // Gentle bump mapping (structured, not noisy)
+                        ln=bumpN(ln,lp,40.,.06);
+                        ln=bumpN(ln,lp,100.,.02);
                         vec3 wn=stRt*ln.x+stUp*ln.y+stFwd*ln.z;
                         // Ambient occlusion
                         float ao=aoSt(lp,ln);
 
                         // ── Material classification ──
-                        float pnD=min(min(sdBox3(lp-vec3(.52,0.,.22),vec3(.28,.002,.12)),sdBox3(lp-vec3(.52,0.,-.22),vec3(.28,.002,.12))),min(sdBox3(lp+vec3(.52,0.,.22),vec3(.28,.002,.12)),sdBox3(lp+vec3(.52,0.,-.22),vec3(.28,.002,.12))));
-                        float radD=min(min(sdBox3(lp-vec3(.12,0.,.22),vec3(.003,.075,.06)),sdBox3(lp+vec3(.12,0.,.22),vec3(.003,.075,.06))),min(sdBox3(lp-vec3(.12,0.,-.16),vec3(.003,.065,.045)),sdBox3(lp+vec3(.12,0.,-.16),vec3(.003,.065,.045))));
-                        float enD=min(min(length(lp-vec3(.04,.04,-.57))-.02,length(lp-vec3(-.04,.04,-.57))-.02),min(length(lp-vec3(.04,-.04,-.57))-.02,length(lp-vec3(-.04,-.04,-.57))-.02));
+                        float pnD=min(min(sdRB(lp-vec3(.52,0,.22),vec3(.28,.001,.12),.001),sdRB(lp-vec3(.52,0,-.22),vec3(.28,.001,.12),.001)),min(sdRB(lp+vec3(.52,0,.22),vec3(.28,.001,.12),.001),sdRB(lp+vec3(.52,0,-.22),vec3(.28,.001,.12),.001)));
+                        float radD=min(min(sdRB(lp-vec3(.12,0,.22),vec3(.002,.072,.058),.001),sdRB(lp+vec3(.12,0,.22),vec3(.002,.072,.058),.001)),min(sdRB(lp-vec3(.12,0,-.16),vec3(.002,.062,.042),.001),sdRB(lp+vec3(.12,0,-.16),vec3(.002,.062,.042),.001)));
+                        float enD=min(min(length(lp-vec3(.04,.04,-.57))-.018,length(lp-vec3(-.04,.04,-.57))-.018),min(length(lp-vec3(.04,-.04,-.57))-.018,length(lp-vec3(-.04,-.04,-.57))-.018));
                         vec3 rlp=lp;rlp.z+=.05;
-                        float rnD=length(vec2(length(rlp.xy)-.26,rlp.z))-.032;
-                        float hubD=max(length(lp.xy)-.072,abs(lp.z)-.15);
-                        float modD=min(max(length(lp.xy)-.05,abs(lp.z-.3)-.1),max(length(lp.xy)-.058,abs(lp.z+.3)-.1));
-                        float topD=max(length(lp.xz)-.038,abs(lp.y-.12)-.075);
-                        float crossD=max(length(lp.yz)-.032,abs(lp.x)-.085);
+                        float rnD=length(vec2(length(rlp.xy)-.26,rlp.z))-.03;
+                        float hubD=sdRB(lp,vec3(.058,.058,.13),.016);
+                        float fwD=sdRB(lp-vec3(0,0,.28),vec3(.038,.038,.1),.012);
+                        float afD=sdRB(lp+vec3(0,0,.28),vec3(.044,.044,.1),.013);
+                        float topD=sdRB(vec3(lp.x,lp.z,lp.y-.12),vec3(.03,.065,.03),.009);
+                        float crossD=sdRB(vec3(lp.z,lp.y,lp.x),vec3(.026,.026,.08),.009);
+                        float modD=min(fwD,afD);
                         float ftD=min(max(length(vec2(lp.x-.075,lp.y))-.022,abs(lp.z+.36)-.09),max(length(vec2(lp.x+.075,lp.y))-.022,abs(lp.z+.36)-.09));
+                        float domeD=max(length(lp-vec3(0,.06,.33))-.028,-(lp.y-.06));
+                        bool isModule=hubD<.006||modD<.006||topD<.006||crossD<.006;
+
+                        // ── Window detection on modules ──
+                        float isWin=0.;
+                        if(isModule){
+                            float wAng=atan(lp.y,lp.x);
+                            isWin=step(.82,sin(wAng*14.))*step(.82,sin(lp.z*24.));
+                        }
+                        // Ring windows
+                        float ringWin=0.;
+                        if(rnD<.005){
+                            float rA=atan(rlp.y,rlp.x);
+                            ringWin=step(.83,sin(rA*20.))*step(.83,sin(rlp.z*40.+rA*2.));
+                        }
 
                         vec3 hull;
-
-                        // PBR-like material properties
                         float metallic=.3,roughness=.5;
 
-                        if(pnD<.004){
-                            // Solar panels — deep navy photovoltaic
+                        if(isWin>.5){
+                            // ██ GLASS WINDOW ██
+                            hull=vec3(.04,.06,.12);
+                            metallic=.08;roughness=.04;
+
+                        } else if(ringWin>.5){
+                            // ██ RING GLASS WINDOW ██
+                            hull=vec3(.04,.055,.11);
+                            metallic=.08;roughness=.04;
+
+                        } else if(domeD<.004){
+                            // ██ CUPOLA GLASS ██
+                            hull=vec3(.05,.07,.14);
+                            metallic=.1;roughness=.03;
+
+                        } else if(pnD<.004){
+                            // Solar panels
                             hull=vec3(.02,.03,.08);
                             float cx=step(.88,abs(sin(lp.x*55.)));
                             float cz=step(.88,abs(sin(lp.z*45.)));
                             hull+=vec3(.006,.01,.02)*(cx+cz);
-                            // Cell highlight sheen
-                            hull+=vec3(.015,.025,.06)*max(0.,ln.y)*.8;
-                            metallic=.15;roughness=.15;
+                            hull+=vec3(.015,.025,.06)*max(0.,ln.y)*.6;
+                            metallic=.15;roughness=.12;
 
                         } else if(radD<.004){
-                            // Radiator — gold foil with wrinkle texture
+                            // Radiator — gold foil
                             hull=vec3(.22,.13,.035);
-                            float wrinkle=noise3(lp*80.)*.15;
-                            hull*=.9+wrinkle;
+                            hull*=.92+noise3(lp*80.)*.12;
                             hull+=vec3(.04,.02,.005)*step(.93,abs(sin(lp.z*50.)));
                             metallic=.8;roughness=.25;
 
                         } else if(enD<.005){
-                            // Engine pods — dark alloy
                             hull=vec3(.15,.17,.2);
                             hull+=vec3(.06,.16,.45)*(.5+.5*sin(t*5.));
                             metallic=.7;roughness=.3;
 
                         } else if(ftD<.005){
-                            // Fuel tanks — matte white with hazard bands
                             hull=vec3(.48,.5,.52);
-                            float band=step(.95,abs(sin(lp.z*25.)));
-                            hull=mix(hull,vec3(.55,.22,.08),band*.35);
+                            hull=mix(hull,vec3(.55,.22,.08),step(.95,abs(sin(lp.z*25.)))*.35);
                             metallic=.05;roughness=.7;
 
                         } else if(rnD<.005){
-                            // Habitat ring — brushed metal
                             hull=vec3(.32,.34,.38);
                             float rAng=atan(rlp.y,rlp.x);
-                            float seam=step(.95,abs(sin(rAng*12.)));
-                            hull=mix(hull,vec3(.2,.22,.26),seam*.3);
-                            // Rivets on ring outer surface
-                            float rivet=smoothstep(.42,.38,length(fract(vec2(rAng*4.,rlp.z*12.))-.5));
-                            hull+=vec3(.02)*rivet;
+                            hull=mix(hull,vec3(.2,.22,.26),step(.95,abs(sin(rAng*12.)))*.3);
+                            hull+=vec3(.02)*smoothstep(.42,.38,length(fract(vec2(rAng*4.,rlp.z*12.))-.5));
                             metallic=.5;roughness=.4;
 
-                        } else if(hubD<.005||modD<.005||topD<.005||crossD<.005){
-                            // Pressurized modules — thermal blanket white
-                            hull=vec3(.4,.42,.45);
+                        } else if(isModule){
+                            hull=vec3(.42,.44,.47);
                             float ang=atan(lp.y,lp.x);
-                            // Panel edges (fract-based)
-                            vec2 panelF=abs(fract(vec2(ang*3.,lp.z*8.))-.5);
-                            float panelEdge=smoothstep(.48,.5,max(panelF.x,panelF.y));
-                            hull=mix(hull,hull*.55,panelEdge*.5);
-                            // Seams
-                            float seam=step(.96,abs(sin(lp.z*28.)));
-                            hull=mix(hull,vec3(.22,.24,.28),seam*.3);
+                            // Panel frames around windows
+                            vec2 pF=abs(fract(vec2(ang*2.23,lp.z*3.82))-.5);
+                            float frame=smoothstep(.46,.5,max(pF.x,pF.y));
+                            hull=mix(hull,hull*.5,frame*.4);
+                            hull=mix(hull,vec3(.22,.24,.28),step(.96,abs(sin(lp.z*28.)))*.25);
                             metallic=.35;roughness=.5;
 
                         } else {
-                            // Truss / struts — structural alloy
                             hull=vec3(.3,.32,.36);
                             hull=mix(hull,vec3(.18,.2,.24),step(.94,abs(sin(lp.z*30.)))*.3);
-                            // Cross-bracing detail
-                            float cb=step(.96,abs(sin(lp.z*50.)));
-                            hull=mix(hull,hull*.7,cb*.2);
                             metallic=.6;roughness=.35;
                         }
 
-                        // ── Surface micro-detail ──
-                        // Multi-scale panel grid
-                        float mpX=step(.97,abs(sin(lp.x*65.)));
-                        float mpY=step(.97,abs(sin(lp.y*65.)));
-                        float mpZ=step(.97,abs(sin(lp.z*65.)));
-                        hull=mix(hull,hull*.55,(mpX+mpY+mpZ)*.05);
-                        // Coarse panel edges
-                        vec3 cpF=abs(fract(lp*8.)-.5);
-                        float cpEdge=smoothstep(.47,.5,max(cpF.x,max(cpF.y,cpF.z)));
-                        hull=mix(hull,hull*.65,cpEdge*.12);
-                        // Weathering
-                        hull*=.85+.3*noise3(lp*25.);
+                        // ── Surface micro-detail (cleaner) ──
+                        if(isWin<.5&&ringWin<.5&&domeD>.004){
+                            float mpX=step(.97,abs(sin(lp.x*65.)));
+                            float mpY=step(.97,abs(sin(lp.y*65.)));
+                            float mpZ=step(.97,abs(sin(lp.z*65.)));
+                            hull=mix(hull,hull*.6,(mpX+mpY+mpZ)*.04);
+                            vec3 cpF=abs(fract(lp*8.)-.5);
+                            hull=mix(hull,hull*.7,smoothstep(.47,.5,max(cpF.x,max(cpF.y,cpF.z)))*.08);
+                            hull*=.9+.2*noise3(lp*22.);
+                        }
 
-                        // ── PBR-like lighting ──
+                        // ── PBR Lighting ──
                         vec3 viewD=normalize(ro-wp);
                         float diskLit=max(0.,dot(wn,toBH));
                         float backFill=max(0.,dot(wn,-toBH))*.2;
                         float NdV=max(0.,dot(wn,viewD));
 
-                        // Diffuse (non-metallic contribution)
-                        vec3 diff=hull*(1.-metallic*.7)*(.22+diskLit*vec3(1.,.6,.18)*2.2+backFill*vec3(.8,.5,.15));
+                        vec3 diff=hull*(1.-metallic*.7)*(.24+diskLit*vec3(1.,.6,.18)*2.2+backFill*vec3(.8,.5,.15));
 
-                        // Specular (PBR-like)
                         vec3 halfV=normalize(toBH+viewD);
-                        float specPow=mix(16.,256.,1.-roughness);
+                        float specPow=mix(16.,512.,1.-roughness);
                         float spec=pow(max(0.,dot(wn,halfV)),specPow);
                         vec3 specCol=mix(vec3(.9,.6,.2),hull,metallic)*spec*diskLit;
 
-                        // Environment reflection
                         vec3 reflDir=reflect(-viewD,wn);
                         vec3 envR=envCol(reflDir);
                         float reflStr=metallic*(1.-roughness)*.4;
 
-                        // Fresnel (Schlick approx)
                         float fres=pow(1.-NdV,4.);
-                        reflStr=mix(reflStr,.5,fres);
+                        reflStr=mix(reflStr,.6,fres);
 
-                        hull=diff*ao+specCol*.18+envR*reflStr;
-
-                        // Ambient
+                        hull=diff*ao+specCol*.2+envR*reflStr;
                         hull+=vec3(.02,.024,.04)*ao;
 
-                        // ── Emissive (shadow-independent) ──
+                        // ── Emissive ──
                         vec3 emit=vec3(0.);
 
-                        // Ring windows + running lights
+                        // Glass window interior glow
+                        if(isWin>.5){
+                            emit+=vec3(.7,.55,.25)*.55;
+                            // Window frame edge darkening
+                            float wAng2=atan(lp.y,lp.x);
+                            float frameX=smoothstep(.0,.15,abs(sin(wAng2*14.)));
+                            float frameZ=smoothstep(.0,.15,abs(sin(lp.z*24.)));
+                            emit*=frameX*frameZ;
+                        }
+                        if(ringWin>.5){
+                            float rA2=atan(rlp.y,rlp.x);
+                            emit+=vec3(.65,.5,.22)*.5;
+                            emit*=smoothstep(.0,.15,abs(sin(rA2*20.)))*smoothstep(.0,.15,abs(sin(rlp.z*40.+rA2*2.)));
+                        }
+                        if(domeD<.004) emit+=vec3(.5,.6,.8)*.4;
+
+                        // Ring running lights
                         if(rnD<.005){
-                            vec3 rlp2=lp;rlp2.z+=.05;
-                            float rA=atan(rlp2.y,rlp2.x);
-                            emit+=vec3(.7,.55,.25)*step(.85,sin(rA*20.))*step(.85,sin(rlp2.z*40.+rA*2.))*.6;
-                            emit+=vec3(.2,.4,.65)*step(.94,sin(rA*16.+t*1.5))*smoothstep(.01,0.,abs(length(rlp2.xy)-.29))*.45;
+                            float rA3=atan(rlp.y,rlp.x);
+                            emit+=vec3(.2,.4,.65)*step(.94,sin(rA3*16.+t*1.5))*smoothstep(.01,0.,abs(length(rlp.xy)-.29))*.45;
                         }
 
-                        // Module windows + joint lights
-                        if(hubD<.005||modD<.005||topD<.005||crossD<.005){
-                            float a2=atan(lp.y,lp.x);
-                            emit+=vec3(.65,.5,.2)*step(.88,sin(a2*10.))*step(.88,sin(lp.z*22.))*.55;
-                            emit+=vec3(.3,.42,.58)*step(.97,abs(sin(lp.z*14.)))*smoothstep(.08,.04,abs(length(lp.xy)-.06))*.4;
+                        // Module joint lights
+                        if(isModule&&isWin<.5){
+                            emit+=vec3(.3,.42,.58)*step(.97,abs(sin(lp.z*14.)))*smoothstep(.08,.04,abs(length(lp.xy)-.06))*.35;
                         }
 
-                        // Fuel tank marker lights
-                        if(ftD<.005){
-                            emit+=vec3(.4,.48,.55)*step(.96,sin(lp.z*20.+t*2.))*.25;
-                        }
+                        if(ftD<.005) emit+=vec3(.4,.48,.55)*step(.96,sin(lp.z*20.+t*2.))*.25;
 
-                        // Fresnel rim glow
-                        hull+=vec3(.1,.16,.3)*fres*.2;
+                        hull+=vec3(.1,.16,.3)*fres*.18;
+                        emit+=vec3(.35,.42,.55)*step(.96,sin(lp.z*18.))*smoothstep(.025,.01,length(lp.xy))*.3;
 
-                        // Truss accent lights
-                        emit+=vec3(.35,.42,.55)*step(.96,sin(lp.z*18.))*smoothstep(.025,.01,length(lp.xy))*.35;
-
-                        // Engine exhaust bloom
                         float exDst=length(lp.xz)*8.;
                         emit+=vec3(.12,.28,.7)*smoothstep(.65,0.,lp.z+.57)*exp(-exDst*exDst)*(1.-step(-.5,lp.z))*(.6+.4*sin(t*7.));
 
                         hull+=emit;
-
                         col=hull;
                         break;
                     }
@@ -585,19 +576,30 @@ void main(){
             float phi=atan(fd.z,fd.x);
             float psi=asin(clamp(fd.y,-1.,1.));
             vec2 sc=vec2(phi,psi);
-            for(float s=50.;s<=150.;s+=50.){
+            for(float s=40.;s<=200.;s+=40.){
                 vec2 cell=floor(sc*s);
                 float hv=hash(cell);
-                if(hv>.985){
+                if(hv>.98){
                     vec2 sp=(cell+vec2(hash2(cell),hash(cell+vec2(7.3,13.1))))/s;
                     float d=length(sc-sp)*s;
-                    float pt=exp(-d*d*25.);
-                    float b=pow((hv-.985)/.015,.6);
-                    float tw=.93+.07*sin(t*.4+hv*120.);
-                    vec3 starCol=mix(vec3(.7,.78,1.),vec3(1.,.95,.85),hash2(cell));
-                    col+=starCol*pt*b*tw*.18;
+                    float sz=mix(20.,35.,hash(cell+vec2(3.1,0.)));
+                    float pt=exp(-d*d*sz);
+                    float b=pow((hv-.98)/.02,.5);
+                    float tw=.92+.08*sin(t*.3+hv*150.);
+                    float temp=hash2(cell);
+                    vec3 starCol=temp<.3?vec3(.7,.75,1.):temp<.6?vec3(.95,.93,.88):vec3(1.,.85,.7);
+                    col+=starCol*pt*b*tw*.2;
                 }
             }
+
+            // Nebula dust clouds
+            vec3 nebDir=normalize(vel);
+            float neb1=fbm3(nebDir.xz*2.+vec2(3.1,1.7));
+            float neb2=fbm3(nebDir.yz*1.8+vec2(5.2,2.3));
+            float neb3=fbm3(nebDir.xz*3.5+nebDir.y*2.+vec2(8.1,4.2));
+            col+=vec3(.06,.02,.1)*neb1*.08;
+            col+=vec3(.02,.04,.08)*neb2*.06;
+            col+=vec3(.04,.015,.03)*neb3*.04;
         }
     }
 
