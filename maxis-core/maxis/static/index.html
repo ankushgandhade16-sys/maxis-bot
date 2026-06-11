@@ -156,6 +156,39 @@ float hash2(vec2 p){return fract(sin(dot(p,vec2(41.1,17.4)))*43758.5453);}
 float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);}
 float fbm3(vec2 p){float v=0.,a=.5;for(int i=0;i<3;i++){v+=a*noise(p);p=p*2.1+vec2(1.7,9.2);a*=.5;}return v;}
 
+// ── Station SDF helpers ──
+float sdBox3(vec3 p,vec3 b){vec3 d=abs(p)-b;return length(max(d,0.))+min(max(d.x,max(d.y,d.z)),0.);}
+
+// Station SDF in local space (Z=fwd along orbit, Y=up, X=lateral)
+float mapSt(vec3 p){
+    // Main hull — elongated capsule along Z
+    vec3 cp=p;cp.z-=clamp(cp.z,-.18,.18);
+    float hull=length(cp)-.052;
+    // Strut arms extending laterally
+    float sL=sdBox3(p-vec3(.15,0.,0.),vec3(.12,.006,.006));
+    float sR=sdBox3(p+vec3(.15,0.,0.),vec3(.12,.006,.006));
+    // Solar panel arrays (large flat rectangles)
+    float pL=sdBox3(p-vec3(.33,0.,0.),vec3(.15,.003,.082));
+    float pR=sdBox3(p+vec3(.33,0.,0.),vec3(.15,.003,.082));
+    // Habitat modules (boxes along hull)
+    float m1=sdBox3(p-vec3(0.,0.,.09),vec3(.03,.038,.042));
+    float m2=sdBox3(p-vec3(0.,0.,-.09),vec3(.03,.038,.042));
+    // Command pod (forward)
+    float cmd=length(p-vec3(0.,0.,.24))-.027;
+    // Engine bell (aft)
+    float eng=length(p-vec3(0.,0.,-.24))-.033;
+    // Radiator fins (vertical panels between hull and solar)
+    float rL=sdBox3(p-vec3(.09,0.,0.),vec3(.003,.035,.055));
+    float rR=sdBox3(p+vec3(.09,0.,0.),vec3(.003,.035,.055));
+    float d=hull;
+    d=min(d,min(sL,sR));d=min(d,min(pL,pR));
+    d=min(d,min(m1,m2));d=min(d,min(cmd,eng));
+    d=min(d,min(rL,rR));
+    return d;
+}
+
+vec3 nrmSt(vec3 p){vec2 e=vec2(.0005,0.);return normalize(vec3(mapSt(p+e.xyy)-mapSt(p-e.xyy),mapSt(p+e.yxy)-mapSt(p-e.yxy),mapSt(p+e.yyx)-mapSt(p-e.yyx)));}
+
 void main(){
     vec2 uv=(gl_FragCoord.xy-.5*u_res)/u_res.y;
     float t=u_time;
@@ -164,17 +197,20 @@ void main(){
     float stAngle=t*.05;
     float stOrbitR=20.;
     vec3 stPos=vec3(stOrbitR*cos(stAngle),.3+.12*sin(t*.12),stOrbitR*sin(stAngle));
-    float stR=.5;
-    vec3 stVelDir=normalize(vec3(-sin(stAngle),0.,cos(stAngle))); // orbital velocity dir
+    vec3 stVelDir=normalize(vec3(-sin(stAngle),0.,cos(stAngle)));
+
+    // Station orientation basis (Z=fwd=velocity, Y=up, X=right)
+    vec3 stFwd=stVelDir;
+    vec3 stUp=vec3(0.,1.,0.);
+    vec3 stRt=normalize(cross(stUp,stFwd));
+    stUp=cross(stFwd,stRt);
 
     // ── Chase camera: behind station, looking at BH ──
     vec3 toBH=normalize(-stPos);
     vec3 camSide=normalize(cross(toBH,vec3(0,1,0)));
     vec3 roBase=stPos-toBH*6.+vec3(0.,.8,0.);
-    // Gentle drift
     roBase+=camSide*.25*sin(t*.07);
     roBase.y+=.12*sin(t*.09);
-    // Sidebar zoom: closer to station surface
     vec3 roZoom=stPos-toBH*2.+vec3(0.,.3,0.)+camSide*.4;
     vec3 ro=mix(roBase,roZoom,u_zoom);
 
@@ -188,77 +224,92 @@ void main(){
     vec3 col=vec3(0.);
     bool hitStation=false;
 
-    // ═══ STATION — straight ray, NO gravity ═══
+    // ═══ STATION — SDF raymarch, straight ray, NO gravity ═══
     {
+        float bndR=.6;
         vec3 oc=ro-stPos;
         float B=dot(oc,rd);
-        float C=dot(oc,oc)-stR*stR;
+        float C=dot(oc,oc)-bndR*bndR;
         float D=B*B-C;
         if(D>0.){
-            float tHit=-B-sqrt(D);
-            if(tHit>0.){
-                hitStation=true;
-                vec3 hp=ro+rd*tHit;
-                vec3 n=normalize(hp-stPos);
-                float su=atan(n.z,n.x);
-                float sv=asin(clamp(n.y,-1.,1.));
+            float tNear=max(.0,-B-sqrt(D));
+            float tFar=-B+sqrt(D);
+            if(tFar>0.){
+                float tc=tNear+.001;
+                for(int i=0;i<40;i++){
+                    vec3 wp=ro+rd*tc;
+                    vec3 dv=wp-stPos;
+                    vec3 lp=vec3(dot(dv,stRt),dot(dv,stUp),dot(dv,stFwd));
+                    float sd=mapSt(lp);
+                    if(sd<.001){
+                        hitStation=true;
+                        // Normal in local→world
+                        vec3 ln=nrmSt(lp);
+                        vec3 wn=stRt*ln.x+stUp*ln.y+stFwd*ln.z;
 
-                // Hull base — cool metallic
-                vec3 hull=vec3(.38,.4,.44);
+                        // Material ID by component distance
+                        float pnD=min(sdBox3(lp-vec3(.33,0.,0.),vec3(.15,.003,.082)),sdBox3(lp+vec3(.33,0.,0.),vec3(.15,.003,.082)));
+                        float rdD=min(sdBox3(lp-vec3(.09,0.,0.),vec3(.003,.035,.055)),sdBox3(lp+vec3(.09,0.,0.),vec3(.003,.035,.055)));
+                        float engD=length(lp-vec3(0.,0.,-.24))-.033;
+                        float cmdD=length(lp-vec3(0.,0.,.24))-.027;
 
-                // Panel grid lines (structural seams)
-                float pgX=step(.94,abs(sin(su*14.)));
-                float pgY=step(.94,abs(sin(sv*10.)));
-                hull=mix(hull,vec3(.22,.24,.28),(pgX+pgY)*.3);
+                        vec3 hull;
+                        if(pnD<.004){
+                            // Solar panels — dark blue with cell grid
+                            hull=vec3(.04,.06,.14);
+                            float cx=step(.9,abs(sin(lp.x*80.)));
+                            float cz=step(.9,abs(sin(lp.z*55.)));
+                            hull+=vec3(.01,.015,.04)*(cx+cz);
+                        } else if(rdD<.004){
+                            // Radiator fins — copper
+                            hull=vec3(.14,.08,.04);
+                            float lines=step(.92,abs(sin(lp.z*60.)));
+                            hull+=vec3(.02,.01,.0)*lines;
+                        } else if(engD<.004){
+                            // Engine bell
+                            hull=vec3(.3,.32,.35);
+                            hull+=vec3(.1,.3,.7)*(.5+.5*sin(t*6.));
+                        } else if(cmdD<.004){
+                            // Command pod — lighter with windows
+                            hull=vec3(.42,.44,.48);
+                            float win=step(.92,sin(atan(ln.y,ln.x)*8.));
+                            hull+=vec3(.3,.35,.5)*win*.3;
+                        } else {
+                            // Hull — metallic gray with seams
+                            hull=vec3(.36,.38,.42);
+                            float seams=step(.94,abs(sin(lp.z*40.)))+step(.94,abs(sin(atan(lp.y,lp.x)*10.)));
+                            hull=mix(hull,vec3(.24,.26,.3),seams*.3);
+                            // Window rows on habitat modules
+                            float hab=step(.004,max(sdBox3(lp-vec3(0.,0.,.09),vec3(.031,.039,.043)),0.));
+                            if(hab<.5){
+                                float win=step(.93,sin(lp.z*80.))*step(.8,cos(atan(lp.y,lp.x)*6.));
+                                hull+=vec3(.45,.35,.12)*win*.3;
+                            }
+                        }
 
-                // Solar panel wings (dark blue regions at sides)
-                float wing=step(.82,abs(sin(su*2.)))*smoothstep(.15,.4,abs(sv));
-                hull=mix(hull,vec3(.06,.08,.18),wing);
-                // Solar cell subdivisions
-                float cells=(step(.92,abs(sin(su*24.)))+step(.92,abs(sin(sv*16.))))*wing;
-                hull+=vec3(.02,.03,.06)*cells;
+                        // Disk lighting
+                        float diskLit=max(0.,dot(wn,toBH));
+                        hull*=.06+diskLit*vec3(1.,.6,.18)*2.2;
+                        hull+=vec3(.012,.016,.028);
 
-                // Window rows (warm interior light)
-                float winMask=step(.8,cos(sv*5.))*(1.-wing);
-                float windows=step(.95,sin(su*36.))*winMask;
-                hull+=vec3(.5,.4,.15)*windows;
+                        // Fresnel rim
+                        float fres=pow(1.-abs(dot(wn,normalize(ro-wp))),1.5);
+                        hull+=vec3(.12,.2,.35)*fres*.2;
 
-                // Docking bay
-                float bay=smoothstep(.2,0.,abs(su-1.57))*smoothstep(.25,0.,abs(sv+.2));
-                hull=mix(hull,vec3(.08,.08,.1),bay*.6);
-                hull+=vec3(.3,.1,.04)*bay*.15;
+                        // Nav lights at command (green) and engine (red)
+                        hull+=vec3(.05,.7,.1)*smoothstep(.04,0.,cmdD)*(step(.5,sin(t*2.))*.5+.5);
+                        hull+=vec3(.8,.1,.05)*smoothstep(.04,0.,engD)*(step(.5,sin(t*2.+3.14))*.5+.5);
 
-                // Communication dish
-                float dish=smoothstep(.18,0.,length(vec2(su+1.57,sv-.4)));
-                hull=mix(hull,vec3(.48,.5,.54),dish);
+                        // Running lights along hull equator
+                        float runL=step(.96,sin(atan(lp.y,lp.x)*10.+t*3.))*step(.004,-pnD);
+                        hull+=vec3(.08,.4,.8)*runL*.3;
 
-                // Lighting from accretion disk
-                float diskLit=max(0.,dot(n,toBH));
-                hull*=.08+diskLit*vec3(1.,.6,.18)*2.;
-
-                // Ambient
-                hull+=vec3(.015,.02,.035);
-
-                // Fresnel rim
-                float fres=pow(1.-abs(dot(n,normalize(ro-hp))),1.5);
-                hull+=vec3(.15,.25,.4)*fres*.2;
-
-                // Navigation lights (red port, green starboard)
-                float navR=smoothstep(.08,0.,length(vec2(su-1.57,sv)))*step(0.,n.x);
-                float navG=smoothstep(.08,0.,length(vec2(su+1.57,sv)))*step(0.,-n.x);
-                hull+=vec3(.8,.1,.05)*navR*(step(.5,sin(t*2.))*.5+.5);
-                hull+=vec3(.05,.6,.1)*navG*(step(.5,sin(t*2.+3.14))*.5+.5);
-
-                // Blue running lights along equator
-                float runL=step(.96,sin(su*12.+t*2.))*smoothstep(.15,0.,abs(sv));
-                hull+=vec3(.1,.5,.9)*runL*.4;
-
-                // Engine glow (trailing side)
-                float engFace=max(0.,dot(n,-stVelDir));
-                float engGlow=pow(engFace,4.);
-                hull+=vec3(.15,.4,.9)*engGlow*.6*(.7+.3*sin(t*6.));
-
-                col=hull;
+                        col=hull;
+                        break;
+                    }
+                    tc+=sd;
+                    if(tc>tFar) break;
+                }
             }
         }
     }
@@ -272,9 +323,9 @@ void main(){
         vec3 vel=rd;
         bool absorbed=false;
 
-        for(int i=0;i<250;i++){
+        for(int i=0;i<200;i++){
             float rl=length(pos);
-            float h=max(.03,min(.5,rl*.06));
+            float h=max(.04,min(.6,rl*.07));
             vec3 prev=pos;
             pos+=vel*h;
             float r2=dot(pos,pos);
@@ -313,12 +364,11 @@ void main(){
         }
 
         if(!absorbed){
-            // Stars — realistic, subtle
             vec3 fd=normalize(vel);
             float phi=atan(fd.z,fd.x);
             float psi=asin(clamp(fd.y,-1.,1.));
             vec2 sc=vec2(phi,psi);
-            for(float s=40.;s<=160.;s+=40.){
+            for(float s=50.;s<=150.;s+=50.){
                 vec2 cell=floor(sc*s);
                 float hv=hash(cell);
                 if(hv>.985){
@@ -334,17 +384,10 @@ void main(){
         }
     }
 
-    // Background
     col+=vec3(.005,.008,.016);
-
-    // Warm atmospheric haze
     float sr=length(uv);
     col+=vec3(.25,.08,.02)*exp(-uv.y*uv.y*40.)*exp(-sr*1.5)*.1;
-
-    // Click interaction
     col+=vec3(1.,.5,.12)*u_interact*exp(-sr*sr*12.)*.3;
-
-    // Tone map
     col=1.-exp(-col*1.3);
     col=pow(col,vec3(.88));
     gl_FragColor=vec4(col,1.);
@@ -437,7 +480,7 @@ gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_
 const aP=gl.getAttribLocation(prog,'a_pos');gl.enableVertexAttribArray(aP);gl.vertexAttribPointer(aP,2,gl.FLOAT,false,0,0);
 const uR=gl.getUniformLocation(prog,'u_res'),uT=gl.getUniformLocation(prog,'u_time'),uI=gl.getUniformLocation(prog,'u_interact'),uZ=gl.getUniformLocation(prog,'u_zoom');
 let interact=0,zoomTarget=0,zoomCurrent=0;
-function rsz(){const d=Math.max(devicePixelRatio,1.5);cv.width=innerWidth*d;cv.height=innerHeight*d;cv.style.width=innerWidth+'px';cv.style.height=innerHeight+'px';gl.viewport(0,0,cv.width,cv.height)}
+function rsz(){const d=Math.min(devicePixelRatio,1.25);cv.width=innerWidth*d;cv.height=innerHeight*d;cv.style.width=innerWidth+'px';cv.style.height=innerHeight+'px';gl.viewport(0,0,cv.width,cv.height)}
 addEventListener('resize',rsz);rsz();
 addEventListener('click',()=>{interact=Math.min(interact+.5,1.5)});
 let t0=performance.now();
