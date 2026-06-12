@@ -156,6 +156,7 @@ float hash2(vec2 p){return fract(sin(dot(p,vec2(41.1,17.4)))*43758.5453);}
 float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);}
 float noise3(vec3 p){return noise(p.xz+p.y*7.3);}
 float fbm3(vec2 p){float v=0.,a=.5;for(int i=0;i<3;i++){v+=a*noise(p);p=p*2.1+vec2(1.7,9.2);a*=.5;}return v;}
+float fbmFake3(vec3 p){return fbm3(p.xz+p.y*7.3);}
 
 float sdBox3(vec3 p,vec3 b){vec3 d=abs(p)-b;return length(max(d,0.))+min(max(d.x,max(d.y,d.z)),0.);}
 float sdRB(vec3 p,vec3 b,float r){vec3 q=abs(p)-b+r;return length(max(q,0.))-r;}
@@ -257,11 +258,14 @@ float mapSt(vec3 p){
 
 vec3 nrmSt(vec3 p){vec2 e=vec2(.0005,0.);return normalize(vec3(mapSt(p+e.xyy)-mapSt(p-e.xyy),mapSt(p+e.yxy)-mapSt(p-e.yxy),mapSt(p+e.yyx)-mapSt(p-e.yyx)));}
 
-vec3 bumpN(vec3 n,vec3 p,float s,float str){
-    float e=.002;
-    float b=noise3(p*s);
-    vec3 g=vec3(noise3((p+vec3(e,0,0))*s)-b,noise3((p+vec3(0,e,0))*s)-b,noise3((p+vec3(0,0,e))*s)-b)/e;
-    return normalize(n-g*str);
+// 4K Procedural Distance-Attenuated Bump Mapping
+vec3 bumpN(vec3 n,vec3 p,float freq,float str,float dist){
+    float atten=1.-smoothstep(3.,9.,dist);
+    if(atten<=0.)return n;
+    vec2 e=vec2(.002,0.);
+    float b=fbmFake3(p*freq);
+    vec3 g=vec3(fbmFake3((p+e.xyy)*freq)-b,fbmFake3((p+e.yxy)*freq)-b,fbmFake3((p+e.yyx)*freq)-b)/e.x;
+    return normalize(n-g*str*atten);
 }
 
 float aoSt(vec3 p,vec3 n){
@@ -274,10 +278,27 @@ float aoSt(vec3 p,vec3 n){
     return clamp(1.-ao*6.,0.,1.);
 }
 
-vec3 envCol(vec3 rd){
-    float dGlow=exp(-rd.y*rd.y*6.);
-    float hue=.5+.5*rd.x;
-    return mix(vec3(.35,.15,.04),vec3(.5,.25,.06),hue)*dGlow*.4+vec3(.004,.006,.012);
+// Ray-Traced Soft Shadows
+float softShadow(vec3 ro,vec3 rd,float mint,float maxt,float k){
+    float res=1.0;
+    float t=mint;
+    for(int i=0;i<25;i++){
+        float h=mapSt(ro+rd*t);
+        if(h<.001)return 0.0;
+        res=min(res,k*h/t);
+        t+=clamp(h,.02,.15);
+        if(t>maxt)break;
+    }
+    return clamp(res,0.0,1.0);
+}
+
+// True Black Hole Environment Reflection Approximation
+vec3 envCol(vec3 rd,float t){
+    float disk=smoothstep(.03,.0,abs(rd.y));
+    float angle=atan(rd.z,rd.x)+t*.1;
+    float doppler=1.+dot(rd.xz,vec2(-sin(angle),cos(angle)))*1.5;
+    vec3 dc=mix(vec3(1.,.8,.3),vec3(1.,.3,.05),abs(sin(angle*3.)));
+    return dc*disk*pow(clamp(doppler,.1,2.),2.)+vec3(.01,.015,.025);
 }
 
 void main(){
@@ -336,8 +357,11 @@ void main(){
                         hitStation=true;
                         vec3 ln=nrmSt(lp);
                         vec3 wn=stRt*ln.x+stUp*ln.y+stFwd*ln.z;
-                        // Ambient occlusion
+                        float dist=length(wp-ro);
+
+                        // Ambient occlusion & Soft Shadows
                         float ao=aoSt(lp,ln);
+                        float shadow=softShadow(lp,toBH,.005,2.0,12.0);
 
                         // ── Material classification (scaled coords) ──
                         vec3 sp=lp*.5; // Match SDF internal scale
@@ -373,87 +397,83 @@ void main(){
                         float metallic=.3,roughness=.5;
 
                         if(isWin>.5){
-                            // ██ GLASS WINDOW ██
                             hull=vec3(.04,.06,.12);
                             metallic=.08;roughness=.04;
-
                         } else if(ringWin>.5){
-                            // ██ RING GLASS WINDOW ██
                             hull=vec3(.04,.055,.11);
                             metallic=.08;roughness=.04;
-
                         } else if(domeD<.004){
-                            // ██ CUPOLA GLASS ██
                             hull=vec3(.05,.07,.14);
                             metallic=.1;roughness=.03;
-
                         } else if(pnD<.004){
-                            // Solar panels — dark blue
-                            hull=vec3(.015,.025,.07);
-                            float cx=step(.9,abs(sin(sp.x*55.)));
-                            float cz=step(.9,abs(sin(sp.z*45.)));
-                            hull+=vec3(.005,.008,.018)*(cx+cz);
-                            hull+=vec3(.02,.03,.07)*max(0.,ln.y)*.5;
-                            metallic=.2;roughness=.1;
-
+                            // Solar panels with procedural 4K hex grid bump
+                            hull=vec3(.01,.015,.04);
+                            float hex=step(.9,sin(sp.x*120.))*step(.9,sin(sp.z*120.));
+                            hull+=vec3(.01,.02,.05)*hex;
+                            wn=bumpN(wn,sp,150.,.04,dist);
+                            metallic=.3;roughness=.15;
                         } else if(radD<.004){
-                            // Radiator — gold foil
-                            hull=vec3(.24,.14,.04);
-                            hull+=vec3(.04,.02,.005)*step(.93,abs(sin(sp.z*50.)));
-                            metallic=.85;roughness=.2;
-
+                            // Radiator with procedural foil crinkles
+                            hull=vec3(.3,.2,.05);
+                            hull+=vec3(.05,.03,.01)*fbmFake3(sp*100.);
+                            wn=bumpN(wn,sp,80.,.06,dist);
+                            metallic=.95;roughness=.25;
                         } else if(enD<.005){
                             hull=vec3(.15,.17,.2);
                             hull+=vec3(.06,.16,.45)*(.5+.5*sin(t*5.));
+                            wn=bumpN(wn,sp,60.,.02,dist);
                             metallic=.7;roughness=.3;
-
                         } else if(ftD<.005){
                             hull=vec3(.48,.5,.52);
                             hull=mix(hull,vec3(.55,.22,.08),step(.95,abs(sin(sp.z*25.)))*.35);
+                            wn=bumpN(wn,sp,40.,.03,dist);
                             metallic=.05;roughness=.7;
-
                         } else if(rnD<.005){
-                            hull=vec3(.32,.34,.38);
+                            hull=vec3(.65,.67,.7); // Brighter white for ring
                             float rAng=atan(rlp.y,rlp.x);
-                            hull=mix(hull,vec3(.2,.22,.26),step(.95,abs(sin(rAng*12.)))*.3);
-                            hull+=vec3(.02)*smoothstep(.42,.38,length(fract(vec2(rAng*4.,rlp.z*12.))-.5));
-                            metallic=.5;roughness=.4;
-
+                            vec2 pF=abs(fract(vec2(rAng*4.,rlp.z*12.))-.5);
+                            float frame=smoothstep(.45,.5,max(pF.x,pF.y));
+                            hull=mix(hull,vec3(.4,.42,.45),frame*.4);
+                            wn=bumpN(wn,sp,50.,.01,dist);
+                            metallic=.2;roughness=.4;
                         } else if(isModule){
-                            hull=vec3(.52,.54,.57);
+                            hull=vec3(.7,.72,.75); // Bright white ceramic plates
                             float ang=atan(sp.y,sp.x);
                             vec2 pF=abs(fract(vec2(ang*2.23,sp.z*3.82))-.5);
-                            float frame=smoothstep(.46,.5,max(pF.x,pF.y));
-                            hull=mix(hull,hull*.7,frame*.3);
-                            metallic=.3;roughness=.5;
-
+                            float frame=smoothstep(.45,.5,max(pF.x,pF.y));
+                            hull=mix(hull,vec3(.45,.47,.5),frame*.5);
+                            wn=bumpN(wn,sp,45.,.015,dist);
+                            metallic=.1;roughness=.35;
                         } else {
-                            hull=vec3(.35,.37,.42);
-                            metallic=.55;roughness=.35;
+                            hull=vec3(.35,.37,.42); // Gray trusses
+                            wn=bumpN(wn,sp,60.,.03,dist);
+                            metallic=.6;roughness=.4;
                         }
 
-                        // ── PBR Lighting ──
+                        // ── Ray-Traced PBR Lighting ──
                         vec3 viewD=normalize(ro-wp);
-                        float diskLit=max(0.,dot(wn,toBH));
-                        float backFill=max(0.,dot(wn,-toBH))*.2;
+                        float diskLit=max(0.,dot(wn,toBH))*shadow; // Shadow applied to primary light
+                        float backFill=max(0.,dot(wn,-toBH))*.15;
                         float NdV=max(0.,dot(wn,viewD));
 
-                        vec3 diff=hull*(1.-metallic*.7)*(.24+diskLit*vec3(1.,.6,.18)*2.2+backFill*vec3(.8,.5,.15));
+                        vec3 diff=hull*(1.-metallic*.7)*(.15+diskLit*vec3(1.,.7,.25)*2.5+backFill*vec3(.3,.4,.7));
 
                         vec3 halfV=normalize(toBH+viewD);
-                        float specPow=mix(16.,512.,1.-roughness);
+                        float specPow=mix(16.,1024.,1.-roughness);
                         float spec=pow(max(0.,dot(wn,halfV)),specPow);
-                        vec3 specCol=mix(vec3(.9,.6,.2),hull,metallic)*spec*diskLit;
+                        vec3 specCol=mix(vec3(1.,.8,.5),hull,metallic)*spec*diskLit;
 
+                        // True Ray-Traced Reflections
                         vec3 reflDir=reflect(-viewD,wn);
-                        vec3 envR=envCol(reflDir);
-                        float reflStr=metallic*(1.-roughness)*.4;
+                        vec3 envR=envCol(reflDir,t);
+                        float reflStr=metallic*(1.-roughness)*.6;
 
+                        // Fresnel Rim
                         float fres=pow(1.-NdV,4.);
-                        reflStr=mix(reflStr,.6,fres);
+                        reflStr=mix(reflStr,.9,fres*metallic);
+                        diff+=vec3(.2,.3,.5)*fres*(1.-metallic)*.2; // Edge sheen on non-metals
 
-                        hull=diff*ao+specCol*.2+envR*reflStr;
-                        hull+=vec3(.02,.024,.04)*ao;
+                        hull=diff*ao+specCol+envR*reflStr*ao;
 
                         // ── Emissive ──
                         vec3 emit=vec3(0.);
