@@ -295,6 +295,7 @@ function fitModelToScene(model, targetSize) {
     model.position.sub(center);
 }
 
+let blackHoleModel = null;
 let starSystemModel = null;
 let stationModel = null;
 let mixer = null; // For playing GLTF animations
@@ -302,16 +303,47 @@ let mixer = null; // For playing GLTF animations
 let loadedModels = 0;
 function checkLoadComplete() {
     loadedModels++;
-    if(loadedModels === 2) { 
+    if(loadedModels === 3) { // Wait for Black Hole, Star System, and Station!
         setTimeout(()=>{document.getElementById('splash').classList.add('gone')}, 500);
     }
 }
 
 const loader = new THREE.GLTFLoader();
 
+loader.load('/static/blackhole/scene.gltf', (gltf) => {
+    let rawModel = gltf.scene;
+    fitModelToScene(rawModel, 120); // Make the black hole MASSIVE
+    
+    blackHoleModel = new THREE.Group();
+    blackHoleModel.position.set(0, 0, -60);
+    blackHoleModel.add(rawModel);
+    
+    blackHoleModel.rotation.x = 0.05; // Almost flat
+    blackHoleModel.rotation.z = -0.15;
+    
+    scene.add(blackHoleModel);
+    
+    const diskLight = new THREE.PointLight(0xffaa55, 3, 200);
+    diskLight.position.copy(blackHoleModel.position);
+    scene.add(diskLight);
+    
+    checkLoadComplete();
+}, undefined, (e) => console.log('Blackhole load error'));
+
+// Load Volumetric Star System as the Ultimate Background
 loader.load('/static/starsystem/scene.gltf', (gltf) => {
     let rawModel = gltf.scene;
     fitModelToScene(rawModel, 500); // Scale it massively to fill the volumetric space
+    
+    // Prevent the intense HDR ToneMapping from washing the colored stars out to white
+    rawModel.traverse((child) => {
+        if (child.isMesh || child.isPoints) {
+            if (child.material && child.material.emissiveIntensity !== undefined) {
+                child.material.emissiveIntensity *= 0.15; // Dim them so colors survive HDR
+                child.material.needsUpdate = true;
+            }
+        }
+    });
     
     // Play any embedded particle animations in the star system
     if(gltf.animations && gltf.animations.length > 0) {
@@ -326,7 +358,6 @@ loader.load('/static/starsystem/scene.gltf', (gltf) => {
     starSystemModel.add(rawModel);
     
     scene.add(starSystemModel);
-    
     checkLoadComplete();
 }, undefined, (e) => console.log('StarSystem load error'));
 
@@ -381,8 +412,11 @@ function animate() {
     // Update orbit controls
     controls.update();
     
+    if (blackHoleModel) {
+        blackHoleModel.rotation.y -= 0.05 * delta; // Slowly rotate the accretion disk
+    }
     if (starSystemModel) {
-        starSystemModel.rotation.y -= 0.01 * delta; // Very slow majestic rotation of the galaxy
+        starSystemModel.rotation.y -= 0.01 * delta; // Majestic slow galaxy rotation
     }
     if (stationModel) {
         // Very subtle floating (only Y axis so OrbitControls doesn't jitter too much)
