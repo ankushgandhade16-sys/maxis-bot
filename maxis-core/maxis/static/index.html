@@ -248,13 +248,14 @@ renderer.toneMappingExposure = 1.2;
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-// Position camera for a good default view
-camera.position.set(0, 2, 8);
+// Position camera right above the edge of the accretion disk
+camera.position.set(-45, 6, -20);
 
 // Add OrbitControls for mouse interaction
 const controls = new THREE.OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.05;
+// We will set the target to the Space Station later, so you orbit the ship!
 
 // Post-Processing
 const renderScene = new THREE.RenderPass(scene, camera);
@@ -267,15 +268,15 @@ const composer = new THREE.EffectComposer(renderer);
 composer.addPass(renderScene);
 composer.addPass(bloomPass);
 
-// Lighting - Keep it moody so the emissive lights pop!
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.05); 
+// Lighting - Brighter as requested, while keeping the moody space vibe
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.2); 
 scene.add(ambientLight);
 
-const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
 directionalLight.position.set(5, 5, 5); 
 scene.add(directionalLight);
 
-const fillLight = new THREE.DirectionalLight(0x4466ff, 0.3);
+const fillLight = new THREE.DirectionalLight(0x4466ff, 0.8);
 fillLight.position.set(-5, -5, -5);
 scene.add(fillLight);
 
@@ -294,22 +295,43 @@ function fitModelToScene(model, targetSize) {
     model.position.sub(center);
 }
 
+let blackHoleModel = null;
 let stationModel = null;
 let mixer = null; // For playing GLTF animations
 
 let loadedModels = 0;
 function checkLoadComplete() {
     loadedModels++;
-    if(loadedModels === 1) { // Only 1 model now
+    if(loadedModels === 2) { 
         setTimeout(()=>{document.getElementById('splash').classList.add('gone')}, 500);
     }
 }
 
 const loader = new THREE.GLTFLoader();
 
+loader.load('/static/blackhole/scene.gltf', (gltf) => {
+    let rawModel = gltf.scene;
+    fitModelToScene(rawModel, 120); // Make the black hole MASSIVE
+    
+    blackHoleModel = new THREE.Group();
+    blackHoleModel.position.set(0, 0, -60);
+    blackHoleModel.add(rawModel);
+    
+    blackHoleModel.rotation.x = 0.05; // Almost flat
+    blackHoleModel.rotation.z = -0.15;
+    
+    scene.add(blackHoleModel);
+    
+    const diskLight = new THREE.PointLight(0xffaa55, 3, 200);
+    diskLight.position.copy(blackHoleModel.position);
+    scene.add(diskLight);
+    
+    checkLoadComplete();
+}, undefined, (e) => console.log('Blackhole load error'));
+
 loader.load('/static/station/scene.gltf', (gltf) => {
     let rawModel = gltf.scene;
-    fitModelToScene(rawModel, 5); // Decent size for inspection
+    fitModelToScene(rawModel, 5); // Keep the exact size the user liked
     
     // Play embedded animations!
     if(gltf.animations && gltf.animations.length > 0) {
@@ -320,11 +342,22 @@ loader.load('/static/station/scene.gltf', (gltf) => {
     }
     
     stationModel = new THREE.Group();
-    // Position it perfectly at the center (0,0,0) so OrbitControls pivots around it perfectly
-    stationModel.position.set(0, 0, 0);
-    stationModel.add(rawModel);
+    // Position it perfectly 8 units in front of the camera's original starting point
+    // Camera is (-45, 6, -20). Station is (-43.7, 5.5, -27.9).
+    stationModel.position.set(-43.7, 5.5, -27.9);
     
+    // Apply a cool initial tilt
+    stationModel.rotation.x = 0.5;
+    stationModel.rotation.y = -0.3;
+    stationModel.rotation.z = 0.2;
+    
+    stationModel.add(rawModel);
     scene.add(stationModel);
+    
+    // Lock OrbitControls to revolve around the Space Station!
+    controls.target.copy(stationModel.position);
+    controls.update();
+    
     checkLoadComplete();
 }, undefined, (e) => console.log('Station load error'));
 
@@ -346,6 +379,16 @@ function animate() {
     
     // Update orbit controls
     controls.update();
+    
+    if (blackHoleModel) {
+        blackHoleModel.rotation.y -= 0.05 * delta; // Slowly rotate the accretion disk
+    }
+    if (stationModel) {
+        // Very subtle floating (only Y axis so OrbitControls doesn't jitter too much)
+        stationModel.position.y = 5.5 + Math.sin(clock.elapsedTime * 0.5) * 0.1;
+        // Keep OrbitControls centered perfectly on the station as it bobs
+        controls.target.copy(stationModel.position);
+    }
     
     // Update animations
     if (mixer) {
