@@ -330,18 +330,33 @@ loader.load('/static/blackhole/scene.gltf', (gltf) => {
     checkLoadComplete();
 }, undefined, (e) => console.log('Blackhole load error'));
 
+// Generate a glowing circle texture for the stars
+const starCanvas = document.createElement('canvas');
+starCanvas.width = 32; starCanvas.height = 32;
+const starCtx = starCanvas.getContext('2d');
+const starGradient = starCtx.createRadialGradient(16, 16, 0, 16, 16, 16);
+starGradient.addColorStop(0, 'rgba(255,255,255,1)');
+starGradient.addColorStop(0.2, 'rgba(255,255,255,0.8)');
+starGradient.addColorStop(1, 'rgba(255,255,255,0)');
+starCtx.fillStyle = starGradient;
+starCtx.fillRect(0, 0, 32, 32);
+const starTexture = new THREE.CanvasTexture(starCanvas);
+
 // Load Volumetric Star System as the Ultimate Background
 loader.load('/static/starsystem/scene.gltf', (gltf) => {
     let rawModel = gltf.scene;
-    fitModelToScene(rawModel, 500); // Scale it massively to fill the volumetric space
+    fitModelToScene(rawModel, 800); // Scale it even larger so we are fully inside it
     
-    // Prevent the intense HDR ToneMapping from washing the colored stars out to white
+    // Fix the black-and-white noisy square points by applying Additive Blending and a circular alpha map
     rawModel.traverse((child) => {
-        if (child.isMesh || child.isPoints) {
-            if (child.material && child.material.emissiveIntensity !== undefined) {
-                child.material.emissiveIntensity *= 0.15; // Dim them so colors survive HDR
-                child.material.needsUpdate = true;
-            }
+        if (child.isPoints) {
+            child.material.map = starTexture;
+            child.material.transparent = true;
+            child.material.blending = THREE.AdditiveBlending;
+            child.material.depthWrite = false; // Prevent stars from blacking each other out
+            child.material.size = 3.0; // Make them slightly bigger
+            child.material.sizeAttenuation = false; // Keep consistent pixel size
+            child.material.needsUpdate = true;
         }
     });
     
