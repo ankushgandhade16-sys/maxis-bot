@@ -262,11 +262,20 @@ function fitModelToScene(model, targetSize, targetPosition) {
         const scale = targetSize / maxDim;
         model.scale.set(scale, scale, scale);
     }
-    // Center it then move it to the target position
+    
+    // We must wrap the model in a Pivot Group so it rotates around its true visual center!
     const newBox = new THREE.Box3().setFromObject(model);
     const center = newBox.getCenter(new THREE.Vector3());
+    
+    // Shift model so its visual center is exactly at (0,0,0) locally
     model.position.sub(center);
-    model.position.add(targetPosition);
+    
+    // Create the Pivot Group and move IT to the target position
+    const pivot = new THREE.Group();
+    pivot.position.copy(targetPosition);
+    pivot.add(model);
+    
+    return pivot;
 }
 
 let blackHoleModel = null;
@@ -274,22 +283,24 @@ let stationModel = null;
 
 const loader = new THREE.GLTFLoader();
 loader.load('/static/blackhole/scene.gltf', (gltf) => {
-    blackHoleModel = gltf.scene;
+    let rawModel = gltf.scene;
+    // Tilt the black hole first
+    rawModel.rotation.x = 0.4;
+    rawModel.rotation.z = -0.2;
+    // Then fit and extract the true centered Pivot Group
+    blackHoleModel = fitModelToScene(rawModel, 80, new THREE.Vector3(0, 0, -60));
     scene.add(blackHoleModel);
-    fitModelToScene(blackHoleModel, 80, new THREE.Vector3(0, 0, -60));
-    // Tilt the black hole so the accretion disk looks cinematic (like Gargantua)
-    blackHoleModel.rotation.x = 0.4;
-    blackHoleModel.rotation.z = -0.2;
     diskLight.position.copy(blackHoleModel.position);
 }, undefined, (e) => console.log('Blackhole load error'));
 
 loader.load('/static/station/scene.gltf', (gltf) => {
-    stationModel = gltf.scene;
+    let rawModel = gltf.scene;
+    // Tilt the station first
+    rawModel.rotation.x = 0.1;
+    rawModel.rotation.y = 0.5;
+    // Bring the station higher up into the frame and fit inside a true centered Pivot Group
+    stationModel = fitModelToScene(rawModel, 15, new THREE.Vector3(0, -1, 8));
     scene.add(stationModel);
-    // Bring the station higher up into the frame and tilt it slightly
-    fitModelToScene(stationModel, 15, new THREE.Vector3(0, -1, 8));
-    stationModel.rotation.x = 0.1;
-    stationModel.rotation.y = 0.5;
 }, undefined, (e) => console.log('Station load error'));
 
 let interact = 0, zoomTarget = 0, zoomCurrent = 0;
