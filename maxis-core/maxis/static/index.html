@@ -349,7 +349,7 @@ loader.load('/static/starsystem/need_some_space.glb', (gltf) => {
     
     // Fix the black-and-white noisy square points by completely replacing the material
     rawModel.traverse((child) => {
-        if (child.isPoints) {
+        if (child.isPoints || child.isMesh) {
             // Create a brand new, bulletproof PointsMaterial
             const newMaterial = new THREE.PointsMaterial({
                 map: starTexture,
@@ -375,6 +375,14 @@ loader.load('/static/starsystem/need_some_space.glb', (gltf) => {
                     else { colors[i]=0.9; colors[i+1]=0.9; colors[i+2]=1.0; } // White/Slight Blue
                 }
                 child.geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+            }
+            
+            if (child.isMesh) {
+                const starPoints = new THREE.Points(child.geometry, newMaterial);
+                child.parent.add(starPoints);
+                child.visible = false; // Hide the ugly solid mesh
+            } else {
+                child.material = newMaterial;
             }
         }
     });
