@@ -254,26 +254,37 @@ const directionalLight = new THREE.DirectionalLight(0xffaa55, 2.0); // Harsh dir
 directionalLight.position.set(0, 0, -1); // Pointing from black hole towards the camera
 scene.add(directionalLight);
 
+function fitModelToScene(model, targetSize, targetPosition) {
+    const box = new THREE.Box3().setFromObject(model);
+    const size = box.getSize(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z);
+    if(maxDim > 0) {
+        const scale = targetSize / maxDim;
+        model.scale.set(scale, scale, scale);
+    }
+    // Center it then move it to the target position
+    const newBox = new THREE.Box3().setFromObject(model);
+    const center = newBox.getCenter(new THREE.Vector3());
+    model.position.sub(center);
+    model.position.add(targetPosition);
+}
+
 let blackHoleModel = null;
 let stationModel = null;
 
 const loader = new THREE.GLTFLoader();
 loader.load('/static/blackhole/scene.gltf', (gltf) => {
     blackHoleModel = gltf.scene;
-    // Scale and position the black hole
-    blackHoleModel.scale.set(10, 10, 10);
-    blackHoleModel.position.set(0, 0, -50);
     scene.add(blackHoleModel);
+    fitModelToScene(blackHoleModel, 80, new THREE.Vector3(0, 0, -60));
     diskLight.position.copy(blackHoleModel.position);
-}, undefined, (e) => console.log('Blackhole load error or missing file. Waiting for user to download it.'));
+}, undefined, (e) => console.log('Blackhole load error'));
 
 loader.load('/static/station/scene.gltf', (gltf) => {
     stationModel = gltf.scene;
-    // Scale and position the space station in the foreground
-    stationModel.scale.set(0.5, 0.5, 0.5);
-    stationModel.position.set(0, -2, 5);
     scene.add(stationModel);
-}, undefined, (e) => console.log('Station load error or missing file. Waiting for user to download it.'));
+    fitModelToScene(stationModel, 15, new THREE.Vector3(0, -3, 5));
+}, undefined, (e) => console.log('Station load error'));
 
 let interact = 0, zoomTarget = 0, zoomCurrent = 0;
 function rsz() {
