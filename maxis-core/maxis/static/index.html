@@ -232,7 +232,7 @@
 //  Three.js — 3D Model Renderer
 // ══════════════════════════════════════════════════
 const cv = document.getElementById('bhCanvas');
-const renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true });
+const renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true, powerPreference: "high-performance" });
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputEncoding = THREE.sRGBEncoding;
@@ -244,15 +244,19 @@ const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerH
 camera.position.set(0, 5, 20);
 
 // Lighting
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.4); // Space ambient
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); 
 scene.add(ambientLight);
 
-const diskLight = new THREE.PointLight(0xff8822, 5, 200); // Powerful orange glow from the black hole
+const diskLight = new THREE.PointLight(0xffaa55, 3, 200); 
 scene.add(diskLight);
 
-const directionalLight = new THREE.DirectionalLight(0xffaa55, 2.0); // Harsh directional light from the accretion disk
-directionalLight.position.set(0, 0, -1); // Pointing from black hole towards the camera
+const directionalLight = new THREE.DirectionalLight(0xffffff, 3);
+directionalLight.position.set(5, 5, 5); 
 scene.add(directionalLight);
+
+const fillLight = new THREE.DirectionalLight(0x4466ff, 1);
+fillLight.position.set(-5, -5, -5);
+scene.add(fillLight);
 
 function fitModelToScene(model, targetSize) {
     const box = new THREE.Box3().setFromObject(model);
@@ -289,8 +293,8 @@ loader.load('/static/blackhole/scene.gltf', (gltf) => {
     blackHoleModel.position.set(0, 0, -60);
     blackHoleModel.add(rawModel);
     
-    blackHoleModel.rotation.x = 0.4;
-    blackHoleModel.rotation.z = -0.2;
+    blackHoleModel.rotation.x = 0.05; // Almost flat, edge-on for cinematic Interstellar look
+    blackHoleModel.rotation.z = -0.1;
     
     scene.add(blackHoleModel);
     diskLight.position.copy(blackHoleModel.position);
@@ -299,14 +303,17 @@ loader.load('/static/blackhole/scene.gltf', (gltf) => {
 
 loader.load('/static/station/scene.gltf', (gltf) => {
     let rawModel = gltf.scene;
-    fitModelToScene(rawModel, 15);
+    fitModelToScene(rawModel, 3); // Scale down the ship massively!
     
     stationModel = new THREE.Group();
-    stationModel.position.set(0, -1, 8);
+    // Position it in the lower right foreground
+    stationModel.position.set(2, -2, 10);
     stationModel.add(rawModel);
     
-    stationModel.rotation.x = 0.1;
-    stationModel.rotation.y = 0.5;
+    // Tilt the ship so it looks like it's orbiting the black hole
+    stationModel.rotation.x = 0.2;
+    stationModel.rotation.y = -0.5;
+    stationModel.rotation.z = 0.1;
     
     scene.add(stationModel);
     checkLoadComplete();
