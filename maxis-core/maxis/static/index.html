@@ -149,6 +149,12 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
 </head>
 <body>
 <div id="splash"><div style="font-family:'Outfit',sans-serif;font-size:1rem;font-weight:400;letter-spacing:0.1em;color:#888;margin-bottom:10px;">LOADING 3D ASSETS...</div><div class="s-title">ERIS</div><div class="s-sub">event horizon intelligence</div></div>
@@ -250,15 +256,26 @@ const controls = new THREE.OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.05;
 
-// Lighting
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.6); 
+// Post-Processing
+const renderScene = new THREE.RenderPass(scene, camera);
+const bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+bloomPass.threshold = 0.5; // High threshold so only the neon lights bloom
+bloomPass.strength = 1.5; // Intense glow for the lights
+bloomPass.radius = 0.5;
+
+const composer = new THREE.EffectComposer(renderer);
+composer.addPass(renderScene);
+composer.addPass(bloomPass);
+
+// Lighting - Keep it moody so the emissive lights pop!
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.05); 
 scene.add(ambientLight);
 
-const directionalLight = new THREE.DirectionalLight(0xffffff, 2);
+const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
 directionalLight.position.set(5, 5, 5); 
 scene.add(directionalLight);
 
-const fillLight = new THREE.DirectionalLight(0x4466ff, 1.0);
+const fillLight = new THREE.DirectionalLight(0x4466ff, 0.3);
 fillLight.position.set(-5, -5, -5);
 scene.add(fillLight);
 
@@ -278,6 +295,7 @@ function fitModelToScene(model, targetSize) {
 }
 
 let stationModel = null;
+let mixer = null; // For playing GLTF animations
 
 let loadedModels = 0;
 function checkLoadComplete() {
@@ -293,6 +311,14 @@ loader.load('/static/station/scene.gltf', (gltf) => {
     let rawModel = gltf.scene;
     fitModelToScene(rawModel, 5); // Decent size for inspection
     
+    // Play embedded animations!
+    if(gltf.animations && gltf.animations.length > 0) {
+        mixer = new THREE.AnimationMixer(rawModel);
+        gltf.animations.forEach((clip) => {
+            mixer.clipAction(clip).play();
+        });
+    }
+    
     stationModel = new THREE.Group();
     // Position it perfectly at the center (0,0,0) so OrbitControls pivots around it perfectly
     stationModel.position.set(0, 0, 0);
@@ -307,6 +333,7 @@ function rsz() {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
+    composer.setSize(window.innerWidth, window.innerHeight);
 }
 window.addEventListener('resize', rsz);
 rsz(); // Call immediately to fix initial aspect ratio stretch
@@ -315,11 +342,17 @@ window.addEventListener('click', () => { interact = Math.min(interact + 0.5, 1.5
 const clock = new THREE.Clock();
 function animate() {
     requestAnimationFrame(animate);
+    const delta = clock.getDelta();
     
     // Update orbit controls
     controls.update();
     
-    renderer.render(scene, camera);
+    // Update animations
+    if (mixer) {
+        mixer.update(delta);
+    }
+    
+    composer.render();
 }
 animate();
 
