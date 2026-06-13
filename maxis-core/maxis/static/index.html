@@ -148,6 +148,13 @@
     <!-- Three.js & GLTFLoader -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <!-- Post-Processing for Cinematic Bloom -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
 </head>
 <body>
 <div id="splash"><div style="font-family:'Outfit',sans-serif;font-size:1rem;font-weight:400;letter-spacing:0.1em;color:#888;margin-bottom:10px;">LOADING 3D ASSETS...</div><div class="s-title">ERIS</div><div class="s-sub">event horizon intelligence</div></div>
@@ -241,13 +248,25 @@ renderer.toneMappingExposure = 1.2;
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.position.set(0, 5, 20);
+// Position camera right above the edge of the accretion disk, looking towards the singularity
+camera.position.set(-45, 6, -20);
+
+// Post-Processing
+const renderScene = new THREE.RenderPass(scene, camera);
+const bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+bloomPass.threshold = 0.1;
+bloomPass.strength = 1.8; // Blinding cinematic glow
+bloomPass.radius = 1.2;
+
+const composer = new THREE.EffectComposer(renderer);
+composer.addPass(renderScene);
+composer.addPass(bloomPass);
 
 // Lighting
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); 
 scene.add(ambientLight);
 
-const diskLight = new THREE.PointLight(0xffaa55, 3, 200); 
+const diskLight = new THREE.PointLight(0xffaa55, 6, 200); 
 scene.add(diskLight);
 
 const directionalLight = new THREE.DirectionalLight(0xffffff, 3);
@@ -287,14 +306,14 @@ function checkLoadComplete() {
 const loader = new THREE.GLTFLoader();
 loader.load('/static/blackhole/scene.gltf', (gltf) => {
     let rawModel = gltf.scene;
-    fitModelToScene(rawModel, 80);
+    fitModelToScene(rawModel, 120); // Make the black hole MASSIVE
     
     blackHoleModel = new THREE.Group();
     blackHoleModel.position.set(0, 0, -60);
     blackHoleModel.add(rawModel);
     
-    blackHoleModel.rotation.x = 0.05; // Almost flat, edge-on for cinematic Interstellar look
-    blackHoleModel.rotation.z = -0.1;
+    blackHoleModel.rotation.x = 0.05; // Almost flat
+    blackHoleModel.rotation.z = -0.15;
     
     scene.add(blackHoleModel);
     diskLight.position.copy(blackHoleModel.position);
@@ -303,17 +322,16 @@ loader.load('/static/blackhole/scene.gltf', (gltf) => {
 
 loader.load('/static/station/scene.gltf', (gltf) => {
     let rawModel = gltf.scene;
-    fitModelToScene(rawModel, 3); // Scale down the ship massively!
+    fitModelToScene(rawModel, 1.5); // Microscopic ship scale
     
     stationModel = new THREE.Group();
-    // Position it in the lower right foreground
-    stationModel.position.set(2, -2, 10);
+    // Position it hovering just above the accretion disk, directly in front of the camera
+    stationModel.position.set(-30, 2, -35);
     stationModel.add(rawModel);
     
-    // Tilt the ship so it looks like it's orbiting the black hole
-    stationModel.rotation.x = 0.2;
-    stationModel.rotation.y = -0.5;
-    stationModel.rotation.z = 0.1;
+    stationModel.rotation.x = 0.3;
+    stationModel.rotation.y = -0.8;
+    stationModel.rotation.z = 0.2;
     
     scene.add(stationModel);
     checkLoadComplete();
@@ -324,6 +342,7 @@ function rsz() {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
+    composer.setSize(window.innerWidth, window.innerHeight);
 }
 window.addEventListener('resize', rsz);
 rsz(); // Call immediately to fix initial aspect ratio stretch
@@ -333,25 +352,26 @@ const clock = new THREE.Clock();
 function animate() {
     requestAnimationFrame(animate);
     const delta = clock.getDelta();
-    const elapsedTime = clock.getElapsedTime();
     
-    interact *= 0.97;
-    zoomCurrent += (zoomTarget - zoomCurrent) * 0.025;
+    // Smooth camera lookAt target (Center of Black Hole)
+    camera.lookAt(0, 0, -60);
     
     if (blackHoleModel) {
-        blackHoleModel.rotation.y += 0.1 * delta; // Slowly rotate the accretion disk
+        blackHoleModel.rotation.y -= 0.05 * delta; // Slowly rotate the accretion disk
     }
     if (stationModel) {
-        // Subtle floating animation for the station
-        stationModel.position.y = -2 + Math.sin(elapsedTime * 0.5) * 0.5;
-        stationModel.rotation.z = Math.sin(elapsedTime * 0.2) * 0.05;
-        stationModel.rotation.y = interact * 0.2;
+        // Orbit the station slowly around its pivot
+        stationModel.position.x = -30 + Math.sin(clock.elapsedTime * 0.1) * 2;
+        stationModel.position.z = -35 + Math.cos(clock.elapsedTime * 0.1) * 2;
+        stationModel.rotation.y += 0.1 * delta;
+        stationModel.rotation.z += 0.05 * delta;
     }
     
-    // Zoom interaction effect
-    camera.position.z = 20 - zoomCurrent * 5;
+    // Zoom interaction effect (smooth FOV shift instead of moving the camera physically)
+    camera.fov = 45 - zoomCurrent * 15;
+    camera.updateProjectionMatrix();
     
-    renderer.render(scene, camera);
+    composer.render();
 }
 animate();
 
