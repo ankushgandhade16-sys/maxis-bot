@@ -356,6 +356,8 @@ loader.load('/static/starsystem/scene.gltf', (gltf) => {
             child.material.depthWrite = false; // Prevent stars from blacking each other out
             child.material.size = 3.0; // Make them slightly bigger
             child.material.sizeAttenuation = false; // Keep consistent pixel size
+            child.material.vertexColors = true; // FORCE COLORS TO RENDER
+            child.material.color = new THREE.Color(0xffffff); // Prevent base color from tinting vertex colors
             child.material.needsUpdate = true;
         }
     });
