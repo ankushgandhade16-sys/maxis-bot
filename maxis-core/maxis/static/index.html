@@ -295,7 +295,7 @@ function fitModelToScene(model, targetSize) {
     model.position.sub(center);
 }
 
-let blackHoleModel = null;
+let starSystemModel = null;
 let stationModel = null;
 let mixer = null; // For playing GLTF animations
 
@@ -309,25 +309,26 @@ function checkLoadComplete() {
 
 const loader = new THREE.GLTFLoader();
 
-loader.load('/static/blackhole/scene.gltf', (gltf) => {
+loader.load('/static/starsystem/scene.gltf', (gltf) => {
     let rawModel = gltf.scene;
-    fitModelToScene(rawModel, 120); // Make the black hole MASSIVE
+    fitModelToScene(rawModel, 500); // Scale it massively to fill the volumetric space
     
-    blackHoleModel = new THREE.Group();
-    blackHoleModel.position.set(0, 0, -60);
-    blackHoleModel.add(rawModel);
+    // Play any embedded particle animations in the star system
+    if(gltf.animations && gltf.animations.length > 0) {
+        if(!mixer) mixer = new THREE.AnimationMixer(rawModel);
+        gltf.animations.forEach((clip) => {
+            mixer.clipAction(clip).play();
+        });
+    }
     
-    blackHoleModel.rotation.x = 0.05; // Almost flat
-    blackHoleModel.rotation.z = -0.15;
+    starSystemModel = new THREE.Group();
+    starSystemModel.position.set(0, 0, -100); // Push it deep into the background
+    starSystemModel.add(rawModel);
     
-    scene.add(blackHoleModel);
-    
-    const diskLight = new THREE.PointLight(0xffaa55, 3, 200);
-    diskLight.position.copy(blackHoleModel.position);
-    scene.add(diskLight);
+    scene.add(starSystemModel);
     
     checkLoadComplete();
-}, undefined, (e) => console.log('Blackhole load error'));
+}, undefined, (e) => console.log('StarSystem load error'));
 
 loader.load('/static/station/scene.gltf', (gltf) => {
     let rawModel = gltf.scene;
@@ -380,8 +381,8 @@ function animate() {
     // Update orbit controls
     controls.update();
     
-    if (blackHoleModel) {
-        blackHoleModel.rotation.y -= 0.05 * delta; // Slowly rotate the accretion disk
+    if (starSystemModel) {
+        starSystemModel.rotation.y -= 0.01 * delta; // Very slow majestic rotation of the galaxy
     }
     if (stationModel) {
         // Very subtle floating (only Y axis so OrbitControls doesn't jitter too much)
