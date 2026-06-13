@@ -169,6 +169,7 @@ float mapSt(vec3 p){
     float truss=sdRB(p,vec3(.012,.012,.55),.003);
     vec3 cb=p;cb.z=mod(cb.z+.05,.1)-.05;
     float br=min(sdRB(cb,vec3(.015,.002,.002),.001),sdRB(cb,vec3(.002,.015,.002),.001));
+    br = max(br, abs(p.z) - 0.55);
 
     // ── Pressurized modules (rounded cylinders) ──
     float hub=sdRB(p,vec3(.058,.058,.13),.016);
