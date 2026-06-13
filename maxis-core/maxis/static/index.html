@@ -148,13 +148,7 @@
     <!-- Three.js & GLTFLoader -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-    <!-- Post-Processing for Cinematic Bloom -->
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 </head>
 <body>
 <div id="splash"><div style="font-family:'Outfit',sans-serif;font-size:1rem;font-weight:400;letter-spacing:0.1em;color:#888;margin-bottom:10px;">LOADING 3D ASSETS...</div><div class="s-title">ERIS</div><div class="s-sub">event horizon intelligence</div></div>
@@ -248,39 +242,25 @@ renderer.toneMappingExposure = 1.2;
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-// Position camera right above the edge of the accretion disk, looking towards the singularity
-camera.position.set(-45, 6, -20);
+// Position camera for a good default view
+camera.position.set(0, 2, 8);
 
-// Post-Processing
-const renderScene = new THREE.RenderPass(scene, camera);
-const bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
-bloomPass.threshold = 0.3; // Higher threshold so only the absolute brightest parts bloom
-bloomPass.strength = 0.25; // Much more subtle bloom so textures aren't destroyed
-bloomPass.radius = 0.5;
-
-const composer = new THREE.EffectComposer(renderer);
-composer.addPass(renderScene);
-composer.addPass(bloomPass);
+// Add OrbitControls for mouse interaction
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
 
 // Lighting
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); 
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.6); 
 scene.add(ambientLight);
 
-const diskLight = new THREE.PointLight(0xffaa55, 2, 200); // Reduced intensity to prevent blowout
-scene.add(diskLight);
-
-const directionalLight = new THREE.DirectionalLight(0xffffff, 3);
+const directionalLight = new THREE.DirectionalLight(0xffffff, 2);
 directionalLight.position.set(5, 5, 5); 
 scene.add(directionalLight);
 
-const fillLight = new THREE.DirectionalLight(0x4466ff, 1.5);
+const fillLight = new THREE.DirectionalLight(0x4466ff, 1.0);
 fillLight.position.set(-5, -5, -5);
 scene.add(fillLight);
-
-// Dedicated light just for the Space Station so its textures look incredibly high-quality
-const stationLight = new THREE.PointLight(0xffffff, 4, 20);
-stationLight.position.set(-44, 6, -22); 
-scene.add(stationLight);
 
 function fitModelToScene(model, targetSize) {
     const box = new THREE.Box3().setFromObject(model);
@@ -297,46 +277,26 @@ function fitModelToScene(model, targetSize) {
     model.position.sub(center);
 }
 
-let blackHoleModel = null;
 let stationModel = null;
 
 let loadedModels = 0;
 function checkLoadComplete() {
     loadedModels++;
-    if(loadedModels === 2) {
+    if(loadedModels === 1) { // Only 1 model now
         setTimeout(()=>{document.getElementById('splash').classList.add('gone')}, 500);
     }
 }
 
 const loader = new THREE.GLTFLoader();
-loader.load('/static/blackhole/scene.gltf', (gltf) => {
-    let rawModel = gltf.scene;
-    fitModelToScene(rawModel, 120); // Make the black hole MASSIVE
-    
-    blackHoleModel = new THREE.Group();
-    blackHoleModel.position.set(0, 0, -60);
-    blackHoleModel.add(rawModel);
-    
-    blackHoleModel.rotation.x = 0.05; // Almost flat
-    blackHoleModel.rotation.z = -0.15;
-    
-    scene.add(blackHoleModel);
-    diskLight.position.copy(blackHoleModel.position);
-    checkLoadComplete();
-}, undefined, (e) => console.log('Blackhole load error'));
 
 loader.load('/static/station/scene.gltf', (gltf) => {
     let rawModel = gltf.scene;
-    fitModelToScene(rawModel, 2); // Scale it down perfectly for extreme close-up
+    fitModelToScene(rawModel, 5); // Decent size for inspection
     
     stationModel = new THREE.Group();
-    // Position it hovering extremely close to the camera!
-    stationModel.position.set(-43, 4, -25);
+    // Position it perfectly at the center (0,0,0) so OrbitControls pivots around it perfectly
+    stationModel.position.set(0, 0, 0);
     stationModel.add(rawModel);
-    
-    stationModel.rotation.x = 0.3;
-    stationModel.rotation.y = -0.5;
-    stationModel.rotation.z = 0.1;
     
     scene.add(stationModel);
     checkLoadComplete();
@@ -347,7 +307,6 @@ function rsz() {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
-    composer.setSize(window.innerWidth, window.innerHeight);
 }
 window.addEventListener('resize', rsz);
 rsz(); // Call immediately to fix initial aspect ratio stretch
@@ -356,28 +315,11 @@ window.addEventListener('click', () => { interact = Math.min(interact + 0.5, 1.5
 const clock = new THREE.Clock();
 function animate() {
     requestAnimationFrame(animate);
-    const delta = clock.getDelta();
     
-    // Smooth camera lookAt target: Looking tangentially along the rings!
-    // This puts the black hole center (0,0,-60) on the right side of the screen.
-    camera.lookAt(-35, 2, -80);
+    // Update orbit controls
+    controls.update();
     
-    if (blackHoleModel) {
-        blackHoleModel.rotation.y -= 0.05 * delta; // Slowly rotate the accretion disk
-    }
-    if (stationModel) {
-        // Subtle close-up floating animation
-        stationModel.position.x = -43 + Math.sin(clock.elapsedTime * 0.2) * 0.2;
-        stationModel.position.y = 4 + Math.sin(clock.elapsedTime * 0.5) * 0.1;
-        stationModel.rotation.y += 0.1 * delta;
-        stationModel.rotation.z += 0.05 * delta;
-    }
-    
-    // Zoom interaction effect (smooth FOV shift instead of moving the camera physically)
-    camera.fov = 45 - zoomCurrent * 15;
-    camera.updateProjectionMatrix();
-    
-    composer.render();
+    renderer.render(scene, camera);
 }
 animate();
 
