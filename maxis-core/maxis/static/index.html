@@ -343,7 +343,7 @@ starCtx.fillRect(0, 0, 32, 32);
 const starTexture = new THREE.CanvasTexture(starCanvas);
 
 // Load Volumetric Star System as the Ultimate Background
-loader.load('/static/starsystem/scene.gltf', (gltf) => {
+loader.load('/static/starsystem/need_some_space.glb', (gltf) => {
     let rawModel = gltf.scene;
     fitModelToScene(rawModel, 800); // Scale it even larger so we are fully inside it
     
