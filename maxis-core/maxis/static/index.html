@@ -574,8 +574,8 @@ void main(){
         }
 
         if(!absorbed){
-            // Volumetric Parallax Grid Stars (Millions of 3D dots)
-            for(float s=30.;s<=400.;s+=30.){
+            // Volumetric Parallax Grid Stars - High Quality Anti-Aliased
+            for(float s=40.;s<=280.;s+=40.){ // 7 layers for deep parallax without sub-pixel aliasing
                 // Project ray from actual camera position onto finite spheres to create true 3D parallax
                 vec3 fd = normalize(ro + vel * (s * 0.6));
                 float phi=atan(fd.z,fd.x);
@@ -584,16 +584,23 @@ void main(){
                 
                 vec2 cell=floor(sc*s);
                 float hv=hash(cell);
-                if(hv>.90){ // 10% density for millions of stars
+                if(hv>.80){ // 20% density for millions of stars
                     vec2 sp=(cell+vec2(hash2(cell),hash(cell+vec2(7.3,13.1))))/s;
                     float d=length(sc-sp)*s;
-                    float sz=mix(30.,60.,hash(cell+vec2(3.1,0.)));
-                    float pt=exp(-d*d*sz); // Sharp dots
-                    float b=pow((hv-.90)/.10, 2.0); // Brightness falloff to preserve deep blackness
+                    
+                    // High-quality smoothstep dot that drops to exactly 0 at cell border (0.5 max radius)
+                    // This prevents any square clipping and acts as natural anti-aliasing!
+                    float pt = smoothstep(0.5, 0.0, d);
+                    
+                    // Add variation to star core sharpness
+                    float sh = mix(4.0, 16.0, hash(cell+vec2(3.1,0.)));
+                    pt = pow(pt, sh);
+                    
+                    float b=pow((hv-.80)/.20, 2.0); // Brightness falloff to preserve deep blackness
                     float tw=.92+.08*sin(t*.3+hv*150.);
                     float temp=hash2(cell);
                     vec3 starCol=temp<.3?vec3(.7,.75,1.):temp<.6?vec3(.95,.93,.88):vec3(1.,.85,.7);
-                    col+=starCol*pt*b*tw*.3;
+                    col+=starCol*pt*b*tw*.8;
                 }
             }
 
