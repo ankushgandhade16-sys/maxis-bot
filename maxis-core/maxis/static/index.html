@@ -248,7 +248,7 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.2;
 
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 50000);
 // Position camera right above the edge of the accretion disk
 camera.position.set(-45, 6, -20);
 
@@ -358,13 +358,13 @@ plyLoader.load('/static/starsystem/need_some_space.ply', (geometry) => {
         color: 0xffffff
     });
     
-    // Scale and center the raw geometry
+    // Center the raw geometry
     geometry.computeBoundingBox();
     const center = geometry.boundingBox.getCenter(new THREE.Vector3());
     geometry.translate(-center.x, -center.y, -center.z);
-    geometry.scale(800, 800, 800);
     
     starSystemModel = new THREE.Points(geometry, newMaterial);
+    starSystemModel.scale.set(50, 50, 50); // Scale the object safely
     starSystemModel.position.set(0, 0, -100);
     
     scene.add(starSystemModel);
