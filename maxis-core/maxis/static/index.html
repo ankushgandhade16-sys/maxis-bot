@@ -277,13 +277,19 @@ loader.load('/static/blackhole/scene.gltf', (gltf) => {
     blackHoleModel = gltf.scene;
     scene.add(blackHoleModel);
     fitModelToScene(blackHoleModel, 80, new THREE.Vector3(0, 0, -60));
+    // Tilt the black hole so the accretion disk looks cinematic (like Gargantua)
+    blackHoleModel.rotation.x = 0.4;
+    blackHoleModel.rotation.z = -0.2;
     diskLight.position.copy(blackHoleModel.position);
 }, undefined, (e) => console.log('Blackhole load error'));
 
 loader.load('/static/station/scene.gltf', (gltf) => {
     stationModel = gltf.scene;
     scene.add(stationModel);
-    fitModelToScene(stationModel, 15, new THREE.Vector3(0, -3, 5));
+    // Bring the station higher up into the frame and tilt it slightly
+    fitModelToScene(stationModel, 15, new THREE.Vector3(0, -1, 8));
+    stationModel.rotation.x = 0.1;
+    stationModel.rotation.y = 0.5;
 }, undefined, (e) => console.log('Station load error'));
 
 let interact = 0, zoomTarget = 0, zoomCurrent = 0;
@@ -293,6 +299,7 @@ function rsz() {
     renderer.setSize(window.innerWidth, window.innerHeight);
 }
 window.addEventListener('resize', rsz);
+rsz(); // Call immediately to fix initial aspect ratio stretch
 window.addEventListener('click', () => { interact = Math.min(interact + 0.5, 1.5); });
 
 const clock = new THREE.Clock();
