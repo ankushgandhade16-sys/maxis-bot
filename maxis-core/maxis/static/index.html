@@ -866,24 +866,104 @@ function playB64(b){if(currentAudio)currentAudio.pause();if('speechSynthesis'in 
 
 connect();
 </script>
+<audio id="bgMusic" src="/static/song.mp3" loop preload="auto"></audio>
+
 <script>
-// Ambient Deep Space Soundtrack (Hans Zimmer style)
-let bgMusic = new Audio('https://upload.wikimedia.org/wikipedia/commons/4/4b/Ambient_space_music.ogg');
-bgMusic.loop = true;
-bgMusic.volume = 0.3;
+// Fallback Web Audio API Space Drone
+let audioCtx;
+let dronePlaying = false;
+
+function startSpaceDrone() {
+    if (dronePlaying) return;
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    audioCtx = new AudioContext();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    dronePlaying = true;
+    
+    const masterGain = audioCtx.createGain();
+    masterGain.gain.setValueAtTime(0, audioCtx.currentTime);
+    masterGain.gain.linearRampToValueAtTime(0.4, audioCtx.currentTime + 5);
+    masterGain.connect(audioCtx.destination);
+    
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(600, audioCtx.currentTime);
+    filter.Q.setValueAtTime(1, audioCtx.currentTime);
+    filter.connect(masterGain);
+    
+    const lfo = audioCtx.createOscillator();
+    lfo.type = 'sine';
+    lfo.frequency.setValueAtTime(0.05, audioCtx.currentTime);
+    const lfoGain = audioCtx.createGain();
+    lfoGain.gain.setValueAtTime(400, audioCtx.currentTime);
+    lfo.connect(lfoGain);
+    lfoGain.connect(filter.frequency);
+    lfo.start();
+    
+    const osc1 = audioCtx.createOscillator();
+    osc1.type = 'sawtooth';
+    osc1.frequency.setValueAtTime(146.83, audioCtx.currentTime);
+    const osc2 = audioCtx.createOscillator();
+    osc2.type = 'sawtooth';
+    osc2.frequency.setValueAtTime(219.5, audioCtx.currentTime);
+    const osc3 = audioCtx.createOscillator();
+    osc3.type = 'sine';
+    osc3.frequency.setValueAtTime(73.42, audioCtx.currentTime);
+    const osc4 = audioCtx.createOscillator();
+    osc4.type = 'sine';
+    osc4.frequency.setValueAtTime(880.00, audioCtx.currentTime);
+    
+    const shimmerGain = audioCtx.createGain();
+    shimmerGain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+    osc4.connect(shimmerGain);
+    shimmerGain.connect(masterGain);
+    
+    osc1.connect(filter);
+    osc2.connect(filter);
+    osc3.connect(filter);
+    
+    osc1.start();
+    osc2.start();
+    osc3.start();
+    osc4.start();
+    console.log('Fallback: Web Audio API Space Drone initialized.');
+}
+
+// Custom Local Soundtrack Logic
+let bgAudio = document.getElementById('bgMusic');
+bgAudio.volume = 0.2;
 let musicStarted = false;
-window.addEventListener('click', () => {
+let fallbackActive = false;
+
+bgAudio.addEventListener('error', () => {
+    fallbackActive = true;
+});
+
+function tryPlayMusic() {
     if(!musicStarted) {
-        bgMusic.play().catch(e => console.log('Audio blocked', e));
-        musicStarted = true;
+        if (fallbackActive) {
+            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+            else if (!dronePlaying) startSpaceDrone();
+            musicStarted = true;
+        } else {
+            bgAudio.play().then(() => {
+                musicStarted = true;
+                console.log('Custom local background music started playing.');
+            }).catch(e => {
+                console.log('Audio missing or blocked, falling back to synth', e);
+                fallbackActive = true;
+                if (!dronePlaying) startSpaceDrone();
+                musicStarted = true;
+            });
+        }
+    } else {
+        if (fallbackActive && audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
     }
-}, {once: true});
-window.addEventListener('keydown', () => {
-    if(!musicStarted) {
-        bgMusic.play().catch(e => console.log('Audio blocked', e));
-        musicStarted = true;
-    }
-}, {once: true});
+}
+
+window.addEventListener('click', tryPlayMusic);
+window.addEventListener('keydown', tryPlayMusic);
 </script>
 
 </body>
