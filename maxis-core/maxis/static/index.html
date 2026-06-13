@@ -254,9 +254,9 @@ camera.position.set(-45, 6, -20);
 // Post-Processing
 const renderScene = new THREE.RenderPass(scene, camera);
 const bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
-bloomPass.threshold = 0.1;
-bloomPass.strength = 1.8; // Blinding cinematic glow
-bloomPass.radius = 1.2;
+bloomPass.threshold = 0.2;
+bloomPass.strength = 0.6; // Subtle cinematic glow, not blinding
+bloomPass.radius = 0.8;
 
 const composer = new THREE.EffectComposer(renderer);
 composer.addPass(renderScene);
@@ -266,7 +266,7 @@ composer.addPass(bloomPass);
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); 
 scene.add(ambientLight);
 
-const diskLight = new THREE.PointLight(0xffaa55, 6, 200); 
+const diskLight = new THREE.PointLight(0xffaa55, 2, 200); // Reduced intensity to prevent blowout
 scene.add(diskLight);
 
 const directionalLight = new THREE.DirectionalLight(0xffffff, 3);
@@ -322,11 +322,11 @@ loader.load('/static/blackhole/scene.gltf', (gltf) => {
 
 loader.load('/static/station/scene.gltf', (gltf) => {
     let rawModel = gltf.scene;
-    fitModelToScene(rawModel, 1.5); // Microscopic ship scale
+    fitModelToScene(rawModel, 4); // Appropriate scale
     
     stationModel = new THREE.Group();
     // Position it hovering just above the accretion disk, directly in front of the camera
-    stationModel.position.set(-30, 2, -35);
+    stationModel.position.set(-42, 2, -40);
     stationModel.add(rawModel);
     
     stationModel.rotation.x = 0.3;
@@ -353,16 +353,18 @@ function animate() {
     requestAnimationFrame(animate);
     const delta = clock.getDelta();
     
-    // Smooth camera lookAt target (Center of Black Hole)
-    camera.lookAt(0, 0, -60);
+    // Smooth camera lookAt target: Looking tangentially along the rings!
+    // This puts the black hole center (0,0,-60) on the right side of the screen.
+    camera.lookAt(-35, 2, -80);
     
     if (blackHoleModel) {
         blackHoleModel.rotation.y -= 0.05 * delta; // Slowly rotate the accretion disk
     }
     if (stationModel) {
-        // Orbit the station slowly around its pivot
-        stationModel.position.x = -30 + Math.sin(clock.elapsedTime * 0.1) * 2;
-        stationModel.position.z = -35 + Math.cos(clock.elapsedTime * 0.1) * 2;
+        // Orbit the station slowly around its pivot directly in front of camera
+        stationModel.position.x = -42 + Math.sin(clock.elapsedTime * 0.2) * 1;
+        stationModel.position.z = -40 + Math.cos(clock.elapsedTime * 0.2) * 1;
+        stationModel.position.y = 2 + Math.sin(clock.elapsedTime * 0.5) * 0.2;
         stationModel.rotation.y += 0.1 * delta;
         stationModel.rotation.z += 0.05 * delta;
     }
