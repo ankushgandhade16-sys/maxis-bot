@@ -574,23 +574,26 @@ void main(){
         }
 
         if(!absorbed){
-            vec3 fd=normalize(vel);
-            float phi=atan(fd.z,fd.x);
-            float psi=asin(clamp(fd.y,-1.,1.));
-            vec2 sc=vec2(phi,psi);
-            for(float s=40.;s<=200.;s+=40.){
+            // Volumetric Parallax Grid Stars (Millions of 3D dots)
+            for(float s=30.;s<=400.;s+=30.){
+                // Project ray from actual camera position onto finite spheres to create true 3D parallax
+                vec3 fd = normalize(ro + vel * (s * 0.6));
+                float phi=atan(fd.z,fd.x);
+                float psi=asin(clamp(fd.y,-1.,1.));
+                vec2 sc=vec2(phi,psi);
+                
                 vec2 cell=floor(sc*s);
                 float hv=hash(cell);
-                if(hv>.98){
+                if(hv>.90){ // 10% density for millions of stars
                     vec2 sp=(cell+vec2(hash2(cell),hash(cell+vec2(7.3,13.1))))/s;
                     float d=length(sc-sp)*s;
-                    float sz=mix(20.,35.,hash(cell+vec2(3.1,0.)));
-                    float pt=exp(-d*d*sz);
-                    float b=pow((hv-.98)/.02,.5);
+                    float sz=mix(30.,60.,hash(cell+vec2(3.1,0.)));
+                    float pt=exp(-d*d*sz); // Sharp dots
+                    float b=pow((hv-.90)/.10, 2.0); // Brightness falloff to preserve deep blackness
                     float tw=.92+.08*sin(t*.3+hv*150.);
                     float temp=hash2(cell);
                     vec3 starCol=temp<.3?vec3(.7,.75,1.):temp<.6?vec3(.95,.93,.88):vec3(1.,.85,.7);
-                    col+=starCol*pt*b*tw*.2;
+                    col+=starCol*pt*b*tw*.3;
                 }
             }
 
@@ -642,6 +645,13 @@ void main(){
             <span class="hud-brand" id="topbarLabel">ERIS</span>
         </div>
         <div class="hud-right">
+            <button class="hud-btn" id="bgMuteBtn" title="Toggle Background Music" style="margin-right:8px; display:flex; align-items:center; justify-content:center;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 18V5l12-2v13"></path>
+                    <circle cx="6" cy="18" r="3"></circle>
+                    <circle cx="18" cy="16" r="3"></circle>
+                </svg>
+            </button>
             <select class="model-sel" id="modelSelector">
                 <optgroup label="Google (Gemini)"><option value="gemini-3.1-flash-lite" selected>⚡ Eris Swift</option><option value="gemini-3.5-flash">🧠 Eris Pro</option></optgroup>
                 <optgroup label="OpenRouter"><option value="anthropic/claude-sonnet-latest">✨ Fabel 5</option><option value="nvidia/nemotron-3-ultra-550b-a55b">🐉 Nemotron 3</option></optgroup>
@@ -870,6 +880,31 @@ connect();
 <audio id="bgMusic" src="/static/song.mp3?v=2" loop preload="auto"></audio>
 
 <script>
+// Background Music Mute Logic
+const bgMuteBtn = document.getElementById('bgMuteBtn');
+const bgMusic = document.getElementById('bgMusic');
+let bgMuted = localStorage.getItem('bg_muted') === 'true';
+
+function updateBgMuteIcon() {
+    if (bgMuted) {
+        bgMuteBtn.style.color = 'var(--danger)';
+        bgMuteBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="1" y1="1" x2="23" y2="23"></line><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>';
+    } else {
+        bgMuteBtn.style.color = 'var(--text-muted)';
+        bgMuteBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>';
+    }
+}
+
+bgMusic.muted = bgMuted;
+updateBgMuteIcon();
+
+bgMuteBtn.addEventListener('click', () => {
+    bgMuted = !bgMuted;
+    bgMusic.muted = bgMuted;
+    localStorage.setItem('bg_muted', bgMuted);
+    updateBgMuteIcon();
+});
+
 // Fallback Web Audio API Space Drone
 let audioCtx;
 let dronePlaying = false;
