@@ -584,7 +584,7 @@ void main(){
                 
                 vec2 cell=floor(sc*s);
                 float hv=hash(cell);
-                if(hv>.80){ // 20% density for millions of stars
+                if(hv>.88){ // 12% density (slightly lowered to reduce crowding)
                     vec2 sp=(cell+vec2(hash2(cell),hash(cell+vec2(7.3,13.1))))/s;
                     float d=length(sc-sp)*s;
                     
@@ -596,7 +596,7 @@ void main(){
                     float sh = mix(4.0, 16.0, hash(cell+vec2(3.1,0.)));
                     pt = pow(pt, sh);
                     
-                    float b=pow((hv-.80)/.20, 2.0); // Brightness falloff to preserve deep blackness
+                    float b=pow((hv-.88)/.12, 1.5); // Brightness falloff adjusted to keep stars popping
                     float tw=.92+.08*sin(t*.3+hv*150.);
                     float temp=hash2(cell);
                     vec3 starCol=temp<.3?vec3(.7,.75,1.):temp<.6?vec3(.95,.93,.88):vec3(1.,.85,.7);
