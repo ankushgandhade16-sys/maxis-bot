@@ -143,487 +143,11 @@
 
         @media(max-width:768px){.chat-area,.creator-panel{width:100%;border-left:none}.s-title{letter-spacing:16px}.login-card{width:85%;padding:30px 22px}.message{max-width:95%}}
     </style>
-    <script id="vs" type="x-shader/x-vertex">attribute vec2 a_pos;void main(){gl_Position=vec4(a_pos,0,1);}</script>
-    <script id="fs" type="x-shader/x-fragment">
-precision highp float;
-uniform vec2 u_res;
-uniform float u_time;
-uniform float u_interact;
-uniform float u_zoom;
+    
 
-float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
-float hash2(vec2 p){return fract(sin(dot(p,vec2(41.1,17.4)))*43758.5453);}
-float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);}
-float noise3(vec3 p){return noise(p.xz+p.y*7.3);}
-float fbm3(vec2 p){float v=0.,a=.5;for(int i=0;i<3;i++){v+=a*noise(p);p=p*2.1+vec2(1.7,9.2);a*=.5;}return v;}
-float fbmFake3(vec3 p){return fbm3(p.xz+p.y*7.3);}
-
-float sdBox3(vec3 p,vec3 b){vec3 d=abs(p)-b;return length(max(d,0.))+min(max(d.x,max(d.y,d.z)),0.);}
-float sdRB(vec3 p,vec3 b,float r){vec3 q=abs(p)-b+r;return length(max(q,0.))-r;}
-float smin(float a,float b,float k){float h=clamp(.5+.5*(b-a)/k,0.,1.);return mix(b,a,h)-k*h*(1.-h);}
-
-// ═══ SPACE STATION SDF — PHOTOREALISTIC ═══
-float mapSt(vec3 p){
-    p*=.5; // Scale up station 2x
-    // ── Main truss (rounded) ──
-    float truss=sdRB(p,vec3(.012,.012,.55),.003);
-    vec3 cb=p;cb.z=mod(cb.z+.05,.1)-.05;
-    float br=min(sdRB(cb,vec3(.015,.002,.002),.001),sdRB(cb,vec3(.002,.015,.002),.001));
-    br = max(br, abs(p.z) - 0.55);
-
-    // ── Pressurized modules (rounded cylinders) ──
-    float hub=sdRB(p,vec3(.058,.058,.13),.016);
-    float fwM=sdRB(p-vec3(0,0,.28),vec3(.038,.038,.1),.012);
-    float afM=sdRB(p+vec3(0,0,.28),vec3(.044,.044,.1),.013);
-    float topL=sdRB(vec3(p.x,p.z,p.y-.12),vec3(.03,.065,.03),.009);
-    float crM=sdRB(vec3(p.z,p.y,p.x),vec3(.026,.026,.08),.009);
-    float uL=sdRB(p-vec3(.055,0,.14),vec3(.015,.015,.035),.005);
-    float uR=sdRB(p+vec3(.055,0,-.14),vec3(.015,.015,.035),.005);
-
-    // ── Node connectors ──
-    float nd=min(min(length(p-vec3(0,0,.15))-.025,length(p+vec3(0,0,.15))-.025),min(length(p-vec3(0,.064,0))-.02,min(length(p-vec3(.055,0,.14))-.013,length(p+vec3(.055,0,.14))-.013)));
-
-    // ── Habitat ring ──
-    vec3 rp=p;rp.z+=.05;
-    float ring=length(vec2(length(rp.xy)-.26,rp.z))-.03;
-    float spk=min(min(sdRB(rp,vec3(.26,.004,.004),.001),sdRB(rp,vec3(.004,.26,.004),.001)),min(sdRB(vec3(rp.x*.707+rp.y*.707,rp.y*.707-rp.x*.707,rp.z),vec3(.26,.004,.004),.001),sdRB(vec3(rp.x*.707-rp.y*.707,rp.x*.707+rp.y*.707,rp.z),vec3(.26,.004,.004),.001)));
-
-    // ── Solar arrays ──
-    float sa=min(min(sdRB(p-vec3(.52,0,.22),vec3(.28,.001,.12),.001),sdRB(p-vec3(.52,0,-.22),vec3(.28,.001,.12),.001)),min(sdRB(p+vec3(.52,0,.22),vec3(.28,.001,.12),.001),sdRB(p+vec3(.52,0,-.22),vec3(.28,.001,.12),.001)));
-    float sSec=min(sdRB(p-vec3(.16,.088,.35),vec3(.065,.001,.038),.001),sdRB(p+vec3(.16,-.088,.35),vec3(.065,.001,.038),.001));
-    float pStr=min(min(sdRB(p-vec3(.28,0,.22),vec3(.22,.003,.003),.001),sdRB(p-vec3(.28,0,-.22),vec3(.22,.003,.003),.001)),min(sdRB(p+vec3(.28,0,.22),vec3(.22,.003,.003),.001),sdRB(p+vec3(.28,0,-.22),vec3(.22,.003,.003),.001)));
-
-    // ── Radiator panels ──
-    float rad=min(min(sdRB(p-vec3(.12,0,.22),vec3(.002,.072,.058),.001),sdRB(p+vec3(.12,0,.22),vec3(.002,.072,.058),.001)),min(sdRB(p-vec3(.12,0,-.16),vec3(.002,.062,.042),.001),sdRB(p+vec3(.12,0,-.16),vec3(.002,.062,.042),.001)));
-
-    // ── Engine cluster ──
-    float eng=min(min(length(p-vec3(.04,.04,-.57))-.018,length(p-vec3(-.04,.04,-.57))-.018),min(length(p-vec3(.04,-.04,-.57))-.018,length(p-vec3(-.04,-.04,-.57))-.018));
-    float eB=sdRB(p-vec3(0,0,-.54),vec3(.055,.055,.025),.008);
-    float nzl=min(min(max(length(p.xy-vec2(.04,.04))-.012,abs(p.z+.6)-.018),max(length(p.xy-vec2(-.04,.04))-.012,abs(p.z+.6)-.018)),min(max(length(p.xy-vec2(.04,-.04))-.012,abs(p.z+.6)-.018),max(length(p.xy-vec2(-.04,-.04))-.012,abs(p.z+.6)-.018)));
-
-    // ── Fuel tanks ──
-    float ft=min(max(length(vec2(p.x-.075,p.y))-.022,abs(p.z+.36)-.09),max(length(vec2(p.x+.075,p.y))-.022,abs(p.z+.36)-.09));
-
-    // ── Comm array ──
-    float ant=min(max(length(p.xz)-.003,abs(p.y-.2)-.13),length(p-vec3(0,.35,0))-.03);
-    float comms=min(min(length(p-vec3(.035,.3,.03))-.01,length(p-vec3(-.035,.3,-.03))-.01),length(p-vec3(0,.3,.04))-.008);
-
-    // ── Observatory dome ──
-    float dome=max(length(p-vec3(0,.06,.33))-.028,-(p.y-.06));
-
-    // ── Docking ports ──
-    float dk=min(max(length(p.xz)-.028,abs(p.y+.12)-.022),min(max(length(p.yz)-.02,abs(p.x-.1)-.016),max(length(p.yz)-.02,abs(p.x+.1)-.016)));
-
-    // ── Heat pipes ──
-    float hp=min(max(length(vec2(p.x-.025,p.y))-.003,abs(p.z)-.5),min(max(length(vec2(p.x+.025,p.y))-.003,abs(p.z)-.5),max(length(vec2(p.x,p.y-.025))-.003,abs(p.z)-.5)));
-
-    // ── RCS thruster blocks ──
-    float rcs=min(min(min(sdRB(p-vec3(.052,.052,.37),vec3(.006,.006,.01),.002),sdRB(p-vec3(-.052,.052,.37),vec3(.006,.006,.01),.002)),min(sdRB(p-vec3(.052,-.052,.37),vec3(.006,.006,.01),.002),sdRB(p-vec3(-.052,-.052,.37),vec3(.006,.006,.01),.002))),min(sdRB(p+vec3(.052,.052,.37),vec3(.006,.006,.01),.002),sdRB(p+vec3(-.052,.052,.37),vec3(.006,.006,.01),.002)));
-
-    // ── Airlock ──
-    float airlock=max(length(vec2(p.x,p.y+.065))-.018,abs(p.z-.05)-.025);
-
-    // ── Robotic arm ──
-    float arm=min(sdRB(p-vec3(.03,.068,0),vec3(.003,.003,.12),.001),sdRB(p-vec3(.03,.068,.12),vec3(.003,.003,.08),.001));
-    float armJ=length(p-vec3(.03,.068,.12))-.007;
-
-    // ── Cupola frame ──
-    float cupR=length(vec2(length(vec2(p.x,(p.y-.06)))-.022,(p.z-.33)))-.003;
-    cupR=max(cupR,-(p.y-.06));
-
-    // ── Combine (smooth unions at module junctions) ──
-    float d=truss;
-    d=min(d,br);
-    d=smin(d,hub,.008);
-    d=smin(d,fwM,.005);
-    d=smin(d,afM,.005);
-    d=smin(d,topL,.004);
-    d=smin(d,crM,.004);
-    d=min(d,min(uL,uR));
-    d=smin(d,nd,.004);
-    d=min(d,min(ring,spk));
-    d=min(d,min(sa,sSec));
-    d=min(d,pStr);
-    d=min(d,rad);
-    d=min(d,min(eng,min(eB,nzl)));
-    d=min(d,ft);
-    d=min(d,min(ant,comms));
-    d=min(d,min(dome,cupR));
-    d=min(d,dk);
-    d=min(d,hp);
-    d=min(d,rcs);
-    d=min(d,airlock);
-    d=min(d,min(arm,armJ));
-    return d*2.;
-}
-
-vec3 nrmSt(vec3 p){vec2 e=vec2(.0005,0.);return normalize(vec3(mapSt(p+e.xyy)-mapSt(p-e.xyy),mapSt(p+e.yxy)-mapSt(p-e.yxy),mapSt(p+e.yyx)-mapSt(p-e.yyx)));}
-
-// 4K Procedural Distance-Attenuated Bump Mapping
-vec3 bumpN(vec3 n,vec3 p,float freq,float str,float dist){
-    float atten=1.-smoothstep(3.,9.,dist);
-    if(atten<=0.)return n;
-    vec2 e=vec2(.002,0.);
-    float b=fbmFake3(p*freq);
-    vec3 g=vec3(fbmFake3((p+e.xyy)*freq)-b,fbmFake3((p+e.yxy)*freq)-b,fbmFake3((p+e.yyx)*freq)-b)/e.x;
-    return normalize(n-g*str*atten);
-}
-
-float aoSt(vec3 p,vec3 n){
-    float ao=0.,s=1.;
-    for(int i=1;i<=5;i++){
-        float d=.015*float(i);
-        ao+=(d-mapSt(p+n*d))*s;
-        s*=.55;
-    }
-    return clamp(1.-ao*6.,0.,1.);
-}
-
-// Ray-Traced Soft Shadows
-float softShadow(vec3 ro,vec3 rd,float mint,float maxt,float k){
-    float res=1.0;
-    float t=mint;
-    for(int i=0;i<25;i++){
-        float h=mapSt(ro+rd*t);
-        if(h<.001)return 0.0;
-        res=min(res,k*h/t);
-        t+=clamp(h,.02,.15);
-        if(t>maxt)break;
-    }
-    return clamp(res,0.0,1.0);
-}
-
-// True Black Hole Environment Reflection Approximation
-vec3 envCol(vec3 rd,float t){
-    float disk=smoothstep(.03,.0,abs(rd.y));
-    float angle=atan(rd.z,rd.x)+t*.1;
-    float doppler=1.+dot(rd.xz,vec2(-sin(angle),cos(angle)))*1.5;
-    vec3 dc=mix(vec3(1.,.8,.3),vec3(1.,.3,.05),abs(sin(angle*3.)));
-    return dc*disk*pow(clamp(doppler,.1,2.),2.)+vec3(.01,.015,.025);
-}
-
-void main(){
-    vec2 uv=(gl_FragCoord.xy-.5*u_res)/u_res.y;
-    float t=u_time;
-
-    // ── Station orbit ──
-    float stAngle=t*.05;
-    float stOrbitR=20.;
-    vec3 stPos=vec3(stOrbitR*cos(stAngle),.3+.12*sin(t*.12),stOrbitR*sin(stAngle));
-    vec3 stVelDir=normalize(vec3(-sin(stAngle),0.,cos(stAngle)));
-
-    // Station orientation
-    vec3 stFwd=stVelDir;
-    vec3 stUp=vec3(0.,1.,0.);
-    vec3 stRt=normalize(cross(stUp,stFwd));
-    stUp=cross(stFwd,stRt);
-
-    // ── Chase camera ──
-    vec3 toBH=normalize(-stPos);
-    vec3 camSide=normalize(cross(toBH,vec3(0,1,0)));
-    vec3 roBase=stPos-toBH*6.5+vec3(0.,.9,0.)+camSide*.2;
-    roBase+=camSide*.2*sin(t*.06);
-    roBase.y+=.1*sin(t*.08);
-    vec3 roZoom=stPos-toBH*3.+vec3(0.,.3,0.)+camSide*.4;
-    vec3 ro=mix(roBase,roZoom,u_zoom);
-
-    vec3 ta=vec3(0.);
-    vec3 fwd=normalize(ta-ro);
-    vec3 right=normalize(cross(fwd,vec3(0,1,0)));
-    vec3 up=cross(right,fwd);
-    float fov=mix(1.8,1.2,u_zoom);
-    vec3 rd=normalize(fwd*fov+right*uv.x+up*uv.y);
-
-    vec3 col=vec3(0.);
-    bool hitStation=false;
-
-    // ═══ STATION SDF RAYMARCH ═══
-    {
-        float bndR=2.5;
-        vec3 oc=ro-stPos;
-        float B=dot(oc,rd);
-        float C=dot(oc,oc)-bndR*bndR;
-        float D=B*B-C;
-        if(D>0.){
-            float tNear=max(0.,-B-sqrt(D));
-            float tFar=-B+sqrt(D);
-            if(tFar>0.){
-                float tc=tNear+.001;
-                for(int i=0;i<100;i++){
-                    vec3 wp=ro+rd*tc;
-                    vec3 dv=wp-stPos;
-                    vec3 lp=vec3(dot(dv,stRt),dot(dv,stUp),dot(dv,stFwd));
-                    float sd=mapSt(lp);
-                    if(sd<.001){
-                        hitStation=true;
-                        vec3 ln=nrmSt(lp);
-                        vec3 wn=stRt*ln.x+stUp*ln.y+stFwd*ln.z;
-                        float dist=length(wp-ro);
-
-                        // Ambient occlusion & Soft Shadows
-                        float ao=aoSt(lp,ln);
-                        float shadow=softShadow(lp,toBH,.005,2.0,12.0);
-
-                        // ── Material classification (scaled coords) ──
-                        vec3 sp=lp*.5; // Match SDF internal scale
-                        float pnD=min(min(sdRB(sp-vec3(.52,0,.22),vec3(.28,.001,.12),.001),sdRB(sp-vec3(.52,0,-.22),vec3(.28,.001,.12),.001)),min(sdRB(sp+vec3(.52,0,.22),vec3(.28,.001,.12),.001),sdRB(sp+vec3(.52,0,-.22),vec3(.28,.001,.12),.001)));
-                        float radD=min(min(sdRB(sp-vec3(.12,0,.22),vec3(.002,.072,.058),.001),sdRB(sp+vec3(.12,0,.22),vec3(.002,.072,.058),.001)),min(sdRB(sp-vec3(.12,0,-.16),vec3(.002,.062,.042),.001),sdRB(sp+vec3(.12,0,-.16),vec3(.002,.062,.042),.001)));
-                        float enD=min(min(length(sp-vec3(.04,.04,-.57))-.018,length(sp-vec3(-.04,.04,-.57))-.018),min(length(sp-vec3(.04,-.04,-.57))-.018,length(sp-vec3(-.04,-.04,-.57))-.018));
-                        vec3 rlp=sp;rlp.z+=.05;
-                        float rnD=length(vec2(length(rlp.xy)-.26,rlp.z))-.03;
-                        float hubD=sdRB(sp,vec3(.058,.058,.13),.016);
-                        float fwD=sdRB(sp-vec3(0,0,.28),vec3(.038,.038,.1),.012);
-                        float afD=sdRB(sp+vec3(0,0,.28),vec3(.044,.044,.1),.013);
-                        float topD=sdRB(vec3(sp.x,sp.z,sp.y-.12),vec3(.03,.065,.03),.009);
-                        float crossD=sdRB(vec3(sp.z,sp.y,sp.x),vec3(.026,.026,.08),.009);
-                        float modD=min(fwD,afD);
-                        float ftD=min(max(length(vec2(sp.x-.075,sp.y))-.022,abs(sp.z+.36)-.09),max(length(vec2(sp.x+.075,sp.y))-.022,abs(sp.z+.36)-.09));
-                        float domeD=max(length(sp-vec3(0,.06,.33))-.028,-(sp.y-.06));
-                        bool isModule=hubD<.006||modD<.006||topD<.006||crossD<.006;
-
-                        // ── Window detection on modules ──
-                        float isWin=0.;
-                        if(isModule){
-                            float wAng=atan(sp.y,sp.x);
-                            isWin=step(.82,sin(wAng*14.))*step(.82,sin(sp.z*24.));
-                        }
-                        // Ring windows
-                        float ringWin=0.;
-                        if(rnD<.005){
-                            float rA=atan(rlp.y,rlp.x);
-                            ringWin=step(.83,sin(rA*20.))*step(.83,sin(rlp.z*40.+rA*2.));
-                        }
-
-                        vec3 hull;
-                        float metallic=.3,roughness=.5;
-
-                        if(isWin>.5){
-                            hull=vec3(.04,.06,.12);
-                            metallic=.08;roughness=.04;
-                        } else if(ringWin>.5){
-                            hull=vec3(.04,.055,.11);
-                            metallic=.08;roughness=.04;
-                        } else if(domeD<.004){
-                            hull=vec3(.05,.07,.14);
-                            metallic=.1;roughness=.03;
-                        } else if(pnD<.004){
-                            // Solar panels with procedural 4K hex grid bump
-                            hull=vec3(.01,.015,.04);
-                            float hex=step(.9,sin(sp.x*120.))*step(.9,sin(sp.z*120.));
-                            hull+=vec3(.01,.02,.05)*hex;
-                            // Removed high-frequency mossy bump noise
-                            metallic=.3;roughness=.15;
-                        } else if(radD<.004){
-                            // Radiator with procedural foil crinkles
-                            hull=vec3(.3,.2,.05);
-                            hull+=vec3(.05,.03,.01)*fbmFake3(sp*100.);
-                            wn=bumpN(wn,sp,80.,.06,dist);
-                            metallic=.95;roughness=.25;
-                        } else if(enD<.005){
-                            hull=vec3(.15,.17,.2);
-                            hull+=vec3(.06,.16,.45)*(.5+.5*sin(t*5.));
-                            wn=bumpN(wn,sp,60.,.02,dist);
-                            metallic=.7;roughness=.3;
-                        } else if(ftD<.005){
-                            hull=vec3(.48,.5,.52);
-                            hull=mix(hull,vec3(.55,.22,.08),step(.95,abs(sin(sp.z*25.)))*.35);
-                            wn=bumpN(wn,sp,40.,.03,dist);
-                            metallic=.05;roughness=.7;
-                        } else if(rnD<.005){
-                            hull=vec3(.65,.67,.7); // Brighter white for ring
-                            float rAng=atan(rlp.y,rlp.x);
-                            vec2 pF=abs(fract(vec2(rAng*4.,rlp.z*12.))-.5);
-                            float frame=smoothstep(.45,.5,max(pF.x,pF.y));
-                            hull=mix(hull,vec3(.4,.42,.45),frame*.4);
-                            wn=bumpN(wn,sp,50.,.01,dist);
-                            metallic=.2;roughness=.4;
-                        } else if(isModule){
-                            hull=vec3(.7,.72,.75); // Bright white ceramic plates
-                            float ang=atan(sp.y,sp.x);
-                            vec2 pF=abs(fract(vec2(ang*2.23,sp.z*3.82))-.5);
-                            float frame=smoothstep(.45,.5,max(pF.x,pF.y));
-                            hull=mix(hull,vec3(.45,.47,.5),frame*.5);
-                            wn=bumpN(wn,sp,45.,.015,dist);
-                            metallic=.1;roughness=.35;
-                        } else {
-                            hull=vec3(.35,.37,.42); // Gray trusses
-                            wn=bumpN(wn,sp,60.,.03,dist);
-                            metallic=.6;roughness=.4;
-                        }
-
-                        // ── Ray-Traced PBR Lighting ──
-                        vec3 viewD=normalize(ro-wp);
-                        float diskLit=max(0.,dot(wn,toBH))*shadow; // Shadow applied to primary light
-                        float backFill=max(0.,dot(wn,-toBH))*.15;
-                        float NdV=max(0.,dot(wn,viewD));
-
-                        vec3 diff=hull*(1.-metallic*.7)*(.15+diskLit*vec3(1.,.7,.25)*2.5+backFill*vec3(.3,.4,.7));
-
-                        vec3 halfV=normalize(toBH+viewD);
-                        float specPow=mix(16.,1024.,1.-roughness);
-                        float spec=pow(max(0.,dot(wn,halfV)),specPow);
-                        vec3 specCol=mix(vec3(1.,.8,.5),hull,metallic)*spec*diskLit;
-
-                        // True Ray-Traced Reflections
-                        vec3 reflDir=reflect(-viewD,wn);
-                        vec3 envR=envCol(reflDir,t);
-                        float reflStr=metallic*(1.-roughness)*.6;
-
-                        // Fresnel Rim
-                        float fres=pow(1.-NdV,4.);
-                        reflStr=mix(reflStr,.9,fres*metallic);
-                        diff+=vec3(.2,.3,.5)*fres*(1.-metallic)*.2; // Edge sheen on non-metals
-
-                        hull=diff*ao+specCol+envR*reflStr*ao;
-
-                        // ── Emissive ──
-                        vec3 emit=vec3(0.);
-
-                        // Glass window interior glow
-                        if(isWin>.5){
-                            emit+=vec3(.8,.6,.3)*.7;
-                            float wAng2=atan(sp.y,sp.x);
-                            float frameX=smoothstep(.0,.2,abs(sin(wAng2*14.)));
-                            float frameZ=smoothstep(.0,.2,abs(sin(sp.z*24.)));
-                            emit*=frameX*frameZ;
-                        }
-                        if(ringWin>.5){
-                            emit+=vec3(.7,.55,.25)*.6;
-                            float rA2=atan(rlp.y,rlp.x);
-                            emit*=smoothstep(.0,.2,abs(sin(rA2*20.)))*smoothstep(.0,.2,abs(sin(rlp.z*40.+rA2*2.)));
-                        }
-                        if(domeD<.004) emit+=vec3(.5,.6,.8)*.5;
-
-                        // Ring running lights
-                        if(rnD<.005){
-                            float rA3=atan(rlp.y,rlp.x);
-                            emit+=vec3(.2,.4,.65)*step(.94,sin(rA3*16.+t*1.5))*smoothstep(.01,0.,abs(length(rlp.xy)-.29))*.45;
-                        }
-
-                        // Module joint lights
-                        if(isModule&&isWin<.5){
-                            emit+=vec3(.3,.42,.58)*step(.97,abs(sin(sp.z*14.)))*smoothstep(.08,.04,abs(length(sp.xy)-.06))*.35;
-                        }
-
-                        if(ftD<.005) emit+=vec3(.4,.48,.55)*step(.96,sin(sp.z*20.+t*2.))*.25;
-
-                        hull+=vec3(.1,.16,.3)*fres*.18;
-                        emit+=vec3(.35,.42,.55)*step(.96,sin(sp.z*18.))*smoothstep(.025,.01,length(sp.xy))*.3;
-
-                        float exDst=length(sp.xz)*8.;
-                        emit+=vec3(.12,.28,.7)*smoothstep(.65,0.,sp.z+.57)*exp(-exDst*exDst)*(1.-step(-.5,sp.z))*(.6+.4*sin(t*7.));
-
-                        hull+=emit;
-                        col=hull;
-                        break;
-                    }
-                    tc+=sd;
-                    if(tc>tFar) break;
-                }
-            }
-        }
-    }
-
-    // ═══ BLACK HOLE ═══
-    if(!hitStation){
-        float rs=1.;
-        float diskIn=3.;
-        float diskOut=14.;
-        vec3 pos=ro;
-        vec3 vel=rd;
-        bool absorbed=false;
-
-        for(int i=0;i<200;i++){
-            float rl=length(pos);
-            float h=max(.04,min(.6,rl*.07));
-            vec3 prev=pos;
-            pos+=vel*h;
-            float r2=dot(pos,pos);
-            float rn=sqrt(r2);
-            if(rn<rs*.5){absorbed=true;break;}
-            vec3 L=cross(pos,vel);
-            float L2=dot(L,L);
-            vel+=-1.5*L2*pos/(r2*r2*rn)*h;
-            vel=normalize(vel);
-            if(prev.y*pos.y<0.){
-                float tt=prev.y/(prev.y-pos.y);
-                vec3 hp=mix(prev,pos,tt);
-                float hr=length(hp.xz);
-                if(hr>diskIn&&hr<diskOut){
-                    float dn=(hr-diskIn)/(diskOut-diskIn);
-                    float omega=1./pow(hr,.75);
-                    float da=atan(hp.z,hp.x)+t*omega*.5;
-                    vec3 dc;
-                    if(dn<.08) dc=mix(vec3(1.,.97,.9),vec3(1.,.72,.18),dn/.08);
-                    else if(dn<.25) dc=mix(vec3(1.,.72,.18),vec3(.88,.3,.04),(dn-.08)/.17);
-                    else dc=mix(vec3(.88,.3,.04),vec3(.12,.02,0.),clamp((dn-.25)/.75,0.,1.));
-                    vec3 orbV=normalize(vec3(-hp.z,0.,hp.x));
-                    float dop=1.+dot(vel.xz,orbV.xz)*2.2;
-                    dop=clamp(dop,.08,3.5);
-                    dop=pow(dop,2.);
-                    float spiral=da+hr*.3;
-                    float tex=fbm3(vec2(spiral*3.5,hr*2.));
-                    float str=noise(vec2(da*8.+hr*.5,hr*4.));
-                    tex=.3+.7*mix(tex,str,.35);
-                    float opacity=smoothstep(diskOut,diskOut*.3,hr);
-                    opacity*=.5+.5*(1.-dn);
-                    col+=dc*dop*tex*opacity*2.2;
-                }
-            }
-            if(rn>50.)break;
-        }
-
-        if(!absorbed){
-            // Volumetric Parallax Grid Stars - High Quality Anti-Aliased
-            for(float s=40.;s<=280.;s+=40.){ // 7 layers for deep parallax without sub-pixel aliasing
-                // Project ray from actual camera position onto finite spheres to create true 3D parallax
-                vec3 fd = normalize(ro + vel * (s * 0.6));
-                float phi=atan(fd.z,fd.x);
-                float psi=asin(clamp(fd.y,-1.,1.));
-                vec2 sc=vec2(phi,psi);
-                
-                vec2 cell=floor(sc*s);
-                float hv=hash(cell);
-                if(hv>.88){ // 12% density (slightly lowered to reduce crowding)
-                    vec2 sp=(cell+vec2(hash2(cell),hash(cell+vec2(7.3,13.1))))/s;
-                    float d=length(sc-sp)*s;
-                    
-                    // High-quality smoothstep dot that drops to exactly 0 at cell border (0.5 max radius)
-                    // This prevents any square clipping and acts as natural anti-aliasing!
-                    float pt = smoothstep(0.5, 0.0, d);
-                    
-                    // Add variation to star core sharpness
-                    float sh = mix(4.0, 16.0, hash(cell+vec2(3.1,0.)));
-                    pt = pow(pt, sh);
-                    
-                    float b=pow((hv-.88)/.12, 1.5); // Brightness falloff adjusted to keep stars popping
-                    float tw=.92+.08*sin(t*.3+hv*150.);
-                    float temp=hash2(cell);
-                    vec3 starCol=temp<.3?vec3(.7,.75,1.):temp<.6?vec3(.95,.93,.88):vec3(1.,.85,.7);
-                    col+=starCol*pt*b*tw*.8;
-                }
-            }
-
-            // Nebula dust clouds
-            vec3 nebDir=normalize(vel);
-            float neb1=fbm3(nebDir.xz*2.+vec2(3.1,1.7));
-            float neb2=fbm3(nebDir.yz*1.8+vec2(5.2,2.3));
-            float neb3=fbm3(nebDir.xz*3.5+nebDir.y*2.+vec2(8.1,4.2));
-            col+=vec3(.06,.02,.1)*neb1*.08;
-            col+=vec3(.02,.04,.08)*neb2*.06;
-            col+=vec3(.04,.015,.03)*neb3*.04;
-        }
-    }
-
-    col+=vec3(.005,.008,.016);
-    float sr=length(uv);
-    col+=vec3(.25,.08,.02)*exp(-uv.y*uv.y*40.)*exp(-sr*1.5)*.1;
-    col+=vec3(1.,.5,.12)*u_interact*exp(-sr*sr*12.)*.3;
-    col=1.-exp(-col*1.3);
-    col=pow(col,vec3(.88));
-    gl_FragColor=vec4(col,1.);
-}
-    </script>
+    <!-- Three.js & GLTFLoader -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 </head>
 <body>
 <div id="splash"><div class="s-title">ERIS</div><div class="s-sub">event horizon intelligence</div></div>
@@ -705,25 +229,78 @@ void main(){
 
 <script>
 // ══════════════════════════════════════════════════
-//  WebGL — TON 618 Black Hole Renderer
+//  Three.js — 3D Model Renderer
 // ══════════════════════════════════════════════════
-const cv=document.getElementById('bhCanvas'),gl=cv.getContext('webgl',{antialias:false,powerPreference:'high-performance'});
-function mkS(src,type){const s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))console.error(gl.getShaderInfoLog(s));return s}
-const prog=gl.createProgram();
-gl.attachShader(prog,mkS(document.getElementById('vs').textContent,gl.VERTEX_SHADER));
-gl.attachShader(prog,mkS(document.getElementById('fs').textContent,gl.FRAGMENT_SHADER));
-gl.linkProgram(prog);gl.useProgram(prog);
-const buf=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buf);
-gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);
-const aP=gl.getAttribLocation(prog,'a_pos');gl.enableVertexAttribArray(aP);gl.vertexAttribPointer(aP,2,gl.FLOAT,false,0,0);
-const uR=gl.getUniformLocation(prog,'u_res'),uT=gl.getUniformLocation(prog,'u_time'),uI=gl.getUniformLocation(prog,'u_interact'),uZ=gl.getUniformLocation(prog,'u_zoom');
-let interact=0,zoomTarget=0,zoomCurrent=0;
-function rsz(){const d=Math.min(devicePixelRatio,2.);cv.width=innerWidth*d;cv.height=innerHeight*d;cv.style.width=innerWidth+'px';cv.style.height=innerHeight+'px';gl.viewport(0,0,cv.width,cv.height)}
-addEventListener('resize',rsz);rsz();
-addEventListener('click',()=>{interact=Math.min(interact+.5,1.5)});
-let t0=performance.now();
-function render(){const t=(performance.now()-t0)*.001;interact*=.97;zoomCurrent+=(zoomTarget-zoomCurrent)*.025;gl.uniform2f(uR,cv.width,cv.height);gl.uniform1f(uT,t);gl.uniform1f(uI,interact);gl.uniform1f(uZ,zoomCurrent);gl.drawArrays(gl.TRIANGLE_STRIP,0,4);requestAnimationFrame(render)}
-requestAnimationFrame(render);
+const cv = document.getElementById('bhCanvas');
+const renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true });
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setSize(window.innerWidth, window.innerHeight);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+camera.position.set(0, 5, 20);
+
+// Lighting
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.2); // Dim ambient
+scene.add(ambientLight);
+const diskLight = new THREE.PointLight(0xff6b00, 2, 50); // Orange glow from the black hole
+scene.add(diskLight);
+
+let blackHoleModel = null;
+let stationModel = null;
+
+const loader = new THREE.GLTFLoader();
+loader.load('/static/blackhole.glb', (gltf) => {
+    blackHoleModel = gltf.scene;
+    // Scale and position the black hole
+    blackHoleModel.scale.set(10, 10, 10);
+    blackHoleModel.position.set(0, 0, -50);
+    scene.add(blackHoleModel);
+    diskLight.position.copy(blackHoleModel.position);
+}, undefined, (e) => console.log('Blackhole load error or missing file. Waiting for user to download it.'));
+
+loader.load('/static/station.glb', (gltf) => {
+    stationModel = gltf.scene;
+    // Scale and position the space station in the foreground
+    stationModel.scale.set(0.5, 0.5, 0.5);
+    stationModel.position.set(0, -2, 5);
+    scene.add(stationModel);
+}, undefined, (e) => console.log('Station load error or missing file. Waiting for user to download it.'));
+
+let interact = 0, zoomTarget = 0, zoomCurrent = 0;
+function rsz() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+}
+window.addEventListener('resize', rsz);
+window.addEventListener('click', () => { interact = Math.min(interact + 0.5, 1.5); });
+
+const clock = new THREE.Clock();
+function animate() {
+    requestAnimationFrame(animate);
+    const delta = clock.getDelta();
+    const elapsedTime = clock.getElapsedTime();
+    
+    interact *= 0.97;
+    zoomCurrent += (zoomTarget - zoomCurrent) * 0.025;
+    
+    if (blackHoleModel) {
+        blackHoleModel.rotation.y += 0.1 * delta; // Slowly rotate the accretion disk
+    }
+    if (stationModel) {
+        // Subtle floating animation for the station
+        stationModel.position.y = -2 + Math.sin(elapsedTime * 0.5) * 0.5;
+        stationModel.rotation.z = Math.sin(elapsedTime * 0.2) * 0.05;
+        stationModel.rotation.y = interact * 0.2;
+    }
+    
+    // Zoom interaction effect
+    camera.position.z = 20 - zoomCurrent * 5;
+    
+    renderer.render(scene, camera);
+}
+animate();
 
 // Splash
 setTimeout(()=>{document.getElementById('splash').classList.add('gone')},3000);
