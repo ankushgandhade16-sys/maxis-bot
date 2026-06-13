@@ -254,9 +254,9 @@ camera.position.set(-45, 6, -20);
 // Post-Processing
 const renderScene = new THREE.RenderPass(scene, camera);
 const bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
-bloomPass.threshold = 0.2;
-bloomPass.strength = 0.6; // Subtle cinematic glow, not blinding
-bloomPass.radius = 0.8;
+bloomPass.threshold = 0.3; // Higher threshold so only the absolute brightest parts bloom
+bloomPass.strength = 0.25; // Much more subtle bloom so textures aren't destroyed
+bloomPass.radius = 0.5;
 
 const composer = new THREE.EffectComposer(renderer);
 composer.addPass(renderScene);
@@ -273,9 +273,14 @@ const directionalLight = new THREE.DirectionalLight(0xffffff, 3);
 directionalLight.position.set(5, 5, 5); 
 scene.add(directionalLight);
 
-const fillLight = new THREE.DirectionalLight(0x4466ff, 1);
+const fillLight = new THREE.DirectionalLight(0x4466ff, 1.5);
 fillLight.position.set(-5, -5, -5);
 scene.add(fillLight);
+
+// Dedicated light just for the Space Station so its textures look incredibly high-quality
+const stationLight = new THREE.PointLight(0xffffff, 4, 20);
+stationLight.position.set(-44, 6, -22); 
+scene.add(stationLight);
 
 function fitModelToScene(model, targetSize) {
     const box = new THREE.Box3().setFromObject(model);
@@ -322,16 +327,16 @@ loader.load('/static/blackhole/scene.gltf', (gltf) => {
 
 loader.load('/static/station/scene.gltf', (gltf) => {
     let rawModel = gltf.scene;
-    fitModelToScene(rawModel, 4); // Appropriate scale
+    fitModelToScene(rawModel, 2); // Scale it down perfectly for extreme close-up
     
     stationModel = new THREE.Group();
-    // Position it hovering just above the accretion disk, directly in front of the camera
-    stationModel.position.set(-42, 2, -40);
+    // Position it hovering extremely close to the camera!
+    stationModel.position.set(-43, 4, -25);
     stationModel.add(rawModel);
     
     stationModel.rotation.x = 0.3;
-    stationModel.rotation.y = -0.8;
-    stationModel.rotation.z = 0.2;
+    stationModel.rotation.y = -0.5;
+    stationModel.rotation.z = 0.1;
     
     scene.add(stationModel);
     checkLoadComplete();
@@ -361,10 +366,9 @@ function animate() {
         blackHoleModel.rotation.y -= 0.05 * delta; // Slowly rotate the accretion disk
     }
     if (stationModel) {
-        // Orbit the station slowly around its pivot directly in front of camera
-        stationModel.position.x = -42 + Math.sin(clock.elapsedTime * 0.2) * 1;
-        stationModel.position.z = -40 + Math.cos(clock.elapsedTime * 0.2) * 1;
-        stationModel.position.y = 2 + Math.sin(clock.elapsedTime * 0.5) * 0.2;
+        // Subtle close-up floating animation
+        stationModel.position.x = -43 + Math.sin(clock.elapsedTime * 0.2) * 0.2;
+        stationModel.position.y = 4 + Math.sin(clock.elapsedTime * 0.5) * 0.1;
         stationModel.rotation.y += 0.1 * delta;
         stationModel.rotation.z += 0.05 * delta;
     }
