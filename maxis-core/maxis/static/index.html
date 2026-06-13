@@ -347,18 +347,35 @@ loader.load('/static/starsystem/scene.gltf', (gltf) => {
     let rawModel = gltf.scene;
     fitModelToScene(rawModel, 800); // Scale it even larger so we are fully inside it
     
-    // Fix the black-and-white noisy square points by applying Additive Blending and a circular alpha map
+    // Fix the black-and-white noisy square points by completely replacing the material
     rawModel.traverse((child) => {
         if (child.isPoints) {
-            child.material.map = starTexture;
-            child.material.transparent = true;
-            child.material.blending = THREE.AdditiveBlending;
-            child.material.depthWrite = false; // Prevent stars from blacking each other out
-            child.material.size = 3.0; // Make them slightly bigger
-            child.material.sizeAttenuation = false; // Keep consistent pixel size
-            child.material.vertexColors = true; // FORCE COLORS TO RENDER
-            child.material.color = new THREE.Color(0xffffff); // Prevent base color from tinting vertex colors
-            child.material.needsUpdate = true;
+            // Create a brand new, bulletproof PointsMaterial
+            const newMaterial = new THREE.PointsMaterial({
+                map: starTexture,
+                size: 4.0,
+                transparent: true,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false,
+                vertexColors: true,
+                sizeAttenuation: false,
+                color: 0xffffff
+            });
+            child.material = newMaterial;
+            
+            // If Sketchfab's glTF conversion destroyed the vertex colors, generate our own!
+            if (!child.geometry.attributes.color || child.geometry.attributes.color.count === 0) {
+                const positions = child.geometry.attributes.position.array;
+                const colors = new Float32Array(positions.length);
+                for(let i=0; i<positions.length; i+=3) {
+                    const mix = Math.random();
+                    // Generate a gorgeous mix of warm orange, bright blue, and pure white stars
+                    if(mix < 0.3) { colors[i]=1.0; colors[i+1]=0.6; colors[i+2]=0.3; } // Deep Orange
+                    else if(mix < 0.6) { colors[i]=0.4; colors[i+1]=0.7; colors[i+2]=1.0; } // Bright Blue
+                    else { colors[i]=0.9; colors[i+1]=0.9; colors[i+2]=1.0; } // White/Slight Blue
+                }
+                child.geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+            }
         }
     });
     
