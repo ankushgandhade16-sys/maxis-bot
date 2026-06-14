@@ -119,6 +119,12 @@ async def root_head():
     from fastapi import Response
     return Response(status_code=200)
 
+@app.get("/ping")
+async def ping():
+    """Ultra-lightweight endpoint for 24/7 uptime bots to hit without wasting bandwidth."""
+    from fastapi import Response
+    return Response(content="OK", media_type="text/plain", status_code=200)
+
 @app.get("/")
 async def root():
     """Serve the chat UI."""
